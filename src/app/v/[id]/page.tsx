@@ -57,7 +57,7 @@ export default async function PublicVehiclePage({ params }: { params: Promise<{ 
   // Fetch public-safe events via whitelist view
   const { data: publicEvents } = await supabase
     .from("public_events")
-    .select("id, vehicle_id, occurred_at, title, type")
+    .select("id, vehicle_id, occurred_at, type, display_title")
     .eq("vehicle_id", id)
     .order("occurred_at", { ascending: false })
     .limit(5);
@@ -65,7 +65,8 @@ export default async function PublicVehiclePage({ params }: { params: Promise<{ 
   // Normalize to sanitizer input shape (defense-in-depth)
   const eventsForSanitize = (publicEvents ?? []).map((e) => ({
     id: e.id as string,
-    notes: (e as any).title ?? "",
+    // map display_title into the sanitizer's expected 'notes' field
+    notes: (e as any).display_title ?? "",
     created_at: (e as any).occurred_at as string,
     type: (e as any).type as string,
   }));

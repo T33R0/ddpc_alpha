@@ -25,10 +25,19 @@ with cols as (
   select array_agg(c.column_name order by c.ordinal_position) as names
   from information_schema.columns c
   where c.table_schema = 'public' and c.table_name = 'public_events'
+), required as (
+  select array['id','vehicle_id','occurred_at','type','display_title']::text[] as names
 )
 select case
-  when (select names from cols) = array['id','vehicle_id','occurred_at','title','type'] then 1
-  else (select 1/0) -- force error if unexpected columns
+  when (
+    -- same cardinality
+    (select cardinality(names) from cols) = (select cardinality(names) from required)
+    -- every required is present
+    and (select bool_and(x = any((select names from cols))) from unnest((select names from required)) as t(x))
+    -- no extras beyond required
+    and (select bool_and(x = any((select names from required))) from unnest((select names from cols)) as t(x))
+  ) then 1
+  else (select 1/0) -- force error if unexpected/missing columns
 end;
 
 -- Perform limited read; should succeed for public vehicle
