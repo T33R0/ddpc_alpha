@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getServerSupabase } from "@/lib/supabase";
 import { logActivity } from "@/lib/activity/log";
+import { redirect } from "next/navigation";
 
 type Invite = { garage_id: string; role: string };
 
@@ -54,6 +55,8 @@ export default async function AcceptInvitePage({ params }: { params: Promise<{ t
     const { error } = await supabase.rpc("accept_garage_invite", { p_token: token as unknown as string });
     if (error) throw new Error(error.message);
     await logActivity({ actorId: user.id, entityType: "garage", entityId: garageId, action: "member_joined_from_invite", diff: { role } });
+    // Redirect to vehicles with toast param
+    redirect(`/vehicles?garage=${garageId}&joined=1`);
   }
 
   return (

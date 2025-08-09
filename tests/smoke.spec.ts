@@ -31,6 +31,11 @@ publicTest.describe('Public vehicle page', () => {
     expect(res.status()).toBe(200);
     const text = await res.text();
     expect(text).toContain('BEGIN:VCALENDAR');
+    const expectEvents = Number(process.env.ICS_EXPECT_EVENTS_ME || '0');
+    if (expectEvents > 0) {
+      const vevents = (text.match(/BEGIN:VEVENT/g) || []).length;
+      expect(vevents).toBeGreaterThanOrEqual(expectEvents);
+    }
   });
 });
 
@@ -40,6 +45,11 @@ publicTest('Vehicle ICS returns 200 and VCALENDAR', async ({ request }) => {
   expect(res.status()).toBe(200);
   const text = await res.text();
   expect(text).toContain('BEGIN:VCALENDAR');
+  const expectEvents = Number(process.env.ICS_EXPECT_EVENTS_PUBLIC || '0');
+  if (expectEvents > 0) {
+    const vevents = (text.match(/BEGIN:VEVENT/g) || []).length;
+    expect(vevents).toBeGreaterThanOrEqual(expectEvents);
+  }
 });
 
 // Trivial ping test to ensure server responds in CI even when others are skipped

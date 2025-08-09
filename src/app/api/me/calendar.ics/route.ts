@@ -1,5 +1,6 @@
 // Using Web Fetch API Request/Response types for route signature
 import { getServerSupabase } from "@/lib/supabase";
+import { serverLog } from "@/lib/serverLog";
 
 function fmtDateUTC(d: Date): string {
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -120,6 +121,8 @@ export async function GET(_req: Request): Promise<Response> {
   lines.push("END:VCALENDAR");
 
   const body = lines.join("\r\n") + "\r\n";
+  // Dev-only log; ids only
+  serverLog("ics_me_served", { userId: user.id });
   return new Response(body, {
     status: 200,
     headers: {

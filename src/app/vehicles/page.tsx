@@ -7,12 +7,17 @@ import UploadPhoto from "@/components/UploadPhoto";
 import VehicleActions from "@/components/VehicleActions";
 import { SummaryChipsSkeleton, SummaryChipsExtended } from "@/components/analytics/SummaryChips";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
+
+type Role = "OWNER" | "MANAGER" | "CONTRIBUTOR" | "VIEWER";
 
 export default async function VehiclesPage() {
   const supabase = await getServerSupabase();
   const { data: { user } } = await supabase.auth.getUser();
+  const search = (typeof window === 'undefined' ? undefined : undefined) as unknown as URLSearchParams | undefined;
   const reqId = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}`;
   if (process.env.NODE_ENV !== 'production') {
     // Server-only structured log: no PII
@@ -133,11 +138,40 @@ export default async function VehiclesPage() {
     });
   }
 
+  // Role filter
+  const filterValues: Array<{ label: string; value: Role | "ALL" }> = [
+    { label: "All", value: "ALL" },
+    { label: "Owner", value: "OWNER" },
+    { label: "Manager", value: "MANAGER" },
+    { label: "Contributor", value: "CONTRIBUTOR" },
+    { label: "Viewer", value: "VIEWER" },
+  ];
+  // Determine role filter and joined toast
+  const searchParams = new URLSearchParams((await (async () => {
+    try { return (new URL((global as any).location?.href ?? "http://localhost")).search); } catch { return ""; }
+  })()));
+  const joined = searchParams.get("joined") === "1";
+  const currentFilter: Role | "ALL" = (searchParams.get("role") as Role | null) ?? "ALL";
+
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">My Vehicles</h1>
         <Link href="/" className="text-sm text-blue-600 hover:underline">Home</Link>
+      </div>
+
+      <div className="flex items-center gap-2 text-xs" role="tablist" aria-label="Filter by role">
+        {filterValues.map(f => (
+          <Link
+            key={f.value}
+            href={{ pathname: "/vehicles", query: f.value === "ALL" ? {} : { role: f.value } }}
+            className={`px-2 py-1 rounded border ${currentFilter === f.value ? 'bg-black text-white' : 'bg-white hover:bg-gray-50'}`}
+            role="tab"
+            aria-selected={currentFilter === f.value}
+          >
+            {f.label}
+          </Link>
+        ))}
       </div>
 
       {user ? (
@@ -166,7 +200,10 @@ export default async function VehiclesPage() {
       ) : (
       <ErrorBoundary message="Failed to load vehicles.">
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {vehicles.map((v) => (
+        {vehicles.filter(v => {
+          const role = roleByGarage.get((v as VehicleRow).garage_id) as Role | undefined;
+          return currentFilter === "ALL" || role === currentFilter;
+        }).map((v) => (
           <div key={v.id} className="border rounded overflow-hidden" data-test="vehicle-card">
             {v.photo_url ? (
               <Image src={v.photo_url} alt={v.nickname ?? `${v.year ?? ''} ${v.make} ${v.model}`} width={640} height={300} className="w-full h-40 object-cover" />

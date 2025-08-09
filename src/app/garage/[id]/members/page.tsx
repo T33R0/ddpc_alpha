@@ -1,4 +1,6 @@
 import { getServerSupabase } from "@/lib/supabase";
+import { serverLog } from "@/lib/serverLog";
+import AddMemberForm from "@/components/garage/AddMemberForm";
 
 type Member = { id: string; user_id: string; role: "OWNER" | "MANAGER" | "CONTRIBUTOR" | "VIEWER" };
 
@@ -53,32 +55,55 @@ export default async function MembersPage({ params }: { params: Promise<{ id: st
   const canManage = myRole === "OWNER" || myRole === "MANAGER";
   const isOwner = myRole === "OWNER";
 
-  async function addMember(formData: FormData) {
+  async function addMember(_prev: { ok?: boolean; error?: string } | undefined, formData: FormData): Promise<{ ok?: boolean; error?: string }> {
     "use server";
     const supabase = await getServerSupabase();
     const email = (formData.get("email") || "").toString().trim().toLowerCase();
     const role = (formData.get("role") || "VIEWER").toString() as Member["role"];
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error("Not authenticated");
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
 
-    // ensure caller permission
-    const callerRole = await getRoleForUser(garageId, user.id);
-    if (!(callerRole === "OWNER" || callerRole === "MANAGER")) throw new Error("Forbidden");
+      // ensure caller permission
+      const callerRole = await getRoleForUser(garageId, user.id);
+      if (!(callerRole === "OWNER" || callerRole === "MANAGER")) throw new Error("Forbidden");
 
-    // lookup by email in auth.users
-    const { data: found, error: lookupErr } = await supabase
-      .from("auth.users" as unknown as string)
-      .select("id, email")
-      .eq("email", email)
-      .maybeSingle();
-    if (lookupErr || !found) {
-      throw new Error("User must sign in first.");
+      // resolve user id via RPC (no service key)
+      let userId: string | null = null;
+      try {
+        const { data: uid } = await supabase.rpc("resolve_user_id_by_email", { p_email: email }).single();
+        userId = (uid as unknown as string) || null;
+      } catch {
+        userId = null;
+      }
+      if (!userId) {
+        throw Object.assign(new Error("That user hasn’t signed in yet."), { code: "no_user" });
+      }
+
+      // check existing membership
+      const { data: existing } = await supabase
+        .from("garage_member")
+        .select("user_id")
+        .eq("garage_id", garageId)
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (existing) {
+        throw Object.assign(new Error("Already a member."), { code: "already_member" });
+      }
+
+      const { error: insErr } = await supabase
+        .from("garage_member")
+        .insert({ garage_id: garageId, user_id: userId, role });
+      if (insErr) throw new Error(insErr.message);
+      serverLog("member_added", { garageId, userId });
+      return { ok: true };
+    } catch (e) {
+      if (process.env.NODE_ENV !== "production") {
+        const err = e as { message?: string; code?: string };
+        console.log(JSON.stringify({ level: "warn", op: "member_add", garageId, email, errCode: err?.code ?? "unknown", message: err?.message ?? "" }));
+      }
+      throw e;
     }
-
-    const { error: insErr } = await supabase
-      .from("garage_member")
-      .insert({ garage_id: garageId, user_id: (found as { id: string }).id, role });
-    if (insErr) throw new Error(insErr.message);
   }
 
   async function changeRole(formData: FormData) {
@@ -105,6 +130,7 @@ export default async function MembersPage({ params }: { params: Promise<{ id: st
     }
     const { error } = await supabase.from("garage_member").update({ role }).eq("id", memberId);
     if (error) throw new Error(error.message);
+    serverLog("member_role_changed", { garageId, memberId });
   }
 
   async function removeMember(formData: FormData) {
@@ -125,6 +151,7 @@ export default async function MembersPage({ params }: { params: Promise<{ id: st
     if ((target as Member).role === "OWNER") throw new Error("Cannot remove owner");
     const { error } = await supabase.from("garage_member").delete().eq("id", memberId);
     if (error) throw new Error(error.message);
+    serverLog("member_removed", { garageId, memberId });
   }
 
   return (
@@ -135,7 +162,7 @@ export default async function MembersPage({ params }: { params: Promise<{ id: st
           <a href={`/garage/${garageId}/invites`} className="text-sm text-blue-600 hover:underline">Invites</a>
         )}
       </div>
-      <div className="border rounded bg-white">
+      <div className="border rounded bg-white" data-test="members-table">
         <table className="w-full text-sm">
           <thead>
             <tr className="text-left text-gray-600 border-b">
@@ -151,7 +178,7 @@ export default async function MembersPage({ params }: { params: Promise<{ id: st
                 <td className="p-2">{m.role}</td>
                 <td className="p-2">
                   {canManage && (
-                    <form action={changeRole} className="inline-flex items-center gap-2">
+                    <form action={changeRole} className="inline-flex items-center gap-2" data-test="member-change-role">
                       <input type="hidden" name="member_id" value={m.id} />
                       <select
                         name="role"
@@ -169,13 +196,14 @@ export default async function MembersPage({ params }: { params: Promise<{ id: st
                         className="text-xs px-2 py-1 border rounded bg-gray-50 disabled:opacity-50"
                         disabled={m.role === "OWNER"}
                         title={m.role === "OWNER" ? "Owner role cannot be changed" : undefined}
+                        data-test="member-change-role-button"
                       >
                         Update
                       </button>
                     </form>
                   )}
                   {canManage && (
-                    <form action={removeMember} className="inline-block ml-2">
+                    <form action={removeMember} className="inline-block ml-2" data-test="member-remove">
                       <input type="hidden" name="member_id" value={m.id} />
                       <button
                         className="text-xs px-2 py-1 border rounded text-red-700 disabled:opacity-50"
@@ -193,15 +221,7 @@ export default async function MembersPage({ params }: { params: Promise<{ id: st
         </table>
       </div>
       {canManage && (
-        <form action={addMember} className="flex items-center gap-2 border rounded p-3 bg-white">
-          <input name="email" type="email" placeholder="user@example.com" className="border rounded px-2 py-1 flex-1" required />
-          <select name="role" className="border rounded px-2 py-1 text-sm">
-            <option value="MANAGER">MANAGER</option>
-            <option value="CONTRIBUTOR">CONTRIBUTOR</option>
-            <option value="VIEWER">VIEWER</option>
-          </select>
-          <button type="submit" className="px-3 py-1 rounded bg-black text-white">Add</button>
-        </form>
+        <AddMemberForm action={addMember} />
       )}
     </div>
   );
