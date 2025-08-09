@@ -2,8 +2,8 @@ import { getServerSupabase } from "@/lib/supabase";
 import { WorkItem as ClientWorkItem } from "./TasksBoardClient";
 import TasksClient from "./TasksClient";
 
-export default async function TasksPage(props: { params: { id: string } }) {
-  const vehicleId = props?.params?.id as string;
+export default async function TasksPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id: vehicleId } = await params;
   const supabase = await getServerSupabase();
   const { data: items } = await supabase
     .from("work_item")
