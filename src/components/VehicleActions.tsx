@@ -131,7 +131,7 @@ export default function VehicleActions({ id, initialNickname, initialPrivacy, in
       <input value={make} onChange={(e) => setMake(e.target.value)} onKeyDown={onKeyDown} placeholder="Make" className="border rounded px-2 py-1 text-xs w-24" />
       <input value={model} onChange={(e) => setModel(e.target.value)} onKeyDown={onKeyDown} placeholder="Model" className="border rounded px-2 py-1 text-xs w-24" />
       <input value={trim} onChange={(e) => setTrim(e.target.value)} onKeyDown={onKeyDown} placeholder="Trim" className="border rounded px-2 py-1 text-xs w-24" />
-      <select value={privacy} onChange={(e) => setPrivacy(e.target.value as "PUBLIC" | "PRIVATE")} className="border rounded px-2 py-1 text-xs">
+      <select value={privacy} onChange={(e) => setPrivacy(e.target.value as "PUBLIC" | "PRIVATE")} onKeyDown={onKeyDown} className="border rounded px-2 py-1 text-xs">
         <option value="PRIVATE">Private</option>
         <option value="PUBLIC">Public</option>
       </select>

@@ -2,6 +2,22 @@ This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-
 
 ## Getting Started
 
+## Analytics (v0)
+
+We added lightweight, value-visible analytics:
+
+- SummaryChips on `vehicles` list and vehicle overview show:
+  - Upcoming tasks count: number of `work_item` with status PLANNED or IN_PROGRESS
+  - Last service date: most recent `event` with type SERVICE
+  - 30‑day events: count of `event` in the last 30 days
+
+Server components batch-fetch aggregates to avoid N+1 queries. No schema changes.
+
+Screenshots:
+
+![vehicles list chips](media/screenshots/vercel project setup.png)
+![vehicle overview chips](media/screenshots/supabase vercel project.png)
+
 First, run the development server:
 
 ```bash

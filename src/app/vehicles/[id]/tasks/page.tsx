@@ -1,10 +1,16 @@
 import { getServerSupabase } from "@/lib/supabase";
+import PrivacyBadge from "@/components/PrivacyBadge";
 import { WorkItem as ClientWorkItem } from "./TasksBoardClient";
 import TasksClient from "./TasksClient";
 
 export default async function TasksPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: vehicleId } = await params;
   const supabase = await getServerSupabase();
+  const { data: vehicle } = await supabase
+    .from("vehicle")
+    .select("id, year, make, model, nickname, privacy")
+    .eq("id", vehicleId)
+    .maybeSingle();
   const { data: items } = await supabase
     .from("work_item")
     .select("id, title, status, tags, due")
@@ -14,6 +20,19 @@ export default async function TasksPage({ params }: { params: Promise<{ id: stri
   const initialItems = (items ?? []) as unknown as ClientWorkItem[];
 
   return (
-    <TasksClient vehicleId={vehicleId} initialItems={initialItems} />
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-semibold">{vehicle?.nickname ?? `${vehicle?.year ?? ''} ${vehicle?.make ?? ''} ${vehicle?.model ?? ''}`}</h1>
+          <PrivacyBadge value={vehicle?.privacy} />
+        </div>
+        <div className="flex items-center gap-3">
+          {vehicle?.id && <a href={`/v/${vehicle.id}`} className="text-sm text-blue-600 hover:underline">Public page</a>}
+          <a href="/vehicles" className="text-sm text-blue-600 hover:underline">Back to vehicles</a>
+        </div>
+      </div>
+
+      <TasksClient vehicleId={vehicleId} initialItems={initialItems} />
+    </div>
   );
 }
