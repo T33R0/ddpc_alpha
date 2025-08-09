@@ -135,7 +135,7 @@ export default function VehicleActions({ id, initialNickname, initialPrivacy, in
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <input value={nickname} onChange={(e) => setNickname(e.target.value)} onKeyDown={onKeyDownInput} placeholder="Nickname" className="border rounded px-2 py-1 text-xs w-28 md:w-32" />
+      <input value={nickname} onChange={(e) => setNickname(e.target.value)} onKeyDown={onKeyDownInput} placeholder="Nickname" className="border rounded px-2 py-1 text-xs w-28 md:w-32" data-test="vehicle-nickname" />
       <input value={vin} onChange={(e) => setVin(e.target.value)} onKeyDown={onKeyDownInput} placeholder="VIN" className="border rounded px-2 py-1 text-xs w-28 md:w-32" />
       <input value={year} onChange={(e) => setYear(e.target.value)} onKeyDown={onKeyDownInput} placeholder="Year" className="border rounded px-2 py-1 text-xs w-20" />
       <input value={make} onChange={(e) => setMake(e.target.value)} onKeyDown={onKeyDownInput} placeholder="Make" className="border rounded px-2 py-1 text-xs w-24" />

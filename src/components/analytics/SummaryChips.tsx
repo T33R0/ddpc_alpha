@@ -37,4 +37,42 @@ export function SummaryChipsSkeleton({ size = "sm" }: { size?: "sm" | "md" }) {
   );
 }
 
+export function SummaryChipsExtended({
+  upcomingCount,
+  lastServiceDate,
+  events30Count,
+  daysSinceLastService,
+  avgDaysBetweenService,
+  size = "sm",
+}: Props & { daysSinceLastService: number | null; avgDaysBetweenService: number | null }) {
+  const base = size === "sm" ? "text-xs px-2 py-1" : "text-sm px-3 py-1.5";
+  const dateLabel = lastServiceDate ? new Date(lastServiceDate).toLocaleDateString() : "—";
+  const daysSinceLabel = daysSinceLastService ?? "—";
+  const avgLabel = avgDaysBetweenService ?? "—";
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <span className={`inline-flex items-center gap-1 rounded border bg-white ${base}`}>
+        <strong className="font-semibold">{upcomingCount}</strong>
+        <span className="text-gray-600">upcoming</span>
+      </span>
+      <span className={`inline-flex items-center gap-1 rounded border bg-white ${base}`}>
+        <span className="text-gray-600">last service</span>
+        <strong className="font-semibold">{dateLabel}</strong>
+      </span>
+      <span className={`inline-flex items-center gap-1 rounded border bg-white ${base}`}>
+        <strong className="font-semibold">{events30Count}</strong>
+        <span className="text-gray-600">in 30d</span>
+      </span>
+      <span className={`inline-flex items-center gap-1 rounded border bg-white ${base}`}>
+        <span className="text-gray-600">days since service</span>
+        <strong className="font-semibold">{daysSinceLabel}</strong>
+      </span>
+      <span className={`inline-flex items-center gap-1 rounded border bg-white ${base}`}>
+        <span className="text-gray-600">avg days between SERVICE</span>
+        <strong className="font-semibold">{avgLabel}</strong>
+      </span>
+    </div>
+  );
+}
+
 

@@ -1,6 +1,7 @@
 import { getServerSupabase } from "@/lib/supabase";
 import PrivacyBadge from "@/components/PrivacyBadge";
 import TimelineClient from "./TimelineClient";
+import ErrorBoundary from "@/components/ErrorBoundary";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -31,11 +32,16 @@ export default async function TimelinePage({ params }: { params: Promise<{ id: s
         </div>
         <div className="flex items-center gap-3">
           {vehicle?.id && <Link href={`/v/${vehicle.id}`} className="text-sm text-blue-600 hover:underline">Public page</Link>}
-          <Link href="/vehicles" className="text-sm text-blue-600 hover:underline">Back to vehicles</Link>
+          <div className="flex items-center gap-3">
+            <Link href={`/api/vehicles/${vehicleId}/events.csv`} className="text-sm text-gray-700 border rounded px-2 py-1 bg-white hover:bg-gray-50">Export CSV</Link>
+            <Link href="/vehicles" className="text-sm text-blue-600 hover:underline">Back to vehicles</Link>
+          </div>
         </div>
       </div>
 
-      <TimelineClient events={(events ?? []) as Event[]} vehicleId={vehicleId} />
+      <ErrorBoundary message="Failed to load timeline.">
+        <TimelineClient events={(events ?? []) as Event[]} vehicleId={vehicleId} />
+      </ErrorBoundary>
     </div>
   );
 }

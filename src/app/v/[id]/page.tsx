@@ -69,7 +69,7 @@ export default async function PublicVehiclePage({ params }: { params: Promise<{ 
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <h1 className="text-2xl font-semibold">{safe.display_name}</h1>
-          <span className="text-xs px-2 py-0.5 rounded border bg-green-50 text-green-700">PUBLIC</span>
+          <span className="text-xs px-2 py-0.5 rounded border bg-green-50 text-green-700" data-test="public-badge">PUBLIC</span>
         </div>
         <div className="flex items-center gap-3">
           <CopyLink />

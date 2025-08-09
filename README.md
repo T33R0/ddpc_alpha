@@ -15,6 +15,10 @@ Server components batch-fetch aggregates to avoid N+1 queries. No schema changes
 
 Screenshots:
 
+## Release SOP
+
+See `docs/RELEASE.md` for the full release checklist and rollback steps.
+
 ![vehicles list chips](media/screenshots/vercel project setup.png)
 ![vehicle overview chips](media/screenshots/supabase vercel project.png)
 

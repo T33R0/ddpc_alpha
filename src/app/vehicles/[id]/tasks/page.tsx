@@ -3,6 +3,7 @@ import PrivacyBadge from "@/components/PrivacyBadge";
 import { WorkItem as ClientWorkItem } from "./TasksBoardClient";
 import TasksClient from "./TasksClient";
 import Link from "next/link";
+import ErrorBoundary from "@/components/ErrorBoundary";
 
 export default async function TasksPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: vehicleId } = await params;
@@ -33,7 +34,9 @@ export default async function TasksPage({ params }: { params: Promise<{ id: stri
         </div>
       </div>
 
-      <TasksClient vehicleId={vehicleId} initialItems={initialItems} />
+      <ErrorBoundary message="Failed to load tasks.">
+        <TasksClient vehicleId={vehicleId} initialItems={initialItems} />
+      </ErrorBoundary>
     </div>
   );
 }

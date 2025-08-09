@@ -5,7 +5,8 @@ import { getServerSupabase } from "@/lib/supabase";
 import { createVehicle } from "./actions";
 import UploadPhoto from "@/components/UploadPhoto";
 import VehicleActions from "@/components/VehicleActions";
-import SummaryChips, { SummaryChipsSkeleton } from "@/components/analytics/SummaryChips";
+import SummaryChips, { SummaryChipsSkeleton, SummaryChipsExtended } from "@/components/analytics/SummaryChips";
+import ErrorBoundary from "@/components/ErrorBoundary";
 
 export const dynamic = "force-dynamic";
 
@@ -30,7 +31,7 @@ export default async function VehiclesPage() {
     .order("created_at", { ascending: false });
 
   // Analytics v0 aggregates (batched; no N+1)
-  const metrics = new Map<string, { upcoming: number; lastService: string | null; events30: number }>();
+  const metrics = new Map<string, { upcoming: number; lastService: string | null; events30: number; daysSince: number | null; avgBetween: number | null }>();
   if (vehicles && vehicles.length > 0) {
     const vehicleIds = (vehicles as VehicleRow[]).map((v) => v.id);
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
@@ -65,10 +66,12 @@ export default async function VehiclesPage() {
 
     const lastServiceByVehicle = new Map<string, string | null>();
     // Iterate in order (desc) and set first occurrence
+    const serviceByVehicle: Record<string, string[]> = {};
     ((lastServicesRes.data ?? []) as ServiceEventRow[]).forEach((ev) => {
       if (!lastServiceByVehicle.has(ev.vehicle_id)) {
         lastServiceByVehicle.set(ev.vehicle_id, ev.created_at as string);
       }
+      (serviceByVehicle[ev.vehicle_id] ??= []).push(ev.created_at);
     });
 
     const events30ByVehicle = new Map<string, number>();
@@ -77,10 +80,35 @@ export default async function VehiclesPage() {
     });
 
     vehicleIds.forEach((id) => {
+      // days since last
+      const last = lastServiceByVehicle.get(id) ?? null;
+      let daysSince: number | null = null;
+      if (last) {
+        const diffMs = Date.now() - new Date(last).getTime();
+        daysSince = Math.max(0, Math.round(diffMs / (24 * 60 * 60 * 1000)));
+      }
+      // avg days between service over last 12 months
+      let avgBetween: number | null = null;
+      const svcDates = (serviceByVehicle[id] ?? []).slice(0, 365).map(d => new Date(d).getTime());
+      if (svcDates.length >= 2) {
+        // ensure desc order already; compute intervals between consecutive
+        let total = 0;
+        let count = 0;
+        for (let i = 0; i < svcDates.length - 1; i++) {
+          const a = svcDates[i];
+          const b = svcDates[i + 1];
+          const gapDays = Math.abs(Math.round((a - b) / (24 * 60 * 60 * 1000)));
+          total += gapDays;
+          count++;
+        }
+        if (count > 0) avgBetween = Math.round(total / count);
+      }
       metrics.set(id, {
         upcoming: upcomingByVehicle.get(id) ?? 0,
         lastService: lastServiceByVehicle.get(id) ?? null,
         events30: events30ByVehicle.get(id) ?? 0,
+        daysSince,
+        avgBetween,
       });
     });
   }
@@ -116,9 +144,10 @@ export default async function VehiclesPage() {
           <div className="text-sm">Use the form above to add your first vehicle.</div>
         </div>
       ) : (
+      <ErrorBoundary message="Failed to load vehicles.">
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {vehicles.map((v) => (
-          <div key={v.id} className="border rounded overflow-hidden">
+          <div key={v.id} className="border rounded overflow-hidden" data-test="vehicle-card">
             {v.photo_url ? (
               <Image src={v.photo_url} alt={v.nickname ?? `${v.year ?? ''} ${v.make} ${v.model}`} width={640} height={300} className="w-full h-40 object-cover" />
             ) : (
@@ -135,11 +164,13 @@ export default async function VehiclesPage() {
               {metrics.size === 0 ? (
                 <SummaryChipsSkeleton size="sm" />
               ) : (
-                <SummaryChips
+                <SummaryChipsExtended
                   size="sm"
                   upcomingCount={metrics.get(v.id)?.upcoming ?? 0}
                   lastServiceDate={metrics.get(v.id)?.lastService ?? null}
                   events30Count={metrics.get(v.id)?.events30 ?? 0}
+                  daysSinceLastService={metrics.get(v.id)?.daysSince ?? null}
+                  avgDaysBetweenService={metrics.get(v.id)?.avgBetween ?? null}
                 />
               )}
               <div className="flex items-center gap-3">
@@ -166,6 +197,7 @@ export default async function VehiclesPage() {
           </div>
         ))}
       </div>
+      </ErrorBoundary>
       )}
     </div>
   );

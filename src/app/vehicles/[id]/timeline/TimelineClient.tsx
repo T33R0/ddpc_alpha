@@ -202,7 +202,7 @@ export default function TimelineClient({ events, vehicleId }: { events: Timeline
       {/* Aria live region for screen readers */}
       <div aria-live="polite" className="sr-only">{liveMessage}</div>
       {/* Quick add */}
-      <form onSubmit={handleQuickAdd} className="grid grid-cols-1 md:grid-cols-6 gap-3 border rounded p-4 bg-white">
+      <form onSubmit={handleQuickAdd} className="grid grid-cols-1 md:grid-cols-6 gap-3 border rounded p-4 bg-white" data-test="timeline-quick-add">
         <input
           name="title"
           placeholder="Quick add title"
@@ -218,6 +218,7 @@ export default function TimelineClient({ events, vehicleId }: { events: Timeline
               requestAnimationFrame(() => titleRef.current?.focus());
             }
           }}
+          data-test="timeline-title-input"
         />
         <input
           name="date"
@@ -226,7 +227,7 @@ export default function TimelineClient({ events, vehicleId }: { events: Timeline
           value={date}
           onChange={(e) => setDate(e.target.value)}
         />
-        <button disabled={adding || !title.trim()} type="submit" className="bg-black text-white rounded px-3 py-1 disabled:opacity-50">
+        <button disabled={adding || !title.trim()} type="submit" className="bg-black text-white rounded px-3 py-1 disabled:opacity-50" data-test="timeline-add-btn">
           {adding ? "Adding…" : "Add"}
         </button>
       </form>

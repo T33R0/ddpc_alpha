@@ -2,7 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import PrivacyBadge from "@/components/PrivacyBadge";
 import { getServerSupabase } from "@/lib/supabase";
-import SummaryChips from "@/components/analytics/SummaryChips";
+import { SummaryChipsExtended } from "@/components/analytics/SummaryChips";
 
 export const dynamic = "force-dynamic";
 
@@ -52,9 +52,28 @@ export default async function VehicleOverviewPage({ params }: { params: Promise<
       .gte("created_at", thirtyDaysAgo),
   ]);
 
+  const serviceEvents = ((lastServicesRes.data ?? []) as ServiceEventRow[]).filter(e => e.vehicle_id === vehicleId);
   const upcoming = ((workItemsRes.data ?? []) as WorkItemRow[]).length;
-  const lastService = ((lastServicesRes.data ?? []) as ServiceEventRow[]).find((e) => e.vehicle_id === vehicleId)?.created_at ?? null;
+  const lastService = serviceEvents[0]?.created_at ?? null;
   const events30 = ((recentEventsRes.data ?? []) as RecentEventRow[]).length;
+  let daysSince: number | null = null;
+  if (lastService) {
+    const diffMs = Date.now() - new Date(lastService).getTime();
+    daysSince = Math.max(0, Math.round(diffMs / (24 * 60 * 60 * 1000)));
+  }
+  let avgBetween: number | null = null;
+  if (serviceEvents.length >= 2) {
+    let total = 0;
+    let count = 0;
+    for (let i = 0; i < serviceEvents.length - 1; i++) {
+      const a = new Date(serviceEvents[i].created_at).getTime();
+      const b = new Date(serviceEvents[i + 1].created_at).getTime();
+      const gap = Math.abs(Math.round((a - b) / (24 * 60 * 60 * 1000)));
+      total += gap;
+      count++;
+    }
+    if (count > 0) avgBetween = Math.round(total / count);
+  }
 
   return (
     <div className="space-y-6">
@@ -78,7 +97,14 @@ export default async function VehicleOverviewPage({ params }: { params: Promise<
       )}
 
       <div>
-        <SummaryChips upcomingCount={upcoming} lastServiceDate={lastService} events30Count={events30} size="md" />
+        <SummaryChipsExtended
+          upcomingCount={upcoming}
+          lastServiceDate={lastService}
+          events30Count={events30}
+          daysSinceLastService={daysSince}
+          avgDaysBetweenService={avgBetween}
+          size="md"
+        />
       </div>
     </div>
   );
