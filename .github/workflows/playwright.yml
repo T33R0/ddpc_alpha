@@ -1,0 +1,10 @@
+name: deprecated-playwright
+
+on:
+  workflow_dispatch:
+
+jobs:
+  noop:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "This workflow is deprecated. Use e2e.yml instead."

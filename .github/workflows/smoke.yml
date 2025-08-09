@@ -7,6 +7,7 @@ on:
 jobs:
   smoke:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -25,6 +26,12 @@ jobs:
       - name: Install deps
         run: pnpm install --frozen-lockfile=false
 
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm exec tsc -p tsconfig.json --noEmit
+
       - name: Build
         run: pnpm build
 
@@ -40,8 +47,26 @@ jobs:
       - name: Install Playwright (Chromium only)
         run: npx -y playwright@latest install chromium
 
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('**/package-lock.json', '**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
+
       - name: Run smoke tests
         env:
           BASE_URL: http://localhost:3000
           PUBLIC_VEHICLE_ID: demo-public
         run: pnpm test:smoke
+
+      - name: Upload Playwright traces (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-playwright-artifacts
+          path: |
+            playwright-report
+            test-results
+          if-no-files-found: ignore

@@ -1,6 +1,8 @@
 // @ts-nocheck
 import { test as base, expect } from '@playwright/test';
 
+base.describe.configure({ tag: '@auth' });
+
 const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
 const STORAGE_STATE = process.env.STORAGE_STATE || '';
 const GARAGE_ID = process.env.GARAGE_ID || '';
@@ -16,8 +18,8 @@ async function goto(page, path) {
   await page.goto(`${BASE_URL}${path}`, { waitUntil: 'domcontentloaded' });
 }
 
-// OWNER/MANAGER add existing email -> see member in list
-test('members: add and remove, and role gating for viewer (if provided)', async ({ page, context }) => {
+// OWNER/MANAGER add existing email -> see member in list (@auth)
+test('members: add and remove, and role gating for viewer (if provided) @auth', async ({ page, context }) => {
   // Add
   await goto(page, `/garage/${GARAGE_ID}/members`);
   await expect(page.locator('[data-test="members-table"]')).toBeVisible();
@@ -60,9 +62,9 @@ test('members: add and remove, and role gating for viewer (if provided)', async 
   }
 });
 
-// Invites: create -> revoke
+// Invites: create -> revoke (@auth)
 const invitesTest = STORAGE_STATE && GARAGE_ID ? test : base.skip;
-invitesTest('invites: create and revoke', async ({ page }) => {
+invitesTest('invites: create and revoke @auth', async ({ page }) => {
   await goto(page, `/garage/${GARAGE_ID}/invites`);
   const createForm = page.locator('[data-test="invite-create"]');
   await expect(createForm).toBeVisible();

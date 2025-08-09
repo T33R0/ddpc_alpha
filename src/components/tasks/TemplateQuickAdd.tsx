@@ -1,25 +1,34 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { TaskTemplate } from "./templates";
 
-export default function TemplateQuickAdd({
-  templates,
-  canWrite = true,
-  onChoose,
-}: {
-  templates: TaskTemplate[];
-  canWrite?: boolean;
-  onChoose: (t: TaskTemplate) => void;
-}) {
+export default function TemplateQuickAdd({ templates, canWrite = true, onChoose }: { templates: TaskTemplate[]; canWrite?: boolean; onChoose: (t: TaskTemplate) => void; }) {
   const [query, setQuery] = useState("");
+  const [dbTemplates, setDbTemplates] = useState<TaskTemplate[] | null>(null);
+  useEffect(() => {
+    const clientFlag = (process.env.NEXT_PUBLIC_ENABLE_DB_TEMPLATES || "false") === "true";
+    if (!clientFlag) return;
+    fetch("/api/templates").then(r => r.json()).then(j => {
+      if (Array.isArray(j.templates)) setDbTemplates(j.templates);
+    }).catch(() => setDbTemplates(null));
+  }, []);
+  const merged = useMemo(() => {
+    const all = [...(dbTemplates ?? []), ...templates];
+    const seen = new Set<string>();
+    return all.filter(t => {
+      const key = t.title.toLowerCase();
+      if (seen.has(key)) return false; seen.add(key); return true;
+    });
+  }, [dbTemplates, templates]);
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return templates;
-    return templates.filter(t =>
+    const list = merged;
+    if (!q) return list;
+    return list.filter(t =>
       t.title.toLowerCase().includes(q) ||
       (t.default_tags ?? []).some(tag => tag.toLowerCase().includes(q))
     );
-  }, [query, templates]);
+  }, [query, merged]);
 
   return (
     <div className="flex items-end gap-2" data-test="template-quick-add">
@@ -51,7 +60,7 @@ export default function TemplateQuickAdd({
           <option value="">Select a template…</option>
           {filtered.map(t => (
             <option key={t.id} value={t.id}>
-              {t.title}
+              {t.title}{t.scope === 'GARAGE' ? ' • garage' : ''}
             </option>
           ))}
         </select>

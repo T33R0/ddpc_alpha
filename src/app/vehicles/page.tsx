@@ -9,6 +9,7 @@ import { SummaryChipsSkeleton, SummaryChipsExtended } from "@/components/analyti
 import ErrorBoundary from "@/components/ErrorBoundary";
 // Note: Next 15 server components should use Promise-based searchParams; no headers()/window usage here.
 import VehiclesJoinedToastClient from "./VehiclesJoinedToastClient";
+import VehiclesFiltersClient from "./VehiclesFiltersClient";
 
 export const dynamic = "force-dynamic";
 
@@ -37,10 +38,18 @@ export default async function VehiclesPage(
     garage_id: string;
   };
 
-  const { data: vehicles } = await supabase
+  let vehiclesQuery = supabase
     .from("vehicle")
-    .select("id, vin, year, make, model, trim, nickname, privacy, photo_url, garage_id")
-    .order("created_at", { ascending: false });
+    .select("id, vin, year, make, model, trim, nickname, privacy, photo_url, garage_id");
+  if (sort === "name") {
+    vehiclesQuery = vehiclesQuery.order("nickname", { ascending: true, nullsFirst: false });
+  } else {
+    vehiclesQuery = vehiclesQuery.order("created_at", { ascending: false });
+  }
+  if (query) {
+    vehiclesQuery = vehiclesQuery.ilike("nickname", `%${query}%`);
+  }
+  const { data: vehicles } = await vehiclesQuery;
 
   // Build role map for current user across listed vehicles' garages
   const roleByGarage = new Map<string, string>();
@@ -139,18 +148,12 @@ export default async function VehiclesPage(
     });
   }
 
-  // Role filter
-  const filterValues: Array<{ label: string; value: Role | "ALL" }> = [
-    { label: "All", value: "ALL" },
-    { label: "Owner", value: "OWNER" },
-    { label: "Manager", value: "MANAGER" },
-    { label: "Contributor", value: "CONTRIBUTOR" },
-    { label: "Viewer", value: "VIEWER" },
-  ];
-  // Determine role filter and joined toast from Next 15 Promise-based searchParams
+  // Determine filters from Next 15 Promise-based searchParams
   const sp = await props.searchParams;
   const joined = sp?.joined === "1";
   const currentFilter: Role | "ALL" = (sp?.role as Role | undefined) ?? "ALL";
+  const query = (sp?.q as string | undefined)?.trim() ?? "";
+  const sort = ((sp?.sort as string | undefined) === "name" ? "name" : "updated") as "updated" | "name";
 
   return (
     <div className="space-y-8">
@@ -163,19 +166,7 @@ export default async function VehiclesPage(
         <Link href="/" className="text-sm text-blue-600 hover:underline">Home</Link>
       </div>
 
-      <div className="flex items-center gap-2 text-xs" role="tablist" aria-label="Filter by role">
-        {filterValues.map(f => (
-          <Link
-            key={f.value}
-            href={{ pathname: "/vehicles", query: f.value === "ALL" ? {} : { role: f.value } }}
-            className={`px-2 py-1 rounded border ${currentFilter === f.value ? 'bg-black text-white' : 'bg-white hover:bg-gray-50'}`}
-            role="tab"
-            aria-selected={currentFilter === f.value}
-          >
-            {f.label}
-          </Link>
-        ))}
-      </div>
+      <VehiclesFiltersClient />
 
       {user ? (
         <form action={createVehicle} className="grid grid-cols-1 md:grid-cols-6 gap-3 border rounded p-4">
@@ -205,7 +196,10 @@ export default async function VehiclesPage(
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {vehicles.filter(v => {
           const role = roleByGarage.get((v as VehicleRow).garage_id) as Role | undefined;
-          return currentFilter === "ALL" || role === currentFilter;
+          const roleMatch = currentFilter === "ALL" || role === currentFilter;
+          const qMatch = !query || (v.nickname ?? "").toLowerCase().includes(query.toLowerCase()) ||
+            `${v.year ?? ''} ${v.make ?? ''} ${v.model ?? ''}`.toLowerCase().includes(query.toLowerCase());
+          return roleMatch && qMatch;
         }).map((v) => (
           <div key={v.id} className="border rounded overflow-hidden" data-test="vehicle-card">
             {v.photo_url ? (

@@ -270,3 +270,24 @@ Now uploads from the UI will succeed and images will be publicly viewable via `g
 
 - `.env.local` should not be committed. Use `env.sample` to share required keys.
 - Next.js/Tailwind/React versions are pinned in `package.json`.
+
+## CI checks & labels
+
+We run two GitHub Actions workflows:
+
+- `/.github/workflows/smoke.yml` — fast path: lint, typecheck, build, start, and Chromium-only smoke tests.
+- `/.github/workflows/e2e.yml` — full E2E flow. Always runs `@public` tests. Runs `@auth` tests only when:
+  - The PR has the `run-auth-tests` label, or
+  - The target branch is `main`.
+
+Secret-optional policy:
+
+- If auth secrets/storage states are not present, `@auth` tests auto-skip and CI stays green.
+
+Required checks for merge:
+
+- Lint, Typecheck, Build, Smoke, and E2E-public (i.e., `@public`).
+
+Artifacts:
+
+- Playwright traces upload on failure. E2E also runs Pa11y and Lighthouse CI in warn-only mode; reports are uploaded for inspection.

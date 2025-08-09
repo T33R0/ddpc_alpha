@@ -1,0 +1,109 @@
+name: e2e
+
+on:
+  pull_request:
+    branches: ["*"]
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'pnpm'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Install deps
+        run: pnpm install --frozen-lockfile=false
+
+      - name: Build
+        run: pnpm build
+
+      - name: Start server
+        run: pnpm start &
+
+      - name: Wait for server
+        run: |
+          for i in {1..60}; do
+            if curl -sSf http://localhost:3000 >/dev/null; then
+              echo "Server is up"; exit 0; fi; sleep 5; done; exit 1
+
+      - name: Install Playwright (Chromium only)
+        run: npx -y playwright@latest install chromium
+
+      - name: Run E2E (@public)
+        env:
+          BASE_URL: http://localhost:3000
+        run: pnpm exec playwright test --grep @public --reporter=line
+
+      - name: Bootstrap auth storage (optional)
+        if: contains(github.event.pull_request.labels.*.name, 'run-auth-tests') || github.event.pull_request.base.ref == 'main'
+        env:
+          BASE_URL: http://localhost:3000
+          OWNER_LOGIN_URL: ${{ secrets.OWNER_LOGIN_URL }}
+          MANAGER_LOGIN_URL: ${{ secrets.MANAGER_LOGIN_URL }}
+          VIEWER_LOGIN_URL: ${{ secrets.VIEWER_LOGIN_URL }}
+        run: pnpm test:auth:bootstrap || true
+
+      - name: Export storage state envs if present
+        if: contains(github.event.pull_request.labels.*.name, 'run-auth-tests') || github.event.pull_request.base.ref == 'main'
+        shell: bash
+        run: |
+          if [ -f .auth/owner.json ]; then echo "STORAGE_STATE=.auth/owner.json" >> $GITHUB_ENV; fi
+          if [ -f .auth/viewer.json ]; then echo "VIEWER_STORAGE_STATE=.auth/viewer.json" >> $GITHUB_ENV; fi
+
+      - name: Seed (optional)
+        if: contains(github.event.pull_request.labels.*.name, 'run-auth-tests') || github.event.pull_request.base.ref == 'main'
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY_CI: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY_CI }}
+        run: node tests/utils/seed.js || true
+
+      - name: Run E2E (@auth)
+        if: contains(github.event.pull_request.labels.*.name, 'run-auth-tests') || github.event.pull_request.base.ref == 'main'
+        env:
+          BASE_URL: http://localhost:3000
+          STORAGE_STATE: ${{ env.STORAGE_STATE }}
+          VIEWER_STORAGE_STATE: ${{ env.VIEWER_STORAGE_STATE }}
+        run: pnpm exec playwright test --grep @auth --reporter=line || true
+
+      - name: Upload Playwright report (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report
+          if-no-files-found: ignore
+
+      - name: Run Pa11y (non-blocking)
+        env:
+          BASE_URL: http://localhost:3000
+          PUBLIC_VEHICLE_ID: ${{ env.PUBLIC_VEHICLE_ID }}
+          GARAGE_ID: ${{ env.GARAGE_ID }}
+        run: |
+          pnpm run qa:pa11y | tee pa11y-output.json
+        continue-on-error: true
+
+      - name: Upload Pa11y reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pa11y-report
+          path: pa11y-output.json
+          if-no-files-found: ignore
+
+      - name: Run Lighthouse CI (non-blocking)
+        env:
+          BASE_URL: http://localhost:3000
+        run: pnpm run qa:lhci:autorun
+        continue-on-error: true

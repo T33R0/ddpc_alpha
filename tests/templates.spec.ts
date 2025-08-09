@@ -1,6 +1,8 @@
 // @ts-nocheck
 import { test as base, expect } from '@playwright/test';
 
+base.describe.configure({ tag: '@auth' });
+
 const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
 const STORAGE_STATE = process.env.STORAGE_STATE || '';
 const VIEWER_STORAGE_STATE = process.env.VIEWER_STORAGE_STATE || '';
@@ -16,8 +18,8 @@ async function goto(page, path) {
 
 // If canWrite -> template quick-add creates a task; VIEWER sees disabled picker
 
-test.describe('Templates quick-add', () => {
-  test('writer can quick-add a task from template', async ({ page }) => {
+test.describe('Templates quick-add @auth', () => {
+  test('writer can quick-add a task from template @auth', async ({ page }) => {
     await goto(page, `/vehicles/${VEHICLE_ID_WRITE}/tasks`);
 
     const picker = page.locator('[data-test="template-quick-add"]');
@@ -49,7 +51,7 @@ test.describe('Templates quick-add', () => {
     storageState: async ({}, use) => { await use(VIEWER_STORAGE_STATE); },
   }) : base.skip;
 
-  viewerTest('viewer sees disabled template picker', async ({ page }) => {
+  viewerTest('viewer sees disabled template picker @auth', async ({ page }) => {
     await goto(page, `/vehicles/${VEHICLE_ID_WRITE}/tasks`);
     const picker = page.locator('[data-test="template-quick-add"]');
     await expect(picker).toBeVisible();

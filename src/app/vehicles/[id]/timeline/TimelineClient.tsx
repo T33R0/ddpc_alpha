@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/ToastProvider";
 
 const TYPES = ["SERVICE","INSTALL","INSPECT","TUNE"] as const;
@@ -25,6 +26,7 @@ export default function TimelineClient({ events, vehicleId, canWrite = true }: {
   const [editType, setEditType] = useState<TimelineEvent["type"]>("SERVICE");
   const [savingId, setSavingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null);
 
   // Initial micro-skeleton to cover first render
   useEffect(() => {
@@ -351,7 +353,7 @@ export default function TimelineClient({ events, vehicleId, canWrite = true }: {
                         >Edit</button>
                       )}
                       <button
-                        onClick={() => handleDelete(e.id)}
+                        onClick={() => setConfirmingDeleteId(e.id)}
                         className="text-xs text-red-600 hover:underline disabled:opacity-50"
                         type="button"
                         disabled={!canWrite || deletingId === e.id || savingId === e.id}
@@ -365,6 +367,20 @@ export default function TimelineClient({ events, vehicleId, canWrite = true }: {
           </div>
         ))}
       </div>
+      <ConfirmDialog
+        open={!!confirmingDeleteId}
+        title="Delete event?"
+        description="This action cannot be undone."
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        onCancel={() => setConfirmingDeleteId(null)}
+        onConfirm={async () => {
+          const id = confirmingDeleteId;
+          setConfirmingDeleteId(null);
+          if (!id) return;
+          await handleDelete(id);
+        }}
+      />
       )}
     </div>
   );

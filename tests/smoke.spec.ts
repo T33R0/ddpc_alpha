@@ -1,6 +1,8 @@
 // @ts-nocheck
 import { test, expect } from '@playwright/test';
 
+test.describe.configure({ tag: '@public' });
+
 const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
 const PUBLIC_VEHICLE_ID = process.env.PUBLIC_VEHICLE_ID || 'demo-public';
 const IS_PLACEHOLDER_PUBLIC = PUBLIC_VEHICLE_ID === 'demo-public';

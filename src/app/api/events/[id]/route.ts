@@ -11,9 +11,13 @@ export async function DELETE(_req: Request, context: unknown) {
     const { data: { user } } = await supabase.auth.getUser();
     const { data: before } = await supabase
       .from("event")
-      .select("id, type, notes, created_at")
+      .select("id, type, notes, created_at, created_by")
       .eq("id", id)
       .maybeSingle();
+    if (!before) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    if (!user || before.created_by !== user.id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
     const { error } = await supabase.from("event").delete().eq("id", id);
     if (error) throw error;
     if (user && before) {
@@ -50,9 +54,12 @@ export async function PATCH(req: NextRequest, context: unknown) {
     // Enforce 24h immutability window
     const { data: existing, error: fetchErr } = await supabase
       .from("event")
-      .select("id, created_at")
+      .select("id, created_at, created_by")
       .eq("id", id)
       .maybeSingle();
+    if (!user || existing.created_by !== user.id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
     if (fetchErr) throw fetchErr;
     if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
     const createdAt = new Date(existing.created_at as string);
@@ -62,6 +69,7 @@ export async function PATCH(req: NextRequest, context: unknown) {
       return NextResponse.json({ error: "Event is immutable after 24h" }, { status: 403 });
     }
 
+    const dateStr = typeof (body as { date?: string })?.date === "string" ? (body as { date?: string }).date : undefined;
     const update: Record<string, unknown> = {};
     if (notes !== undefined) update.notes = notes;
     if (type !== undefined) {
@@ -70,6 +78,13 @@ export async function PATCH(req: NextRequest, context: unknown) {
         return NextResponse.json({ error: "Invalid type" }, { status: 400 });
       }
       update.type = type;
+    }
+    if (dateStr !== undefined) {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) {
+        return NextResponse.json({ error: "Invalid date" }, { status: 400 });
+      }
+      update.created_at = d.toISOString();
     }
 
     const { data, error } = await supabase
@@ -80,12 +95,16 @@ export async function PATCH(req: NextRequest, context: unknown) {
       .single();
     if (error) throw error;
     if (user) {
+      const changed: Record<string, unknown> = {};
+      if (notes !== undefined) changed.notes = notes;
+      if (type !== undefined) changed.type = data.type;
+      if (dateStr !== undefined) changed.date = { date_from: existing.created_at, date_to: data.created_at };
       await logActivity({
         actorId: user.id,
         entityType: "event",
         entityId: id,
         action: "update",
-        diff: { after: { type: data.type, notes: data.notes } },
+        diff: { changed_fields: changed },
       });
     }
     return NextResponse.json({ event: data });

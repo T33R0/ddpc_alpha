@@ -7,7 +7,11 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test:smoke": "npx -y playwright@latest test tests/smoke.spec.ts --reporter=line"
+    "test:smoke": "playwright test tests/smoke.spec.ts --reporter=line",
+    "test:e2e": "playwright test --reporter=line",
+    "test:auth:bootstrap": "playwright test tests/auth/bootstrap.spec.ts --reporter=line",
+    "qa:pa11y": "pa11y-ci -c pa11y.ci.js",
+    "qa:lhci:autorun": "lhci autorun --config=./lighthouserc.js || true"
   },
   "dependencies": {
     "@hello-pangea/dnd": "^18.0.1",
@@ -23,6 +27,9 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@playwright/test": "^1.47.0",
+    "@lhci/cli": "^0.14.0",
+    "pa11y-ci": "^3.1.0",
     "eslint": "^9",
     "eslint-config-next": "15.4.6",
     "tailwindcss": "^4",
