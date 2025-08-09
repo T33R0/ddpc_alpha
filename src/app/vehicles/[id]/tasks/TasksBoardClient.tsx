@@ -16,6 +16,8 @@ export default function TasksBoardClient({
   const { success, error } = useToast();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState<string>("");
+  const [editingDueId, setEditingDueId] = useState<string | null>(null);
+  const [editingDue, setEditingDue] = useState<string>("");
   // Sync when parent provides new items (e.g., after create)
   useEffect(() => {
     setItems(initialItems);
@@ -109,6 +111,45 @@ export default function TasksBoardClient({
     }
   }, [editingId, editingTitle, items]);
 
+  const startDueEdit = useCallback((id: string, dueISO: string | null) => {
+    setEditingDueId(id);
+    // Normalize to yyyy-mm-dd if present
+    let val = "";
+    if (dueISO) {
+      const d = new Date(dueISO);
+      if (!isNaN(d.getTime())) {
+        val = d.toISOString().slice(0, 10);
+      }
+    }
+    setEditingDue(val);
+  }, []);
+
+  const cancelDueEdit = useCallback(() => {
+    setEditingDueId(null);
+    setEditingDue("");
+  }, []);
+
+  const saveDueEdit = useCallback(async () => {
+    const id = editingDueId;
+    if (!id) return cancelDueEdit();
+    const due = editingDue.trim(); // "" to clear
+    const prev = items;
+    setItems(prev.map(i => (i.id === id ? { ...i, due: due ? new Date(due).toISOString() : null } : i)));
+    try {
+      await fetch(`/api/work-items/${id}/due`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ due: due || null }),
+      }).then(r => { if (!r.ok) throw new Error("Failed to update due date"); });
+      success(due ? "Due date updated" : "Due date cleared");
+      cancelDueEdit();
+    } catch (e) {
+      setItems(prev);
+      const msg = e instanceof Error ? e.message : "Failed to update due date";
+      error(msg);
+    }
+  }, [editingDueId, editingDue, items]);
+
   return (
     <DragDropContext onDragEnd={onDragEnd}>
       <div className="grid md:grid-cols-4 gap-4">
@@ -147,9 +188,28 @@ export default function TasksBoardClient({
                             )}
                           </div>
                           <div className="text-xs text-gray-600">{(it.tags ?? []).join(", ")}</div>
-                          {it.due && (
-                            <div className="text-xs text-gray-600">Due: {new Date(it.due).toLocaleDateString()}</div>
-                          )}
+                          <div className="text-xs text-gray-600">
+                            {editingDueId === it.id ? (
+                              <input
+                                type="date"
+                                value={editingDue}
+                                onChange={(e) => setEditingDue(e.target.value)}
+                                onBlur={saveDueEdit}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") saveDueEdit();
+                                  if (e.key === "Escape") cancelDueEdit();
+                                }}
+                                className="border rounded px-2 py-0.5 text-xs"
+                              />
+                            ) : (
+                              <button
+                                className="hover:underline"
+                                onClick={() => startDueEdit(it.id, it.due)}
+                              >
+                                {it.due ? `Due: ${new Date(it.due).toLocaleDateString()}` : "Set due date"}
+                              </button>
+                            )}
+                          </div>
                           <div className="flex flex-wrap items-center gap-2 mt-2">
                             {statuses.filter(s => s !== status).map(s => (
                               <button
