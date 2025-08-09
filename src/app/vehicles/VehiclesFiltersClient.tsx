@@ -20,7 +20,7 @@ export default function VehiclesFiltersClient() {
       router.replace(`${pathname}?${next.toString()}`, { scroll: false });
     }, 250);
     return () => clearTimeout(t);
-  }, [q]);
+  }, [q, sp, router, pathname]);
 
   const setSort = (val: "updated" | "name") => {
     const next = new URLSearchParams(sp.toString());
@@ -55,7 +55,7 @@ export default function VehiclesFiltersClient() {
       </div>
       <div className="flex flex-col">
         <label className="text-xs text-gray-600">Sort</label>
-        <select className="border rounded px-2 py-1" value={sort} onChange={(e) => setSort(e.target.value as any)} data-test="vehicles-sort">
+        <select className="border rounded px-2 py-1" value={sort} onChange={(e) => setSort(e.target.value as ("updated"|"name"))} data-test="vehicles-sort">
           <option value="updated">Last Updated</option>
           <option value="name">Name (A–Z)</option>
         </select>
