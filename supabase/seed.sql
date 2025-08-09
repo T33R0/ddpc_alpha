@@ -18,11 +18,10 @@ on conflict (id) do nothing;
 -- on conflict do nothing;
 --
 -- Vehicle seed
-insert into public.vehicle (id, garage_id, owner_id, nickname, privacy, vin, year, make, model, trim, photo_url)
+insert into public.vehicle (id, garage_id, nickname, privacy, vin, year, make, model, trim, photo_url)
 values (
   '00000000-0000-0000-0000-0000000000aa',
   '00000000-0000-0000-0000-000000000001',
-  'd9280e6f-f516-421f-b977-8900d53d6aa2',
   'Demo Car',
   'PRIVATE',
   '1HGBH41JXMN109186',
