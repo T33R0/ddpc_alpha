@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase";
+import { logActivity } from "@/lib/activity/log";
 
 // POST /api/events
 // Body: { vehicle_id: string, title: string, date?: string }
@@ -43,19 +44,14 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (error) throw error;
-    // Activity log (best-effort)
-    try {
-      if (user) {
-        await supabase.from("activity_log").insert({
-          actor_id: user.id,
-          entity_type: "event",
-          entity_id: data.id,
-          action: "create",
-          diff: { after: { notes: data.notes, type: data.type, created_at: data.created_at } },
-        });
-      }
-    } catch {
-      // ignore log errors
+    if (user) {
+      await logActivity({
+        actorId: user.id,
+        entityType: "event",
+        entityId: data.id,
+        action: "create",
+        diff: { after: { notes: data.notes, type: data.type, created_at: data.created_at } },
+      });
     }
     return NextResponse.json({ event: data }, { status: 201 });
   } catch (err: unknown) {

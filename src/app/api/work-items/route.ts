@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase";
+import { logActivity } from "@/lib/activity/log";
 
 export async function POST(req: NextRequest) {
   try {
@@ -20,17 +21,15 @@ export async function POST(req: NextRequest) {
       .select("id, title, status, tags, due")
       .single();
     if (error) return NextResponse.json({ error: error.message }, { status: 400 });
-    try {
-      if (user && data) {
-        await supabase.from("activity_log").insert({
-          actor_id: user.id,
-          entity_type: "work_item",
-          entity_id: data.id,
-          action: "create",
-          diff: { after: { title: data.title, status: data.status } },
-        });
-      }
-    } catch {}
+    if (user && data) {
+      await logActivity({
+        actorId: user.id,
+        entityType: "work_item",
+        entityId: data.id,
+        action: "create",
+        diff: { after: { title: data.title, status: data.status } },
+      });
+    }
     return NextResponse.json({ ok: true, item: data });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Unknown error";

@@ -12,9 +12,10 @@ type Props = {
   initialMake: string;
   initialModel: string;
   initialTrim: string | null;
+  canWrite?: boolean;
 };
 
-export default function VehicleActions({ id, initialNickname, initialPrivacy, initialVin, initialYear, initialMake, initialModel, initialTrim }: Props) {
+export default function VehicleActions({ id, initialNickname, initialPrivacy, initialVin, initialYear, initialMake, initialModel, initialTrim, canWrite = true }: Props) {
   const [nickname, setNickname] = useState<string>(initialNickname ?? "");
   const [privacy, setPrivacy] = useState<"PUBLIC" | "PRIVATE">(initialPrivacy);
   const [vin, setVin] = useState<string>(initialVin ?? "");
@@ -60,7 +61,7 @@ export default function VehicleActions({ id, initialNickname, initialPrivacy, in
   const onKeyDownInput: KeyboardEventHandler<HTMLInputElement> = (e) => {
     if (e.key === "Enter") {
       e.preventDefault();
-      if (isDirty && !isPending) onSave();
+      if (canWrite && isDirty && !isPending) onSave();
     } else if (e.key === "Escape") {
       e.preventDefault();
       revertEdits();
@@ -70,7 +71,7 @@ export default function VehicleActions({ id, initialNickname, initialPrivacy, in
   const onKeyDownSelect: KeyboardEventHandler<HTMLSelectElement> = (e) => {
     if (e.key === "Enter") {
       e.preventDefault();
-      if (isDirty && !isPending) onSave();
+      if (canWrite && isDirty && !isPending) onSave();
     } else if (e.key === "Escape") {
       e.preventDefault();
       revertEdits();
@@ -78,6 +79,7 @@ export default function VehicleActions({ id, initialNickname, initialPrivacy, in
   };
 
   const onSave = () => {
+    if (!canWrite) return;
     startTransition(async () => {
       try {
         const fd = new FormData();
@@ -104,6 +106,7 @@ export default function VehicleActions({ id, initialNickname, initialPrivacy, in
   };
 
   const onDelete = () => {
+    if (!canWrite) return;
     if (!confirming) {
       setConfirming(true);
       if (confirmTimerRef.current) clearTimeout(confirmTimerRef.current);
@@ -135,26 +138,26 @@ export default function VehicleActions({ id, initialNickname, initialPrivacy, in
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <input value={nickname} onChange={(e) => setNickname(e.target.value)} onKeyDown={onKeyDownInput} placeholder="Nickname" className="border rounded px-2 py-1 text-xs w-28 md:w-32" data-test="vehicle-nickname" />
-      <input value={vin} onChange={(e) => setVin(e.target.value)} onKeyDown={onKeyDownInput} placeholder="VIN" className="border rounded px-2 py-1 text-xs w-28 md:w-32" />
-      <input value={year} onChange={(e) => setYear(e.target.value)} onKeyDown={onKeyDownInput} placeholder="Year" className="border rounded px-2 py-1 text-xs w-20" />
-      <input value={make} onChange={(e) => setMake(e.target.value)} onKeyDown={onKeyDownInput} placeholder="Make" className="border rounded px-2 py-1 text-xs w-24" />
-      <input value={model} onChange={(e) => setModel(e.target.value)} onKeyDown={onKeyDownInput} placeholder="Model" className="border rounded px-2 py-1 text-xs w-24" />
-      <input value={trim} onChange={(e) => setTrim(e.target.value)} onKeyDown={onKeyDownInput} placeholder="Trim" className="border rounded px-2 py-1 text-xs w-24" />
-      <select value={privacy} onChange={(e) => setPrivacy(e.target.value as "PUBLIC" | "PRIVATE")} onKeyDown={onKeyDownSelect} className="border rounded px-2 py-1 text-xs">
+      <input value={nickname} onChange={(e) => setNickname(e.target.value)} onKeyDown={onKeyDownInput} placeholder="Nickname" className="border rounded px-2 py-1 text-xs w-28 md:w-32 disabled:opacity-50" data-test="vehicle-nickname" disabled={!canWrite} title={!canWrite ? "Insufficient permissions" : undefined} />
+      <input value={vin} onChange={(e) => setVin(e.target.value)} onKeyDown={onKeyDownInput} placeholder="VIN" className="border rounded px-2 py-1 text-xs w-28 md:w-32 disabled:opacity-50" disabled={!canWrite} title={!canWrite ? "Insufficient permissions" : undefined} />
+      <input value={year} onChange={(e) => setYear(e.target.value)} onKeyDown={onKeyDownInput} placeholder="Year" className="border rounded px-2 py-1 text-xs w-20 disabled:opacity-50" disabled={!canWrite} title={!canWrite ? "Insufficient permissions" : undefined} />
+      <input value={make} onChange={(e) => setMake(e.target.value)} onKeyDown={onKeyDownInput} placeholder="Make" className="border rounded px-2 py-1 text-xs w-24 disabled:opacity-50" disabled={!canWrite} title={!canWrite ? "Insufficient permissions" : undefined} />
+      <input value={model} onChange={(e) => setModel(e.target.value)} onKeyDown={onKeyDownInput} placeholder="Model" className="border rounded px-2 py-1 text-xs w-24 disabled:opacity-50" disabled={!canWrite} title={!canWrite ? "Insufficient permissions" : undefined} />
+      <input value={trim} onChange={(e) => setTrim(e.target.value)} onKeyDown={onKeyDownInput} placeholder="Trim" className="border rounded px-2 py-1 text-xs w-24 disabled:opacity-50" disabled={!canWrite} title={!canWrite ? "Insufficient permissions" : undefined} />
+      <select value={privacy} onChange={(e) => setPrivacy(e.target.value as "PUBLIC" | "PRIVATE")} onKeyDown={onKeyDownSelect} className="border rounded px-2 py-1 text-xs disabled:opacity-50" disabled={!canWrite} title={!canWrite ? "Insufficient permissions" : undefined}>
         <option value="PRIVATE">Private</option>
         <option value="PUBLIC">Public</option>
       </select>
       <div className="flex items-center gap-2">
-        <button onClick={onSave} disabled={isPending || !isDirty} className={`text-xs px-2 py-1 rounded border ${isPending || !isDirty ? "opacity-50 cursor-not-allowed" : "hover:bg-gray-50"}`}>
+        <button onClick={onSave} disabled={!canWrite || isPending || !isDirty} title={!canWrite ? "Insufficient permissions" : undefined} className={`text-xs px-2 py-1 rounded border ${!canWrite || isPending || !isDirty ? "opacity-50 cursor-not-allowed" : "hover:bg-gray-50"}`}>
           {isPending ? "Saving..." : "Save"}
         </button>
         {savedTick && <span className="text-xs text-green-600">Saved ✓</span>}
-        <button type="button" onClick={revertEdits} disabled={isPending || !isDirty} className={`text-xs px-2 py-1 rounded border ${isPending || !isDirty ? "opacity-50 cursor-not-allowed" : "hover:bg-gray-50"}`}>
+        <button type="button" onClick={revertEdits} disabled={!canWrite || isPending || !isDirty} title={!canWrite ? "Insufficient permissions" : undefined} className={`text-xs px-2 py-1 rounded border ${!canWrite || isPending || !isDirty ? "opacity-50 cursor-not-allowed" : "hover:bg-gray-50"}`}>
           Revert (Esc)
         </button>
       </div>
-      <button onClick={onDelete} disabled={isPending} className={`text-xs px-2 py-1 rounded border hover:bg-red-50 ${confirming ? "border-red-600 bg-red-50 text-red-700" : "text-red-600"}`}>
+      <button onClick={onDelete} disabled={!canWrite || isPending} title={!canWrite ? "Insufficient permissions" : undefined} className={`text-xs px-2 py-1 rounded border ${!canWrite || isPending ? "opacity-50 cursor-not-allowed" : "hover:bg-red-50"} ${confirming ? "border-red-600 bg-red-50 text-red-700" : "text-red-600"}`}>
         {isPending ? "Deleting..." : confirming ? "Confirm" : "Delete"}
       </button>
     </div>

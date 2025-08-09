@@ -1,6 +1,7 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { getServerSupabase } from "@/lib/supabase";
+import { logActivity } from "@/lib/activity/log";
 
 async function ensureGarageId(): Promise<string> {
   const supabase = await getServerSupabase();
@@ -98,17 +99,15 @@ export async function updateVehicle(formData: FormData): Promise<void> {
     .update({ nickname, privacy, vin, year, make, model, trim })
     .eq("id", id);
   if (error) throw new Error(error.message);
-  try {
-    if (user) {
-      await supabase.from("activity_log").insert({
-        actor_id: user.id,
-        entity_type: "vehicle",
-        entity_id: id,
-        action: "update",
-        diff: { after: { nickname, privacy, vin, year, make, model, trim } },
-      });
-    }
-  } catch {}
+  if (user) {
+    await logActivity({
+      actorId: user.id,
+      entityType: "vehicle",
+      entityId: id,
+      action: "update",
+      diff: { after: { nickname, privacy, vin, year, make, model, trim } },
+    });
+  }
   revalidatePath("/vehicles");
 }
 

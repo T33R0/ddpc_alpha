@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase";
+import { logActivity } from "@/lib/activity/log";
 
 type RouteContext = { params: Promise<{ id: string }> };
 export async function PATCH(req: NextRequest, context: RouteContext) {
@@ -13,17 +14,15 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
     const { data: before } = await supabase.from("work_item").select("id, status").eq("id", id).maybeSingle();
     const { error } = await supabase.from("work_item").update({ status }).eq("id", id);
     if (error) return NextResponse.json({ error: error.message }, { status: 400 });
-    try {
-      if (user && before) {
-        await supabase.from("activity_log").insert({
-          actor_id: user.id,
-          entity_type: "work_item",
-          entity_id: id,
-          action: "update",
-          diff: { before: { status: before.status }, after: { status } },
-        });
-      }
-    } catch {}
+    if (user && before) {
+      await logActivity({
+        actorId: user.id,
+        entityType: "work_item",
+        entityId: id,
+        action: "update",
+        diff: { before: { status: before.status }, after: { status } },
+      });
+    }
 
     return NextResponse.json({ ok: true });
   } catch (e) {

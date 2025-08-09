@@ -28,12 +28,27 @@ export default async function VehiclesPage() {
     nickname: string | null;
     privacy: "PUBLIC" | "PRIVATE";
     photo_url: string | null;
+    garage_id: string;
   };
 
   const { data: vehicles } = await supabase
     .from("vehicle")
-    .select("id, vin, year, make, model, trim, nickname, privacy, photo_url")
+    .select("id, vin, year, make, model, trim, nickname, privacy, photo_url, garage_id")
     .order("created_at", { ascending: false });
+
+  // Build role map for current user across listed vehicles' garages
+  const roleByGarage = new Map<string, string>();
+  if (user && vehicles && vehicles.length > 0) {
+    const garageIds = Array.from(new Set((vehicles as VehicleRow[]).map(v => v.garage_id)));
+    const { data: rolesData } = await supabase
+      .from("garage_member")
+      .select("garage_id, role")
+      .in("garage_id", garageIds)
+      .eq("user_id", user.id);
+    (rolesData as Array<{ garage_id: string; role: string }> | null)?.forEach(r => {
+      roleByGarage.set(r.garage_id, r.role);
+    });
+  }
 
   // Analytics v0 aggregates (batched; no N+1)
   const metrics = new Map<string, { upcoming: number; lastService: string | null; events30: number; daysSince: number | null; avgBetween: number | null }>();
@@ -182,7 +197,7 @@ export default async function VehiclesPage() {
                 <Link href={`/v/${v.id}`} className="text-blue-600 text-sm hover:underline">Public page</Link>
                 <Link href={`/vehicles/${v.id}/tasks`} className="text-blue-600 text-sm hover:underline">Tasks</Link>
                 <Link href={`/vehicles/${v.id}/timeline`} className="text-blue-600 text-sm hover:underline">Timeline</Link>
-          <Link href={`/garage/${v.id}/members`} className="text-blue-600 text-sm hover:underline">Members</Link>
+                <Link href={`/garage/${(v as VehicleRow).garage_id}/members`} className="text-blue-600 text-sm hover:underline">Members</Link>
                 {user && <UploadPhoto vehicleId={v.id} />}
               </div>
               {user && (
@@ -196,6 +211,7 @@ export default async function VehiclesPage() {
                     initialMake={v.make}
                     initialModel={v.model}
                     initialTrim={v.trim}
+                    canWrite={(() => { const role = roleByGarage.get((v as VehicleRow).garage_id); return role === "OWNER" || role === "MANAGER" || role === "CONTRIBUTOR"; })()}
                   />
                 </div>
               )}

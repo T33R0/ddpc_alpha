@@ -25,6 +25,21 @@ publicTest.describe('Public vehicle page', () => {
     await expect(page.getByText(/odometer/i)).toHaveCount(0);
     await expect(page.getByText(/invoice|doc/i)).toHaveCount(0);
   });
+
+  auth('My ICS returns 200 and VCALENDAR', async ({ request }) => {
+    const res = await request.get(`${BASE_URL}/api/me/calendar.ics`);
+    expect(res.status()).toBe(200);
+    const text = await res.text();
+    expect(text).toContain('BEGIN:VCALENDAR');
+  });
+});
+
+// ICS endpoint smoke tests
+publicTest('Vehicle ICS returns 200 and VCALENDAR', async ({ request }) => {
+  const res = await request.get(`${BASE_URL}/api/vehicles/${PUBLIC_VEHICLE_ID}/calendar.ics`);
+  expect(res.status()).toBe(200);
+  const text = await res.text();
+  expect(text).toContain('BEGIN:VCALENDAR');
 });
 
 // Trivial ping test to ensure server responds in CI even when others are skipped

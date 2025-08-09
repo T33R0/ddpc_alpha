@@ -5,7 +5,7 @@ import { useToast } from "@/components/ui/ToastProvider";
 
 const STATUSES = ["BACKLOG","PLANNED","IN_PROGRESS","DONE"] as const;
 
-export default function TasksClient({ vehicleId, initialItems }: { vehicleId: string; initialItems: ClientWorkItem[] }) {
+export default function TasksClient({ vehicleId, initialItems, canWrite = true }: { vehicleId: string; initialItems: ClientWorkItem[]; canWrite?: boolean }) {
   const { success, error } = useToast();
   const [title, setTitle] = useState("");
   const [status, setStatus] = useState<string>("BACKLOG");
@@ -17,6 +17,7 @@ export default function TasksClient({ vehicleId, initialItems }: { vehicleId: st
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title) return;
+     if (!canWrite) return;
     setSubmitting(true);
     try {
       const res = await fetch("/api/work-items", {
@@ -48,26 +49,26 @@ export default function TasksClient({ vehicleId, initialItems }: { vehicleId: st
       <form onSubmit={onSubmit} className="flex flex-wrap items-end gap-3 border rounded p-4 bg-white shadow-sm">
         <div className="flex flex-col">
           <label className="text-xs text-gray-600">Title</label>
-          <input value={title} onChange={(e) => setTitle(e.target.value)} required className="border rounded px-2 py-1 w-64" />
+          <input value={title} onChange={(e) => setTitle(e.target.value)} required className="border rounded px-2 py-1 w-64 disabled:opacity-50" disabled={!canWrite} title={!canWrite ? "Insufficient permissions" : undefined} />
         </div>
         <div className="flex flex-col">
           <label className="text-xs text-gray-600">Status</label>
-          <select value={status} onChange={(e) => setStatus(e.target.value)} className="border rounded px-2 py-1">
+          <select value={status} onChange={(e) => setStatus(e.target.value)} className="border rounded px-2 py-1 disabled:opacity-50" disabled={!canWrite} title={!canWrite ? "Insufficient permissions" : undefined}>
             {STATUSES.map(s => (<option key={s} value={s}>{s.replace("_"," ")}</option>))}
           </select>
         </div>
         <div className="flex flex-col">
           <label className="text-xs text-gray-600">Tags (comma)</label>
-          <input value={tags} onChange={(e) => setTags(e.target.value)} className="border rounded px-2 py-1 w-56" />
+          <input value={tags} onChange={(e) => setTags(e.target.value)} className="border rounded px-2 py-1 w-56 disabled:opacity-50" disabled={!canWrite} title={!canWrite ? "Insufficient permissions" : undefined} />
         </div>
         <div className="flex flex-col">
           <label className="text-xs text-gray-600">Due</label>
-          <input type="date" value={due} onChange={(e) => setDue(e.target.value)} className="border rounded px-2 py-1" />
+          <input type="date" value={due} onChange={(e) => setDue(e.target.value)} className="border rounded px-2 py-1 disabled:opacity-50" disabled={!canWrite} title={!canWrite ? "Insufficient permissions" : undefined} />
         </div>
-        <button disabled={submitting} type="submit" className="bg-black text-white rounded px-3 py-1">{submitting ? "Adding..." : "Add"}</button>
+        <button disabled={!canWrite || submitting} type="submit" className="bg-black text-white rounded px-3 py-1 disabled:opacity-50" title={!canWrite ? "Insufficient permissions" : undefined}>{submitting ? "Adding..." : "Add"}</button>
       </form>
 
-      <TasksBoardClient statuses={["BACKLOG","PLANNED","IN_PROGRESS","DONE"] as unknown as string[]} initialItems={items} />
+      <TasksBoardClient statuses={["BACKLOG","PLANNED","IN_PROGRESS","DONE"] as unknown as string[]} initialItems={items} canWrite={canWrite} />
     </div>
   );
 }

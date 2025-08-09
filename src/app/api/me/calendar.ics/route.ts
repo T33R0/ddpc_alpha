@@ -1,3 +1,4 @@
+// Using Web Fetch API Request/Response types for route signature
 import { getServerSupabase } from "@/lib/supabase";
 
 function fmtDateUTC(d: Date): string {
@@ -18,7 +19,8 @@ function icsEscape(s: string): string {
   return s.replace(/\\/g, "\\\\").replace(/\n/g, "\\n").replace(/,/g, "\\,").replace(/;/g, "\\;");
 }
 
-export async function GET(): Promise<Response> {
+export async function GET(_req: Request): Promise<Response> {
+  void _req;
   const supabase = await getServerSupabase();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
@@ -121,9 +123,9 @@ export async function GET(): Promise<Response> {
   return new Response(body, {
     status: 200,
     headers: {
-      "Content-Type": "text/calendar; charset=utf-8",
-      "Content-Disposition": `attachment; filename=me.ics`,
-      "Cache-Control": "no-store",
+      "content-type": "text/calendar; charset=utf-8",
+      "content-disposition": `attachment; filename="me.ics"`,
+      "cache-control": "no-store",
     },
   });
 }

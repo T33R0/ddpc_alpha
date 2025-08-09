@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase";
+import { logActivity } from "@/lib/activity/log";
 
 export async function DELETE(_req: Request, context: unknown) {
   const id = (context as { params?: { id?: string } })?.params?.id;
@@ -15,17 +16,15 @@ export async function DELETE(_req: Request, context: unknown) {
       .maybeSingle();
     const { error } = await supabase.from("event").delete().eq("id", id);
     if (error) throw error;
-    try {
-      if (user && before) {
-        await supabase.from("activity_log").insert({
-          actor_id: user.id,
-          entity_type: "event",
-          entity_id: id,
-          action: "delete",
-          diff: { before: { type: before.type, notes: before.notes, created_at: before.created_at } },
-        });
-      }
-    } catch {}
+    if (user && before) {
+      await logActivity({
+        actorId: user.id,
+        entityType: "event",
+        entityId: id,
+        action: "delete",
+        diff: { before: { type: before.type, notes: before.notes, created_at: before.created_at } },
+      });
+    }
     return NextResponse.json({ ok: true });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Unknown error";
@@ -80,17 +79,15 @@ export async function PATCH(req: NextRequest, context: unknown) {
       .select("id, type, odometer, cost, notes, created_at")
       .single();
     if (error) throw error;
-    try {
-      if (user) {
-        await supabase.from("activity_log").insert({
-          actor_id: user.id,
-          entity_type: "event",
-          entity_id: id,
-          action: "update",
-          diff: { after: { type: data.type, notes: data.notes } },
-        });
-      }
-    } catch {}
+    if (user) {
+      await logActivity({
+        actorId: user.id,
+        entityType: "event",
+        entityId: id,
+        action: "update",
+        diff: { after: { type: data.type, notes: data.notes } },
+      });
+    }
     return NextResponse.json({ event: data });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Unknown error";

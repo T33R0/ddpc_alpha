@@ -1,4 +1,4 @@
-import type { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase";
 
 function fmtDateUTC(d: Date): string {
@@ -21,7 +21,8 @@ function icsEscape(s: string): string {
 
 export const dynamic = "force-dynamic";
 
-export async function GET(_: NextRequest, { params }: { params: { id: string } }): Promise<Response> {
+export async function GET(_req: NextRequest, { params }: { params: { id: string } }): Promise<NextResponse> {
+  void _req;
   const supabase = await getServerSupabase();
   const vehicleId = params.id;
   const now = new Date();
@@ -94,12 +95,12 @@ export async function GET(_: NextRequest, { params }: { params: { id: string } }
   lines.push("END:VCALENDAR");
 
   const body = lines.join("\r\n") + "\r\n";
-  return new Response(body, {
+  return new NextResponse(body, {
     status: 200,
     headers: {
-      "Content-Type": "text/calendar; charset=utf-8",
-      "Content-Disposition": `attachment; filename=vehicle-${vehicleId}.ics`,
-      "Cache-Control": "no-store",
+      "content-type": "text/calendar; charset=utf-8",
+      "content-disposition": `attachment; filename="vehicle-${vehicleId}.ics"`,
+      "cache-control": "no-store",
     },
   });
 }

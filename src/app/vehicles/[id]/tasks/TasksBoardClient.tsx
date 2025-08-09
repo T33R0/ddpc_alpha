@@ -8,9 +8,11 @@ export type WorkItem = { id: string; title: string; status: string; tags: string
 export default function TasksBoardClient({
   statuses,
   initialItems,
+  canWrite = true,
 }: {
   statuses: string[];
   initialItems: WorkItem[];
+  canWrite?: boolean;
 }) {
   const [items, setItems] = useState<WorkItem[]>(initialItems);
   const { success, error } = useToast();
@@ -100,8 +102,8 @@ export default function TasksBoardClient({
     const to = result.destination.droppableId;
     const id = result.draggableId;
     if (from === to && result.destination.index === result.source.index) return;
-    applyStatus(id, to);
-  }, [applyStatus]);
+    if (canWrite) applyStatus(id, to);
+  }, [applyStatus, canWrite]);
 
   const startEdit = useCallback((id: string, title: string) => {
     setEditingId(id);
@@ -253,7 +255,7 @@ export default function TasksBoardClient({
                 <div className="mb-3 text-sm font-semibold tracking-wide text-gray-700">{status.replace("_", " ")}</div>
                 <div className="space-y-2">
                   {(itemsByStatus[status] ?? []).map((it, idx) => (
-                    <Draggable index={idx} draggableId={it.id} key={it.id} isDragDisabled={isCardBusy(it.id)}>
+                    <Draggable index={idx} draggableId={it.id} key={it.id} isDragDisabled={isCardBusy(it.id) || !canWrite}>
                       {(dragProvided, snapshot) => (
                         <div
                           ref={dragProvided.innerRef}
@@ -280,17 +282,18 @@ export default function TasksBoardClient({
                                 className="w-full border rounded px-2 py-1 text-sm"
                               />
                             ) : (
-                              <button className="text-left w-full hover:underline disabled:opacity-50" disabled={isCardBusy(it.id)} onClick={() => startEdit(it.id, it.title)}>
+                               <button className="text-left w-full hover:underline disabled:opacity-50" disabled={isCardBusy(it.id) || !canWrite} title={!canWrite ? "Insufficient permissions" : undefined} onClick={() => startEdit(it.id, it.title)}>
                                 {it.title}
                               </button>
                             )}
                           </div>
                           {editingId === it.id && (
                             <div className="mt-1 flex items-center gap-2">
-                              <button
+                               <button
                                 className="text-xs px-2 py-0.5 border rounded bg-gray-50 disabled:opacity-50"
-                                onClick={saveEdit}
-                                disabled={isCardBusy(it.id) || editingTitle.trim() === editingTitleOrig.trim()}
+                                 onClick={saveEdit}
+                                 disabled={!canWrite || isCardBusy(it.id) || editingTitle.trim() === editingTitleOrig.trim()}
+                                 title={!canWrite ? "Insufficient permissions" : undefined}
                               >
                                 {pendingTitleId === it.id ? "Saving…" : "Save"}
                               </button>
@@ -324,10 +327,11 @@ export default function TasksBoardClient({
                           </div>
                           {editingTagsId === it.id && (
                             <div className="mt-1 flex items-center gap-2">
-                              <button
+                               <button
                                 className="text-xs px-2 py-0.5 border rounded bg-gray-50 disabled:opacity-50"
-                                onClick={saveTagsEdit}
-                                disabled={isCardBusy(it.id) || editingTags.trim() === editingTagsOrig.trim()}
+                                 onClick={saveTagsEdit}
+                                 disabled={!canWrite || isCardBusy(it.id) || editingTags.trim() === editingTagsOrig.trim()}
+                                 title={!canWrite ? "Insufficient permissions" : undefined}
                               >
                                 {pendingTagsPendingId === it.id ? "Saving…" : "Save"}
                               </button>
@@ -365,10 +369,11 @@ export default function TasksBoardClient({
                           </div>
                           {editingDueId === it.id && (
                             <div className="mt-1 flex items-center gap-2">
-                              <button
+                               <button
                                 className="text-xs px-2 py-0.5 border rounded bg-gray-50 disabled:opacity-50"
-                                onClick={saveDueEdit}
-                                disabled={isCardBusy(it.id) || editingDue.trim() === editingDueOrig.trim()}
+                                 onClick={saveDueEdit}
+                                 disabled={!canWrite || isCardBusy(it.id) || editingDue.trim() === editingDueOrig.trim()}
+                                 title={!canWrite ? "Insufficient permissions" : undefined}
                               >
                                 {pendingDuePendingId === it.id ? "Saving…" : "Save"}
                               </button>
@@ -387,7 +392,8 @@ export default function TasksBoardClient({
                                 key={s}
                                 className="text-xs px-2 py-0.5 border rounded hover:bg-gray-100 disabled:opacity-50"
                                 onClick={() => applyStatus(it.id, s)}
-                                disabled={isCardBusy(it.id)}
+                                disabled={!canWrite || isCardBusy(it.id)}
+                                title={!canWrite ? "Insufficient permissions" : undefined}
                               >
                                 → {s.replace("_", " ")}
                               </button>
@@ -395,7 +401,8 @@ export default function TasksBoardClient({
                             <button
                               onClick={() => applyDelete(it.id)}
                               className="text-xs text-red-600 hover:underline ml-auto disabled:opacity-50"
-                              disabled={isCardBusy(it.id)}
+                              disabled={!canWrite || isCardBusy(it.id)}
+                              title={!canWrite ? "Insufficient permissions" : undefined}
                             >
                               {pendingDeleteId === it.id ? "Deleting…" : "Delete"}
                             </button>

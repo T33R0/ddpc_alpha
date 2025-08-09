@@ -90,6 +90,19 @@ export default async function MembersPage({ params }: { params: Promise<{ id: st
     if (!user) throw new Error("Not authenticated");
     const callerRole = await getRoleForUser(garageId, user.id);
     if (!(callerRole === "OWNER" || callerRole === "MANAGER")) throw new Error("Forbidden");
+    // Fetch target to enforce invariants
+    const { data: target } = await supabase
+      .from("garage_member")
+      .select("id, role, user_id")
+      .eq("id", memberId)
+      .maybeSingle();
+    if (!target) throw new Error("Not found");
+    if ((target as Member).role === "OWNER") {
+      throw new Error("Cannot change owner role");
+    }
+    if (callerRole === "MANAGER" && role === "OWNER") {
+      throw new Error("Only owner can assign OWNER");
+    }
     const { error } = await supabase.from("garage_member").update({ role }).eq("id", memberId);
     if (error) throw new Error(error.message);
   }
@@ -101,7 +114,15 @@ export default async function MembersPage({ params }: { params: Promise<{ id: st
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error("Not authenticated");
     const callerRole = await getRoleForUser(garageId, user.id);
-    if (callerRole !== "OWNER") throw new Error("Only owner can remove");
+    if (!(callerRole === "OWNER" || callerRole === "MANAGER")) throw new Error("Forbidden");
+    // Prevent removing OWNER
+    const { data: target } = await supabase
+      .from("garage_member")
+      .select("id, role")
+      .eq("id", memberId)
+      .maybeSingle();
+    if (!target) throw new Error("Not found");
+    if ((target as Member).role === "OWNER") throw new Error("Cannot remove owner");
     const { error } = await supabase.from("garage_member").delete().eq("id", memberId);
     if (error) throw new Error(error.message);
   }
@@ -129,19 +150,37 @@ export default async function MembersPage({ params }: { params: Promise<{ id: st
                   {canManage && (
                     <form action={changeRole} className="inline-flex items-center gap-2">
                       <input type="hidden" name="member_id" value={m.id} />
-                      <select name="role" defaultValue={m.role} className="border rounded px-2 py-1 text-xs">
+                      <select
+                        name="role"
+                        defaultValue={m.role}
+                        className="border rounded px-2 py-1 text-xs"
+                        disabled={m.role === "OWNER"}
+                        title={m.role === "OWNER" ? "Owner role cannot be changed" : undefined}
+                      >
                         <option value="OWNER" disabled={!isOwner}>OWNER</option>
                         <option value="MANAGER">MANAGER</option>
                         <option value="CONTRIBUTOR">CONTRIBUTOR</option>
                         <option value="VIEWER">VIEWER</option>
                       </select>
-                      <button className="text-xs px-2 py-1 border rounded bg-gray-50">Update</button>
+                      <button
+                        className="text-xs px-2 py-1 border rounded bg-gray-50 disabled:opacity-50"
+                        disabled={m.role === "OWNER"}
+                        title={m.role === "OWNER" ? "Owner role cannot be changed" : undefined}
+                      >
+                        Update
+                      </button>
                     </form>
                   )}
-                  {isOwner && (
+                  {canManage && (
                     <form action={removeMember} className="inline-block ml-2">
                       <input type="hidden" name="member_id" value={m.id} />
-                      <button className="text-xs px-2 py-1 border rounded text-red-700">Remove</button>
+                      <button
+                        className="text-xs px-2 py-1 border rounded text-red-700 disabled:opacity-50"
+                        disabled={m.role === "OWNER"}
+                        title={m.role === "OWNER" ? "Owner cannot be removed" : undefined}
+                      >
+                        Remove
+                      </button>
                     </form>
                   )}
                 </td>

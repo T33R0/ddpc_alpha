@@ -6,7 +6,7 @@ const TYPES = ["SERVICE","INSTALL","INSPECT","TUNE"] as const;
 
 export type TimelineEvent = { id: string; type: typeof TYPES[number]; odometer: number | null; cost: number | null; notes: string | null; created_at: string };
 
-export default function TimelineClient({ events, vehicleId }: { events: TimelineEvent[]; vehicleId: string }) {
+export default function TimelineClient({ events, vehicleId, canWrite = true }: { events: TimelineEvent[]; vehicleId: string; canWrite?: boolean }) {
   const [data, setData] = useState<TimelineEvent[]>(events);
   const { success, error } = useToast();
   const [selected, setSelected] = useState<Set<TimelineEvent["type"]>>(new Set());
@@ -83,6 +83,7 @@ export default function TimelineClient({ events, vehicleId }: { events: Timeline
 
   const handleQuickAdd = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!canWrite) return;
     const trimmed = title.trim();
     if (!trimmed) {
       error("Title is required");
@@ -131,6 +132,7 @@ export default function TimelineClient({ events, vehicleId }: { events: Timeline
   };
 
   const handleDelete = async (id: string) => {
+    if (!canWrite) return;
     setDeletingId(id);
     try {
       const res = await fetch(`/api/events/${id}`, { method: "DELETE" });
@@ -227,7 +229,7 @@ export default function TimelineClient({ events, vehicleId }: { events: Timeline
           value={date}
           onChange={(e) => setDate(e.target.value)}
         />
-        <button disabled={adding || !title.trim()} type="submit" className="bg-black text-white rounded px-3 py-1 disabled:opacity-50" data-test="timeline-add-btn">
+        <button disabled={!canWrite || adding || !title.trim()} type="submit" className="bg-black text-white rounded px-3 py-1 disabled:opacity-50" title={!canWrite ? "Insufficient permissions" : undefined} data-test="timeline-add-btn">
           {adding ? "Adding…" : "Add"}
         </button>
       </form>
@@ -343,15 +345,17 @@ export default function TimelineClient({ events, vehicleId }: { events: Timeline
                         <button
                           type="button"
                           onClick={() => startEdit(e)}
-                          className="text-xs text-blue-600 hover:underline"
-                          disabled={deletingId === e.id}
+                          className="text-xs text-blue-600 hover:underline disabled:opacity-50"
+                          disabled={!canWrite || deletingId === e.id}
+                          title={!canWrite ? "Insufficient permissions" : undefined}
                         >Edit</button>
                       )}
                       <button
                         onClick={() => handleDelete(e.id)}
                         className="text-xs text-red-600 hover:underline disabled:opacity-50"
                         type="button"
-                        disabled={deletingId === e.id || savingId === e.id}
+                        disabled={!canWrite || deletingId === e.id || savingId === e.id}
+                        title={!canWrite ? "Insufficient permissions" : undefined}
                       >{deletingId === e.id ? "Deleting…" : "Delete"}</button>
                     </>
                   )}

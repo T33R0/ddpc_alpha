@@ -5,6 +5,8 @@ import TasksClient from "./TasksClient";
 import Link from "next/link";
 import ErrorBoundary from "@/components/ErrorBoundary";
 
+type Role = "OWNER" | "MANAGER" | "CONTRIBUTOR" | "VIEWER";
+
 export default async function TasksPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: vehicleId } = await params;
   const supabase = await getServerSupabase();
@@ -15,7 +17,7 @@ export default async function TasksPage({ params }: { params: Promise<{ id: stri
   }
   const { data: vehicle } = await supabase
     .from("vehicle")
-    .select("id, year, make, model, nickname, privacy")
+    .select("id, year, make, model, nickname, privacy, garage_id")
     .eq("id", vehicleId)
     .maybeSingle();
   const { data: items } = await supabase
@@ -25,6 +27,22 @@ export default async function TasksPage({ params }: { params: Promise<{ id: stri
     .order("created_at", { ascending: true });
 
   const initialItems = (items ?? []) as unknown as ClientWorkItem[];
+
+  // Determine permissions: VIEWER has read-only; CONTRIBUTOR+ can write
+  async function getRole(garageId: string | null | undefined): Promise<Role|null> {
+    if (!garageId) return null;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+    const { data: m } = await supabase
+      .from("garage_member")
+      .select("role")
+      .eq("garage_id", garageId)
+      .eq("user_id", user.id)
+      .maybeSingle();
+    return (m?.role as Role) ?? null;
+  }
+  const role = await getRole((vehicle as { garage_id?: string } | null)?.garage_id ?? null);
+  const canWrite = role === "OWNER" || role === "MANAGER" || role === "CONTRIBUTOR";
 
   return (
     <div className="space-y-6">
@@ -40,7 +58,7 @@ export default async function TasksPage({ params }: { params: Promise<{ id: stri
       </div>
 
       <ErrorBoundary message="Failed to load tasks.">
-        <TasksClient vehicleId={vehicleId} initialItems={initialItems} />
+        <TasksClient vehicleId={vehicleId} initialItems={initialItems} canWrite={canWrite} />
       </ErrorBoundary>
     </div>
   );

@@ -12,7 +12,7 @@ export default async function VehicleOverviewPage({ params }: { params: Promise<
 
   const { data: vehicle } = await supabase
     .from("vehicle")
-    .select("id, vin, year, make, model, trim, nickname, privacy, photo_url")
+    .select("id, vin, year, make, model, trim, nickname, privacy, photo_url, garage_id")
     .eq("id", vehicleId)
     .maybeSingle();
 
@@ -86,6 +86,7 @@ export default async function VehicleOverviewPage({ params }: { params: Promise<
           <Link href={`/v/${vehicle.id}`} className="text-sm text-blue-600 hover:underline">Public page</Link>
           <Link href={`/vehicles/${vehicle.id}/tasks`} className="text-sm text-blue-600 hover:underline">Tasks</Link>
           <Link href={`/vehicles/${vehicle.id}/timeline`} className="text-sm text-blue-600 hover:underline">Timeline</Link>
+          <Link href={`/garage/${(vehicle as { garage_id?: string }).garage_id ?? ''}/members`} className="text-sm text-blue-600 hover:underline">Members</Link>
           <Link href="/vehicles" className="text-sm text-blue-600 hover:underline">Back to vehicles</Link>
         </div>
       </div>
