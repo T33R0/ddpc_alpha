@@ -9,7 +9,6 @@ export default function Header() {
           <Link href="/" className="font-semibold">ddpc alpha</Link>
           <nav className="hidden sm:flex items-center gap-3 text-sm text-gray-600">
             <Link href="/vehicles" className="hover:text-black">Vehicles</Link>
-            <Link href="/timeline" className="hover:text-black">Timeline</Link>
             <Link href="/about" className="hover:text-black">About</Link>
           </nav>
         </div>
