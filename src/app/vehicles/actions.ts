@@ -1,0 +1,99 @@
+"use server";
+import { revalidatePath } from "next/cache";
+import { getServerSupabase } from "@/lib/supabase";
+
+async function ensureGarageId(): Promise<string> {
+  const supabase = await getServerSupabase();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  // Try to find an existing garage; if this select errors due to RLS nuances, we'll proceed to create.
+  let existingId: string | null = null;
+  try {
+    const { data: existing } = await supabase
+      .from("garage")
+      .select("id")
+      .eq("owner_id", user.id)
+      .limit(1)
+      .maybeSingle();
+    existingId = existing?.id ?? null;
+  } catch (_) {
+    // ignore select errors and attempt to create
+  }
+  if (existingId) return existingId;
+
+  // Create a new personal garage
+  const { data: created, error: insErr } = await supabase
+    .from("garage")
+    .insert({ name: `${user.email?.split("@")[0]}'s Garage`, owner_id: user.id, type: "PERSONAL" })
+    .select("id")
+    .single();
+  if (insErr) {
+    // Race condition or select policy issues: re-select once
+    const { data: fallback } = await supabase
+      .from("garage")
+      .select("id")
+      .eq("owner_id", user.id)
+      .limit(1)
+      .maybeSingle();
+    if (fallback?.id) return fallback.id as string;
+    throw new Error(insErr.message);
+  }
+
+  // Add owner as member (ignore errors if already exists)
+  try {
+    await supabase.from("garage_member").insert({ garage_id: created.id, user_id: user.id, role: "OWNER" });
+  } catch (_e) {
+    // ignore
+  }
+  return created.id as string;
+}
+
+export async function createVehicle(formData: FormData): Promise<void> {
+  const supabase = await getServerSupabase();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Not authenticated");
+
+  const garageId = await ensureGarageId();
+
+  const vin = formData.get("vin")?.toString() || null;
+  const year = formData.get("year") ? Number(formData.get("year")) : null;
+  const make = formData.get("make")?.toString() || "";
+  const model = formData.get("model")?.toString() || "";
+  const trim = formData.get("trim")?.toString() || null;
+  const nickname = formData.get("nickname")?.toString() || null;
+  const privacy = (formData.get("privacy")?.toString() || "PRIVATE") as "PUBLIC"|"PRIVATE";
+
+  const { error } = await supabase
+    .from("vehicle")
+    .insert({ garage_id: garageId, vin, year, make, model, trim, nickname, privacy });
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/vehicles");
+}
+
+export async function updateVehiclePhoto(vehicleId: string, url: string) {
+  const supabase = await getServerSupabase();
+  const { error } = await supabase.from("vehicle").update({ photo_url: url }).eq("id", vehicleId);
+  if (error) return { error: error.message };
+  revalidatePath("/vehicles");
+  return { ok: true };
+}
+
+export async function updateVehicle(formData: FormData): Promise<void> {
+  const supabase = await getServerSupabase();
+  const id = formData.get("id")?.toString();
+  if (!id) throw new Error("Missing id");
+  const nickname = formData.get("nickname")?.toString() || null;
+  const privacy = (formData.get("privacy")?.toString() || "PRIVATE") as "PUBLIC"|"PRIVATE";
+  const { error } = await supabase.from("vehicle").update({ nickname, privacy }).eq("id", id);
+  if (error) throw new Error(error.message);
+  revalidatePath("/vehicles");
+}
+
+export async function deleteVehicle(id: string): Promise<void> {
+  const supabase = await getServerSupabase();
+  const { error } = await supabase.from("vehicle").delete().eq("id", id);
+  if (error) throw new Error(error.message);
+  revalidatePath("/vehicles");
+}
