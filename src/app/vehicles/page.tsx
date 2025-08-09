@@ -7,17 +7,17 @@ import UploadPhoto from "@/components/UploadPhoto";
 import VehicleActions from "@/components/VehicleActions";
 import { SummaryChipsSkeleton, SummaryChipsExtended } from "@/components/analytics/SummaryChips";
 import ErrorBoundary from "@/components/ErrorBoundary";
-import { cookies } from "next/headers";
-import { redirect } from "next/navigation";
+// Note: Next 15 server components should use Promise-based searchParams; no headers()/window usage here.
 
 export const dynamic = "force-dynamic";
 
 type Role = "OWNER" | "MANAGER" | "CONTRIBUTOR" | "VIEWER";
 
-export default async function VehiclesPage() {
+export default async function VehiclesPage(
+  props: { searchParams: Promise<Record<string, string | string[] | undefined>> }
+) {
   const supabase = await getServerSupabase();
   const { data: { user } } = await supabase.auth.getUser();
-  const search = (typeof window === 'undefined' ? undefined : undefined) as unknown as URLSearchParams | undefined;
   const reqId = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}`;
   if (process.env.NODE_ENV !== 'production') {
     // Server-only structured log: no PII
@@ -146,15 +146,16 @@ export default async function VehiclesPage() {
     { label: "Contributor", value: "CONTRIBUTOR" },
     { label: "Viewer", value: "VIEWER" },
   ];
-  // Determine role filter and joined toast
-  const searchParams = new URLSearchParams((await (async () => {
-    try { return (new URL((global as any).location?.href ?? "http://localhost")).search); } catch { return ""; }
-  })()));
-  const joined = searchParams.get("joined") === "1";
-  const currentFilter: Role | "ALL" = (searchParams.get("role") as Role | null) ?? "ALL";
+  // Determine role filter and joined toast from Next 15 Promise-based searchParams
+  const sp = await props.searchParams;
+  const joined = sp?.joined === "1";
+  const currentFilter: Role | "ALL" = (sp?.role as Role | undefined) ?? "ALL";
 
   return (
     <div className="space-y-8">
+      {joined && (
+        <div role="status" aria-live="polite" className="sr-only">Joined garage.</div>
+      )}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">My Vehicles</h1>
         <Link href="/" className="text-sm text-blue-600 hover:underline">Home</Link>

@@ -1,3 +1,30 @@
+# Release Notes
+
+## Invites and Members (2025-08-09)
+
+- Garage invites: Owners/Managers can create and revoke time-boxed invite links with selected roles.
+- Invite acceptance: Validates token and joins/updates membership; redirects to `/vehicles?garage=<id>&joined=1`.
+- Members add by email: Uses `resolve_user_id_by_email` RPC; friendly errors for non-existent users and existing members.
+- Managers can remove members; Owners are protected from role change/remove.
+- Viewers: write controls disabled, CSV/ICS export available when permitted.
+
+### SQL Summary
+
+- `garage_invite` table with RLS for OWNER/MANAGER on the same `garage_id`.
+- `validate_garage_invite(text)` and `accept_garage_invite(text)` (security definer) for invite flow.
+- `resolve_user_id_by_email(text)` with `authenticated` execute.
+
+### Rollback
+
+To roll back invite features:
+
+```
+drop function if exists accept_garage_invite(text);
+drop function if exists validate_garage_invite(text);
+drop table if exists garage_invite;
+drop function if exists resolve_user_id_by_email(text);
+```
+
 # Release SOP
 
 ## Pre-flight

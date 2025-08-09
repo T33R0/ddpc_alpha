@@ -1,3 +1,38 @@
+## Garage Invites
+
+Owners and Managers can create time-boxed invite links granting a selected role (Viewer/Contributor/Manager). Invites are managed at `/garage/[id]/invites`.
+
+Accepting an invite at `/invite/[token]` validates the token server-side and joins the garage with the selected role. On success the user is redirected to `/vehicles?garage=<id>&joined=1` and sees a one-time “Joined garage.” toast.
+
+### RPC: resolve_user_id_by_email
+
+To add members by email without a service key, the app uses a SQL function:
+
+```
+create or replace function resolve_user_id_by_email(p_email text)
+returns uuid
+language sql
+security definer
+set search_path = public
+as $$
+  select u.id
+  from auth.users u
+  where lower(u.email) = lower(p_email)
+  limit 1;
+$$;
+revoke all on function resolve_user_id_by_email(text) from public;
+grant execute on function resolve_user_id_by_email(text) to authenticated;
+```
+
+### Notes & Flags
+
+- Managers can remove members; Owners remain protected.
+- Viewers can export CSV/ICS; write controls remain disabled.
+
+Environment flags:
+
+- `NEXT_PUBLIC_ENABLE_DB_TEMPLATES` (default false): when true, Task Templates are fetched from DB; when false, static templates are used.
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started
