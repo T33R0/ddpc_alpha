@@ -1,31 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// Simple in-memory rate limit (per IP) ~1 req/min
-const lastHitByIp = new Map<string, number>();
+function isAuthorized(req: NextRequest): boolean {
+  const header = req.headers.get('authorization') ?? '';
+  const secret = process.env.CRON_SECRET ?? '';
+  if (!secret) return false;
+  return header === secret || header === `Bearer ${secret}`;
+}
 
-export async function POST(req: NextRequest): Promise<Response> {
-  const secretHeader = req.headers.get('x-cron-secret') || '';
-  const expected = process.env.CRON_SECRET || '';
-  if (!expected || secretHeader !== expected) {
-    return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+async function handleCron(req: NextRequest): Promise<Response> {
+  if (!isAuthorized(req)) {
+    return NextResponse.json({ ok: false }, { status: 401 });
   }
-
-  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
-  const now = Date.now();
-  const last = lastHitByIp.get(ip) || 0;
-  if (now - last < 60_000) {
-    return NextResponse.json({ ok: true, throttled: true }, { status: 200 });
-  }
-  lastHitByIp.set(ip, now);
-
   // Server-only log; no PII
   try {
-    console.log(JSON.stringify({ level: 'info', q: 'cron_digest_fired', env: process.env.VERCEL_ENV || 'local', dryRun: true }));
+    console.log(JSON.stringify({ evt: 'cron_digest_fired', dryRun: true, env: process.env.VERCEL_ENV || 'local' }));
   } catch {}
-
   return NextResponse.json({ ok: true }, { status: 200 });
 }
 
-export async function GET() {
-  return NextResponse.json({ error: 'method_not_allowed' }, { status: 405 });
+export async function GET(req: NextRequest) {
+  return handleCron(req);
 }
+
+export async function POST(req: NextRequest) {
+  return handleCron(req);
+}
+
+export function PUT() { return NextResponse.json({}, { status: 405 }); }
+export function DELETE() { return NextResponse.json({}, { status: 405 }); }

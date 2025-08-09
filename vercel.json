@@ -1,5 +1,5 @@
 {
   "crons": [
-    { "path": "/api/cron/digest", "schedule": "0 13 * * *", "method": "POST", "headers": { "x-cron-secret": "@cron_secret" } }
+    { "path": "/api/cron/digest", "schedule": "0 13 * * *" }
   ]
 }
