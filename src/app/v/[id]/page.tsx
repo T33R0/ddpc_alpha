@@ -23,6 +23,19 @@ type SanitizerInputEvent = {
   type: PublicEventRow["type"];
 };
 
+// Narrow type guard to validate public view rows without using 'any'
+function isPublicEventRow(r: unknown): r is PublicEventRow {
+  if (typeof r !== "object" || r === null) return false;
+  const o = r as Record<string, unknown>;
+  return (
+    typeof o.id === "string" &&
+    typeof o.vehicle_id === "string" &&
+    typeof o.occurred_at === "string" &&
+    typeof o.type === "string" &&
+    typeof o.display_title === "string"
+  );
+}
+
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const supabase = await getServerSupabase();
   const { id } = await params;
@@ -78,14 +91,9 @@ export default async function PublicVehiclePage({ params }: { params: Promise<{ 
     .order("occurred_at", { ascending: false })
     .limit(5);
 
-  // Strongly type rows without using a generic on .from()
-  const rows: ReadonlyArray<PublicEventRow> = (data ?? []).map((r) => ({
-    id: String((r as any).id),
-    vehicle_id: String((r as any).vehicle_id),
-    occurred_at: String((r as any).occurred_at),
-    type: String((r as any).type),
-    display_title: String((r as any).display_title),
-  })) as PublicEventRow[];
+  // Validate and type rows without resorting to 'any'
+  const raw: unknown[] = Array.isArray(data) ? data : [];
+  const rows: PublicEventRow[] = raw.filter(isPublicEventRow);
 
   // Normalize to sanitizer input shape (defense-in-depth)
   const eventsForSanitize: SanitizerInputEvent[] = rows.map((e) => ({
