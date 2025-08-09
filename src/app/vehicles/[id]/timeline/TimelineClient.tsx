@@ -1,5 +1,6 @@
 "use client";
 import { useMemo, useState } from "react";
+import { useToast } from "@/components/ui/ToastProvider";
 
 const TYPES = ["SERVICE","INSTALL","INSPECT","TUNE"] as const;
 
@@ -7,6 +8,7 @@ export type TimelineEvent = { id: string; type: typeof TYPES[number]; odometer: 
 
 export default function TimelineClient({ events }: { events: TimelineEvent[] }) {
   const [data, setData] = useState<TimelineEvent[]>(events);
+  const { success, error } = useToast();
   const [selected, setSelected] = useState<Set<TimelineEvent["type"]>>(new Set());
   const [from, setFrom] = useState<string>("");
   const [to, setTo] = useState<string>("");
@@ -54,8 +56,10 @@ export default function TimelineClient({ events }: { events: TimelineEvent[] }) 
       const res = await fetch(`/api/events/${id}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Failed to delete");
       setData(prev => prev.filter(e => e.id !== id));
-    } catch {
-      // Optionally surface a toast here
+      success("Event deleted");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Failed to delete";
+      error(msg);
     }
   };
 

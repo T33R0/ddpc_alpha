@@ -1,10 +1,12 @@
 "use client";
 import { useState } from "react";
 import TasksBoardClient, { WorkItem as ClientWorkItem } from "./TasksBoardClient";
+import { useToast } from "@/components/ui/ToastProvider";
 
 const STATUSES = ["BACKLOG","PLANNED","IN_PROGRESS","DONE"] as const;
 
 export default function TasksClient({ vehicleId, initialItems }: { vehicleId: string; initialItems: ClientWorkItem[] }) {
+  const { success, error } = useToast();
   const [title, setTitle] = useState("");
   const [status, setStatus] = useState<string>("BACKLOG");
   const [tags, setTags] = useState("");
@@ -30,8 +32,10 @@ export default function TasksClient({ vehicleId, initialItems }: { vehicleId: st
       setTags("");
       setDue("");
       setStatus("BACKLOG");
-    } catch {
-      // Optionally surface a toast via useToast()
+      success("Task created");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Failed to create";
+      error(msg);
     } finally {
       setSubmitting(false);
     }

@@ -85,6 +85,63 @@ npm run dev
    - Tasks board: create with tags/due, drag-and-drop, delete
    - Timeline: create, filter, group by month, delete
 
+## Storage Setup (images)
+
+This app expects a public Storage bucket named `vehicle-media` for vehicle photos. Create it and add simple RLS policies.
+
+1) Create the bucket (public):
+
+```sql
+insert into storage.buckets (id, name, public)
+values ('vehicle-media', 'vehicle-media', true)
+on conflict (id) do nothing;
+```
+
+2) Policies:
+
+```sql
+-- Public read
+create policy "public read vehicle-media"
+on storage.objects
+for select
+using (
+  bucket_id = 'vehicle-media'
+);
+
+-- Authenticated insert (owner is uploader)
+create policy "auth insert own vehicle-media"
+on storage.objects
+for insert
+to authenticated
+with check (
+  bucket_id = 'vehicle-media'
+  and owner = auth.uid()
+);
+
+-- Authenticated update own
+create policy "auth update own vehicle-media"
+on storage.objects
+for update
+to authenticated
+using (
+  bucket_id = 'vehicle-media' and owner = auth.uid()
+)
+with check (
+  bucket_id = 'vehicle-media' and owner = auth.uid()
+);
+
+-- Authenticated delete own
+create policy "auth delete own vehicle-media"
+on storage.objects
+for delete
+to authenticated
+using (
+  bucket_id = 'vehicle-media' and owner = auth.uid()
+);
+```
+
+Now uploads from the UI will succeed and images will be publicly viewable via `getPublicUrl`.
+
 ## Notes
 
 - `.env.local` should not be committed. Use `env.sample` to share required keys.

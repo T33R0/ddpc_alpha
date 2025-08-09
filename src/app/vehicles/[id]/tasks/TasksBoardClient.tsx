@@ -1,6 +1,7 @@
 "use client";
 import { DragDropContext, Draggable, Droppable, DropResult } from "@hello-pangea/dnd";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useToast } from "@/components/ui/ToastProvider";
 
 export type WorkItem = { id: string; title: string; status: string; tags: string[] | null; due: string | null };
 
@@ -12,6 +13,7 @@ export default function TasksBoardClient({
   initialItems: WorkItem[];
 }) {
   const [items, setItems] = useState<WorkItem[]>(initialItems);
+  const { success, error } = useToast();
   // Sync when parent provides new items (e.g., after create)
   useEffect(() => {
     setItems(initialItems);
@@ -37,9 +39,12 @@ export default function TasksBoardClient({
       }).then(r => {
         if (!r.ok) throw new Error("Failed to update status");
       });
-    } catch {
+      success(`Moved to ${to.replace("_"," ")}`);
+    } catch (e) {
       // revert
       setItems(prev => prev.map(i => (i.id === id ? { ...i, status: from } : i)));
+      const msg = e instanceof Error ? e.message : "Failed to update status";
+      error(msg);
     }
   }, [items]);
 
@@ -50,9 +55,12 @@ export default function TasksBoardClient({
       await fetch(`/api/work-items/${id}`, { method: "DELETE" }).then(r => {
         if (!r.ok) throw new Error("Failed to delete");
       });
-    } catch {
+      success("Task deleted");
+    } catch (e) {
       // revert
       setItems(prev);
+      const msg = e instanceof Error ? e.message : "Failed to delete";
+      error(msg);
     }
   }, [items]);
 
