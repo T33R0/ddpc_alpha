@@ -12,6 +12,11 @@ type Event = { id: string; type: EventType; odometer: number | null; cost: numbe
 export default async function TimelinePage({ params }: { params: Promise<{ id: string }> }) {
   const { id: vehicleId } = await params;
   const supabase = await getServerSupabase();
+  const { data: { user } } = await supabase.auth.getUser();
+  const reqId = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}`;
+  if (process.env.NODE_ENV !== 'production') {
+    console.log(JSON.stringify({ level: 'info', q: 'timeline_page_load', reqId, actor: user?.id ?? null, vehicleId }));
+  }
   const { data: vehicle } = await supabase
     .from("vehicle")
     .select("id, year, make, model, nickname, privacy")

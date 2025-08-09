@@ -13,6 +13,11 @@ export const dynamic = "force-dynamic";
 export default async function VehiclesPage() {
   const supabase = await getServerSupabase();
   const { data: { user } } = await supabase.auth.getUser();
+  const reqId = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}`;
+  if (process.env.NODE_ENV !== 'production') {
+    // Server-only structured log: no PII
+    console.log(JSON.stringify({ level: 'info', q: 'vehicles_page_load', reqId, actor: user?.id ?? null }));
+  }
   type VehicleRow = {
     id: string;
     vin: string | null;
