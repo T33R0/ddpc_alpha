@@ -21,10 +21,13 @@ function icsEscape(s: string): string {
 
 export const dynamic = "force-dynamic";
 
-export async function GET(_req: NextRequest, { params }: { params: { id: string } }): Promise<NextResponse> {
+export async function GET(
+  _req: NextRequest,
+  ctx: { params: Promise<{ id: string }> }
+): Promise<NextResponse> {
   void _req;
   const supabase = await getServerSupabase();
-  const vehicleId = params.id;
+  const { id: vehicleId } = await ctx.params;
   const now = new Date();
   const ninetyDays = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
