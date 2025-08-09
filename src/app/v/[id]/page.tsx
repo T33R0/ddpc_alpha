@@ -1,6 +1,7 @@
 import { getServerSupabase } from "@/lib/supabase";
 import Link from "next/link";
 import Image from "next/image";
+import CopyLink from "./CopyLink";
 
 export const dynamic = "force-dynamic";
 
@@ -30,11 +31,25 @@ export default async function PublicVehiclePage({ params }: { params: Promise<{ 
     );
   }
 
+  // Recent public-safe events: show titles (notes) and dates only
+  const { data: events } = await supabase
+    .from("event")
+    .select("id, notes, created_at, type")
+    .eq("vehicle_id", id)
+    .order("created_at", { ascending: false })
+    .limit(10);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">{vehicle.nickname ?? `${vehicle.year ?? ''} ${vehicle.make} ${vehicle.model}`}</h1>
-        <Link className="text-sm text-blue-600 hover:underline" href="/vehicles">Back to vehicles</Link>
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-semibold">{vehicle.nickname ?? `${vehicle.year ?? ''} ${vehicle.make} ${vehicle.model}`}</h1>
+          <span className="text-xs px-2 py-0.5 rounded border bg-green-50 text-green-700">PUBLIC</span>
+        </div>
+        <div className="flex items-center gap-3">
+          <CopyLink />
+          <Link className="text-sm text-blue-600 hover:underline" href="/vehicles">Back to vehicles</Link>
+        </div>
       </div>
       {vehicle.photo_url ? (
         <Image src={vehicle.photo_url} alt="Vehicle photo" width={1280} height={720} className="w-full h-auto max-h-[420px] object-cover rounded" />
@@ -53,8 +68,21 @@ export default async function PublicVehiclePage({ params }: { params: Promise<{ 
           </div>
         </div>
         <div className="border rounded p-4">
-          <div className="font-medium mb-2">About</div>
-          <div className="text-sm text-gray-700">Public profile preview. Timeline, parts, and tasks will appear here in the next iteration.</div>
+          <div className="font-medium mb-2">Recent Events</div>
+          <div className="space-y-2">
+            {(events ?? []).length === 0 && (
+              <div className="text-sm text-gray-500">No public timeline entries yet.</div>
+            )}
+            {(events ?? []).map((e) => (
+              <div key={e.id} className="text-sm text-gray-800 flex items-start gap-2">
+                <span className="text-xs px-2 py-0.5 rounded border bg-gray-50">{e.type}</span>
+                <div className="flex-1">
+                  <div>{e.notes ?? "—"}</div>
+                  <div className="text-xs text-gray-500">{new Date(e.created_at).toLocaleString()}</div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>

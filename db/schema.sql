@@ -144,6 +144,15 @@ create policy event_crud on event for all using (
   )
 ) with check (true);
 
+-- Public can read events for PUBLIC vehicles (sanitized projection is enforced in the app; policy allows row access)
+drop policy if exists event_public_select on event;
+create policy event_public_select on event
+for select using (
+  exists (
+    select 1 from vehicle v where v.id = event.vehicle_id and v.privacy = 'PUBLIC'
+  )
+);
+
 -- Storage policies for uploads to public bucket 'vehicle-media'
 -- Note: Buckets are managed in the Storage UI; these policies grant authenticated users rights to upload/manage their own files.
 -- storage schema is managed by Supabase; RLS is enabled on storage.objects by default.
