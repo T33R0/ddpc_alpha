@@ -18,6 +18,8 @@ export default function TasksBoardClient({
   const [editingTitle, setEditingTitle] = useState<string>("");
   const [editingDueId, setEditingDueId] = useState<string | null>(null);
   const [editingDue, setEditingDue] = useState<string>("");
+  const [editingTagsId, setEditingTagsId] = useState<string | null>(null);
+  const [editingTags, setEditingTags] = useState<string>("");
   // Sync when parent provides new items (e.g., after create)
   useEffect(() => {
     setItems(initialItems);
@@ -150,6 +152,38 @@ export default function TasksBoardClient({
     }
   }, [editingDueId, editingDue, items]);
 
+  const startTagsEdit = useCallback((id: string, tags: string[] | null) => {
+    setEditingTagsId(id);
+    setEditingTags((tags ?? []).join(", "));
+  }, []);
+
+  const cancelTagsEdit = useCallback(() => {
+    setEditingTagsId(null);
+    setEditingTags("");
+  }, []);
+
+  const saveTagsEdit = useCallback(async () => {
+    const id = editingTagsId;
+    if (!id) return cancelTagsEdit();
+    const text = editingTags.trim();
+    const tagsArr = text ? text.split(",").map(t => t.trim()).filter(Boolean) : null;
+    const prev = items;
+    setItems(prev.map(i => (i.id === id ? { ...i, tags: tagsArr } : i)));
+    try {
+      await fetch(`/api/work-items/${id}/tags`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tags: tagsArr }),
+      }).then(r => { if (!r.ok) throw new Error("Failed to update tags"); });
+      success("Tags updated");
+      cancelTagsEdit();
+    } catch (e) {
+      setItems(prev);
+      const msg = e instanceof Error ? e.message : "Failed to update tags";
+      error(msg);
+    }
+  }, [editingTagsId, editingTags, items]);
+
   return (
     <DragDropContext onDragEnd={onDragEnd}>
       <div className="grid md:grid-cols-4 gap-4">
@@ -187,7 +221,25 @@ export default function TasksBoardClient({
                               </button>
                             )}
                           </div>
-                          <div className="text-xs text-gray-600">{(it.tags ?? []).join(", ")}</div>
+                          <div className="text-xs text-gray-600">
+                            {editingTagsId === it.id ? (
+                              <input
+                                value={editingTags}
+                                onChange={(e) => setEditingTags(e.target.value)}
+                                onBlur={saveTagsEdit}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") saveTagsEdit();
+                                  if (e.key === "Escape") cancelTagsEdit();
+                                }}
+                                placeholder="tags, comma, separated"
+                                className="w-full border rounded px-2 py-0.5 text-xs"
+                              />
+                            ) : (
+                              <button className="hover:underline" onClick={() => startTagsEdit(it.id, it.tags)}>
+                                {(it.tags ?? []).length ? (it.tags ?? []).join(", ") : "Add tags"}
+                              </button>
+                            )}
+                          </div>
                           <div className="text-xs text-gray-600">
                             {editingDueId === it.id ? (
                               <input
