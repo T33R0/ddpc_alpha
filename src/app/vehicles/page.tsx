@@ -62,7 +62,16 @@ export default async function VehiclesPage() {
               </div>
               {user && (
                 <div className="pt-2 border-t">
-                  <VehicleActions id={v.id} initialNickname={v.nickname} initialPrivacy={v.privacy} />
+                  <VehicleActions
+                    id={v.id}
+                    initialNickname={v.nickname}
+                    initialPrivacy={v.privacy}
+                    initialVin={v.vin}
+                    initialYear={v.year}
+                    initialMake={v.make}
+                    initialModel={v.model}
+                    initialTrim={v.trim}
+                  />
                 </div>
               )}
             </div>

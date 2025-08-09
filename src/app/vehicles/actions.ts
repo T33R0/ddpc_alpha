@@ -86,7 +86,16 @@ export async function updateVehicle(formData: FormData): Promise<void> {
   if (!id) throw new Error("Missing id");
   const nickname = formData.get("nickname")?.toString() || null;
   const privacy = (formData.get("privacy")?.toString() || "PRIVATE") as "PUBLIC"|"PRIVATE";
-  const { error } = await supabase.from("vehicle").update({ nickname, privacy }).eq("id", id);
+  const vin = formData.get("vin")?.toString() || null;
+  const yearVal = formData.get("year");
+  const year = yearVal ? Number(yearVal) : null;
+  const make = formData.get("make")?.toString() || null;
+  const model = formData.get("model")?.toString() || null;
+  const trim = formData.get("trim")?.toString() || null;
+  const { error } = await supabase
+    .from("vehicle")
+    .update({ nickname, privacy, vin, year, make, model, trim })
+    .eq("id", id);
   if (error) throw new Error(error.message);
   revalidatePath("/vehicles");
 }

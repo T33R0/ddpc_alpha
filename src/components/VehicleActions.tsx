@@ -7,11 +7,21 @@ type Props = {
   id: string;
   initialNickname: string | null;
   initialPrivacy: "PUBLIC" | "PRIVATE";
+  initialVin: string | null;
+  initialYear: number | null;
+  initialMake: string;
+  initialModel: string;
+  initialTrim: string | null;
 };
 
-export default function VehicleActions({ id, initialNickname, initialPrivacy }: Props) {
+export default function VehicleActions({ id, initialNickname, initialPrivacy, initialVin, initialYear, initialMake, initialModel, initialTrim }: Props) {
   const [nickname, setNickname] = useState<string>(initialNickname ?? "");
   const [privacy, setPrivacy] = useState<"PUBLIC" | "PRIVATE">(initialPrivacy);
+  const [vin, setVin] = useState<string>(initialVin ?? "");
+  const [year, setYear] = useState<string>(initialYear ? String(initialYear) : "");
+  const [make, setMake] = useState<string>(initialMake ?? "");
+  const [model, setModel] = useState<string>(initialModel ?? "");
+  const [trim, setTrim] = useState<string>(initialTrim ?? "");
   const [isPending, startTransition] = useTransition();
   const { success, error } = useToast();
   const [confirming, setConfirming] = useState(false);
@@ -24,6 +34,11 @@ export default function VehicleActions({ id, initialNickname, initialPrivacy }: 
         fd.append("id", id);
         if (nickname) fd.append("nickname", nickname);
         fd.append("privacy", privacy);
+        if (vin) fd.append("vin", vin);
+        if (year) fd.append("year", year);
+        if (make) fd.append("make", make);
+        if (model) fd.append("model", model);
+        if (trim) fd.append("trim", trim);
         await updateVehicle(fd);
         success("Vehicle updated");
       } catch (e) {
@@ -64,32 +79,20 @@ export default function VehicleActions({ id, initialNickname, initialPrivacy }: 
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <input
-        value={nickname}
-        onChange={(e) => setNickname(e.target.value)}
-        placeholder="Nickname"
-        className="border rounded px-2 py-1 text-xs w-32 md:w-44"
-      />
-      <select
-        value={privacy}
-        onChange={(e) => setPrivacy(e.target.value as "PUBLIC" | "PRIVATE")}
-        className="border rounded px-2 py-1 text-xs"
-      >
+      <input value={nickname} onChange={(e) => setNickname(e.target.value)} placeholder="Nickname" className="border rounded px-2 py-1 text-xs w-28 md:w-32" />
+      <input value={vin} onChange={(e) => setVin(e.target.value)} placeholder="VIN" className="border rounded px-2 py-1 text-xs w-28 md:w-32" />
+      <input value={year} onChange={(e) => setYear(e.target.value)} placeholder="Year" className="border rounded px-2 py-1 text-xs w-20" />
+      <input value={make} onChange={(e) => setMake(e.target.value)} placeholder="Make" className="border rounded px-2 py-1 text-xs w-24" />
+      <input value={model} onChange={(e) => setModel(e.target.value)} placeholder="Model" className="border rounded px-2 py-1 text-xs w-24" />
+      <input value={trim} onChange={(e) => setTrim(e.target.value)} placeholder="Trim" className="border rounded px-2 py-1 text-xs w-24" />
+      <select value={privacy} onChange={(e) => setPrivacy(e.target.value as "PUBLIC" | "PRIVATE")} className="border rounded px-2 py-1 text-xs">
         <option value="PRIVATE">Private</option>
         <option value="PUBLIC">Public</option>
       </select>
-      <button
-        onClick={onSave}
-        disabled={isPending}
-        className="text-xs px-2 py-1 rounded border hover:bg-gray-50"
-      >
+      <button onClick={onSave} disabled={isPending} className="text-xs px-2 py-1 rounded border hover:bg-gray-50">
         {isPending ? "Saving..." : "Save"}
       </button>
-      <button
-        onClick={onDelete}
-        disabled={isPending}
-        className={`text-xs px-2 py-1 rounded border hover:bg-red-50 ${confirming ? "border-red-600 bg-red-50 text-red-700" : "text-red-600"}`}
-      >
+      <button onClick={onDelete} disabled={isPending} className={`text-xs px-2 py-1 rounded border hover:bg-red-50 ${confirming ? "border-red-600 bg-red-50 text-red-700" : "text-red-600"}`}>
         {isPending ? "Deleting..." : confirming ? "Confirm" : "Delete"}
       </button>
     </div>

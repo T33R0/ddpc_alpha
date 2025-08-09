@@ -9,6 +9,14 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  webpack: (config) => {
+    config.ignoreWarnings = config.ignoreWarnings || [];
+    config.ignoreWarnings.push({
+      module: /@supabase\/realtime-js\/dist\/module\/lib\/websocket-factory\.js/,
+      message: /Critical dependency: the request of a dependency is an expression/,
+    });
+    return config;
+  },
 };
 
 export default nextConfig;
