@@ -39,21 +39,33 @@ export async function POST(req: NextRequest) {
     };
     if (created_at) payload.created_at = created_at;
     if (ENABLE_LINK && task_id) {
-      // Validate task belongs to same garage context and caller can write
-      const { data: task } = await supabase
+      // Validate task belongs to same garage context as vehicle (type-safe, single row selects)
+      const { data: veh, error: vehErr } = await supabase
+        .from("vehicle")
+        .select("garage_id")
+        .eq("id", vehicle_id)
+        .single();
+
+      const { data: task, error: taskErr } = await supabase
         .from("work_item")
         .select("id, vehicle:vehicle_id(garage_id)")
         .eq("id", task_id)
-        .maybeSingle();
-      if (!task) return NextResponse.json({ error: "Invalid task" }, { status: 400 });
-      const { data: veh } = await supabase
-        .from("vehicle")
-        .select("id, garage_id")
-        .eq("id", vehicle_id)
-        .maybeSingle();
-      if (!veh || (veh as { garage_id: string }).garage_id !== (task as { vehicle: { garage_id: string } }).vehicle.garage_id) {
+        .single();
+
+      if (vehErr || taskErr) {
+        return NextResponse.json({ error: "Lookup failed" }, { status: 400 });
+      }
+
+      // Narrow potential array typing at compile-time (defensive for tooling that doesn't reflect .single)
+      if (!veh || Array.isArray(veh) || !task || Array.isArray(task)) {
         return NextResponse.json({ error: "Task and vehicle mismatch" }, { status: 400 });
       }
+      const vehGarage = veh.garage_id;
+      const taskGarage = task.vehicle?.garage_id;
+      if (taskGarage !== vehGarage) {
+        return NextResponse.json({ error: "Task and vehicle mismatch" }, { status: 400 });
+      }
+
       payload.task_id = task_id;
     }
 

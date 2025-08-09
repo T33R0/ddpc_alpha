@@ -1,6 +1,7 @@
 "use client";
 import { DragDropContext, Draggable, Droppable, DropResult } from "@hello-pangea/dnd";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import CompleteModal from "@/components/tasks/CompleteModal";
 import { useToast } from "@/components/ui/ToastProvider";
 
 export type WorkItem = { id: string; title: string; status: string; tags: string[] | null; due: string | null };
@@ -33,6 +34,8 @@ export default function TasksBoardClient({
   const [pendingTitleId, setPendingTitleId] = useState<string | null>(null);
   const [pendingDuePendingId, setPendingDuePendingId] = useState<string | null>(null);
   const [pendingTagsPendingId, setPendingTagsPendingId] = useState<string | null>(null);
+  const [completingId, setCompletingId] = useState<string | null>(null);
+  const enableLink = (process.env.NEXT_PUBLIC_ENABLE_TASK_EVENT_LINK || "false") === "true";
   // Sync when parent provides new items (e.g., after create)
   useEffect(() => {
     setItems(initialItems);
@@ -391,7 +394,13 @@ export default function TasksBoardClient({
                               <button
                                 key={s}
                                 className="text-xs px-2 py-0.5 border rounded hover:bg-gray-100 disabled:opacity-50"
-                                onClick={() => applyStatus(it.id, s)}
+                                onClick={() => {
+                                  if (enableLink && s === "DONE") {
+                                    setCompletingId(it.id);
+                                  } else {
+                                    applyStatus(it.id, s);
+                                  }
+                                }}
                                 disabled={!canWrite || isCardBusy(it.id)}
                                 title={!canWrite ? "Insufficient permissions" : undefined}
                               >
@@ -418,6 +427,34 @@ export default function TasksBoardClient({
           </Droppable>
         ))}
       </div>
+      )}
+      {enableLink && (
+        <CompleteModal
+          open={!!completingId}
+          defaultTitle={(items.find(i => i.id === completingId)?.title) || ""}
+          onCancel={() => setCompletingId(null)}
+          onSubmit={async ({ logEvent, title, notes, dateISO }) => {
+            const id = completingId;
+            setCompletingId(null);
+            if (!id) return;
+            const prev = items;
+            setItems(prev.map(i => (i.id === id ? { ...i, status: "DONE" } : i)));
+            try {
+              const res = await fetch(`/api/work-items/${id}/status`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ status: "DONE", logEvent, eventPayload: { title, notes, date: dateISO } }),
+              });
+              if (!res.ok) {
+                throw new Error((await res.json()).error || "Failed to complete");
+              }
+              success(`Task completed${logEvent ? ", event logged" : ""}`);
+            } catch (e) {
+              setItems(prev);
+              error(e instanceof Error ? e.message : "Failed to complete");
+            }
+          }}
+        />
       )}
     </DragDropContext>
   );

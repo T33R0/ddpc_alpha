@@ -5,7 +5,7 @@ import { useToast } from "@/components/ui/ToastProvider";
 
 const TYPES = ["SERVICE","INSTALL","INSPECT","TUNE"] as const;
 
-export type TimelineEvent = { id: string; type: typeof TYPES[number]; odometer: number | null; cost: number | null; notes: string | null; created_at: string };
+export type TimelineEvent = { id: string; type: typeof TYPES[number]; odometer: number | null; cost: number | null; notes: string | null; created_at: string; task_id?: string | null };
 
 export default function TimelineClient({ events, vehicleId, canWrite = true }: { events: TimelineEvent[]; vehicleId: string; canWrite?: boolean }) {
   const [data, setData] = useState<TimelineEvent[]>(events);
@@ -323,8 +323,11 @@ export default function TimelineClient({ events, vehicleId, canWrite = true }: {
                   ) : (
                     <div className="text-sm text-gray-900">{e.notes ?? "—"}</div>
                   )}
-                  <div className="text-xs text-gray-600">
+                  <div className="text-xs text-gray-600 flex items-center gap-2">
                     {new Date(e.created_at).toLocaleString()} • {e.odometer ? `${e.odometer} mi` : ""} {e.cost ? `• $${e.cost.toFixed(2)}` : ""}
+                    {!!e.task_id && (
+                      <span title="Created from task completion" className="inline-flex items-center text-[10px] px-1.5 py-0.5 rounded border bg-gray-50">from task</span>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
