@@ -7,10 +7,10 @@
 --     <USER_ID>      uuid of the user (auth.users.id)
 --     <GARAGE_ID>    uuid of an existing garage owned by <USER_ID>
 --
--- Optional: create a garage owned by <USER_ID>
--- insert into public.garage (id, name, owner_id)
--- values ('00000000-0000-0000-0000-000000000001', 'My Garage', '<USER_ID>')
--- on conflict (id) do nothing;
+-- Create a demo garage owned by the provided user
+insert into public.garage (id, name, owner_id)
+values ('00000000-0000-0000-0000-000000000001', 'My Garage', 'd9280e6f-f516-421f-b977-8900d53d6aa2')
+on conflict (id) do nothing;
 --
 -- Optional: add the owner as a member (if your schema has garage_member)
 -- insert into public.garage_member (garage_id, user_id, role)
@@ -21,8 +21,8 @@
 insert into public.vehicle (id, garage_id, owner_id, nickname, privacy, vin, year, make, model, trim, photo_url)
 values (
   '00000000-0000-0000-0000-0000000000aa',
-  '<GARAGE_ID>',
-  '<USER_ID>',
+  '00000000-0000-0000-0000-000000000001',
+  'd9280e6f-f516-421f-b977-8900d53d6aa2',
   'Demo Car',
   'PRIVATE',
   '1HGBH41JXMN109186',
