@@ -8,6 +8,7 @@ import VehicleActions from "@/components/VehicleActions";
 import { SummaryChipsSkeleton, SummaryChipsExtended } from "@/components/analytics/SummaryChips";
 import ErrorBoundary from "@/components/ErrorBoundary";
 // Note: Next 15 server components should use Promise-based searchParams; no headers()/window usage here.
+import VehiclesJoinedToastClient from "./VehiclesJoinedToastClient";
 
 export const dynamic = "force-dynamic";
 
@@ -153,6 +154,7 @@ export default async function VehiclesPage(
 
   return (
     <div className="space-y-8">
+      <VehiclesJoinedToastClient />
       {joined && (
         <div role="status" aria-live="polite" className="sr-only">Joined garage.</div>
       )}
