@@ -7,8 +7,25 @@ export async function DELETE(_req: Request, context: unknown) {
 
   try {
     const supabase = await getServerSupabase();
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data: before } = await supabase
+      .from("event")
+      .select("id, type, notes, created_at")
+      .eq("id", id)
+      .maybeSingle();
     const { error } = await supabase.from("event").delete().eq("id", id);
     if (error) throw error;
+    try {
+      if (user && before) {
+        await supabase.from("activity_log").insert({
+          actor_id: user.id,
+          entity_type: "event",
+          entity_id: id,
+          action: "delete",
+          diff: { before: { type: before.type, notes: before.notes, created_at: before.created_at } },
+        });
+      }
+    } catch {}
     return NextResponse.json({ ok: true });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Unknown error";
@@ -22,6 +39,7 @@ export async function PATCH(req: NextRequest, context: unknown) {
   if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 });
   try {
     const supabase = await getServerSupabase();
+    const { data: { user } } = await supabase.auth.getUser();
     const body = await req.json().catch(() => ({}));
     const notes = typeof body?.notes === "string" ? body.notes : undefined;
     const type = typeof body?.type === "string" ? body.type : undefined;
@@ -62,6 +80,17 @@ export async function PATCH(req: NextRequest, context: unknown) {
       .select("id, type, odometer, cost, notes, created_at")
       .single();
     if (error) throw error;
+    try {
+      if (user) {
+        await supabase.from("activity_log").insert({
+          actor_id: user.id,
+          entity_type: "event",
+          entity_id: id,
+          action: "update",
+          diff: { after: { type: data.type, notes: data.notes } },
+        });
+      }
+    } catch {}
     return NextResponse.json({ event: data });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Unknown error";

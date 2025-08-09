@@ -178,10 +178,11 @@ export default async function VehiclesPage() {
                   avgDaysBetweenService={metrics.get(v.id)?.avgBetween ?? null}
                 />
               )}
-              <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3">
                 <Link href={`/v/${v.id}`} className="text-blue-600 text-sm hover:underline">Public page</Link>
                 <Link href={`/vehicles/${v.id}/tasks`} className="text-blue-600 text-sm hover:underline">Tasks</Link>
                 <Link href={`/vehicles/${v.id}/timeline`} className="text-blue-600 text-sm hover:underline">Timeline</Link>
+          <Link href={`/garage/${v.id}/members`} className="text-blue-600 text-sm hover:underline">Members</Link>
                 {user && <UploadPhoto vehicleId={v.id} />}
               </div>
               {user && (

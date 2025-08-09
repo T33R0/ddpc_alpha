@@ -82,6 +82,7 @@ export async function updateVehiclePhoto(vehicleId: string, url: string) {
 
 export async function updateVehicle(formData: FormData): Promise<void> {
   const supabase = await getServerSupabase();
+  const { data: { user } } = await supabase.auth.getUser();
   const id = formData.get("id")?.toString();
   if (!id) throw new Error("Missing id");
   const nickname = formData.get("nickname")?.toString() || null;
@@ -97,6 +98,17 @@ export async function updateVehicle(formData: FormData): Promise<void> {
     .update({ nickname, privacy, vin, year, make, model, trim })
     .eq("id", id);
   if (error) throw new Error(error.message);
+  try {
+    if (user) {
+      await supabase.from("activity_log").insert({
+        actor_id: user.id,
+        entity_type: "vehicle",
+        entity_id: id,
+        action: "update",
+        diff: { after: { nickname, privacy, vin, year, make, model, trim } },
+      });
+    }
+  } catch {}
   revalidatePath("/vehicles");
 }
 

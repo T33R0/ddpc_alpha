@@ -7,6 +7,7 @@ import { getServerSupabase } from "@/lib/supabase";
 export async function POST(req: NextRequest) {
   try {
     const supabase = await getServerSupabase();
+    const { data: { user } } = await supabase.auth.getUser();
     const body = await req.json().catch(() => ({}));
     const vehicle_id = (body?.vehicle_id ?? "").toString();
     const title = (body?.title ?? "").toString().trim();
@@ -42,6 +43,20 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (error) throw error;
+    // Activity log (best-effort)
+    try {
+      if (user) {
+        await supabase.from("activity_log").insert({
+          actor_id: user.id,
+          entity_type: "event",
+          entity_id: data.id,
+          action: "create",
+          diff: { after: { notes: data.notes, type: data.type, created_at: data.created_at } },
+        });
+      }
+    } catch {
+      // ignore log errors
+    }
     return NextResponse.json({ event: data }, { status: 201 });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Unknown error";

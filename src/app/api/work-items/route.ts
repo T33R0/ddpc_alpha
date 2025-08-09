@@ -7,6 +7,7 @@ export async function POST(req: NextRequest) {
     if (!vehicle_id || !title) return NextResponse.json({ error: "Missing vehicle_id or title" }, { status: 400 });
 
     const supabase = await getServerSupabase();
+    const { data: { user } } = await supabase.auth.getUser();
     const { data, error } = await supabase
       .from("work_item")
       .insert({
@@ -19,7 +20,17 @@ export async function POST(req: NextRequest) {
       .select("id, title, status, tags, due")
       .single();
     if (error) return NextResponse.json({ error: error.message }, { status: 400 });
-
+    try {
+      if (user && data) {
+        await supabase.from("activity_log").insert({
+          actor_id: user.id,
+          entity_type: "work_item",
+          entity_id: data.id,
+          action: "create",
+          diff: { after: { title: data.title, status: data.status } },
+        });
+      }
+    } catch {}
     return NextResponse.json({ ok: true, item: data });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Unknown error";
