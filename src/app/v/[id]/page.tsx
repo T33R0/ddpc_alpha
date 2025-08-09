@@ -71,15 +71,24 @@ export default async function PublicVehiclePage({ params }: { params: Promise<{ 
   }
 
   // Fetch public-safe events via whitelist view
-  const { data: publicEvents } = await supabase
-    .from<PublicEventRow>("public_events")
+  const { data } = await supabase
+    .from("public_events")
     .select("id, vehicle_id, occurred_at, type, display_title")
     .eq("vehicle_id", id)
     .order("occurred_at", { ascending: false })
     .limit(5);
 
+  // Strongly type rows without using a generic on .from()
+  const rows: ReadonlyArray<PublicEventRow> = (data ?? []).map((r) => ({
+    id: String((r as any).id),
+    vehicle_id: String((r as any).vehicle_id),
+    occurred_at: String((r as any).occurred_at),
+    type: String((r as any).type),
+    display_title: String((r as any).display_title),
+  })) as PublicEventRow[];
+
   // Normalize to sanitizer input shape (defense-in-depth)
-  const eventsForSanitize: SanitizerInputEvent[] = (publicEvents ?? []).map((e) => ({
+  const eventsForSanitize: SanitizerInputEvent[] = rows.map((e) => ({
     id: e.id,
     notes: e.display_title ?? "",
     created_at: e.occurred_at,
