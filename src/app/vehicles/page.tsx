@@ -25,6 +25,13 @@ export default async function VehiclesPage(
     // Server-only structured log: no PII
     console.log(JSON.stringify({ level: 'info', q: 'vehicles_page_load', reqId, actor: user?.id ?? null }));
   }
+
+  // Derive filters from Next 15 Promise-based searchParams (avoid TDZ/shadowing)
+  const sp = await props.searchParams;
+  const joined = sp?.joined === "1";
+  const currentFilter: Role | "ALL" = (sp?.role as Role | undefined) ?? "ALL";
+  const query = (sp?.q as string | undefined)?.trim() ?? "";
+  const sortBy = ((sp?.sort as string | undefined) === "name" ? "name" : "updated") as "updated" | "name";
   type VehicleRow = {
     id: string;
     vin: string | null;
@@ -41,7 +48,7 @@ export default async function VehiclesPage(
   let vehiclesQuery = supabase
     .from("vehicle")
     .select("id, vin, year, make, model, trim, nickname, privacy, photo_url, garage_id");
-  if (sort === "name") {
+  if (sortBy === "name") {
     vehiclesQuery = vehiclesQuery.order("nickname", { ascending: true, nullsFirst: false });
   } else {
     vehiclesQuery = vehiclesQuery.order("created_at", { ascending: false });
@@ -148,12 +155,7 @@ export default async function VehiclesPage(
     });
   }
 
-  // Determine filters from Next 15 Promise-based searchParams
-  const sp = await props.searchParams;
-  const joined = sp?.joined === "1";
-  const currentFilter: Role | "ALL" = (sp?.role as Role | undefined) ?? "ALL";
-  const query = (sp?.q as string | undefined)?.trim() ?? "";
-  const sort = ((sp?.sort as string | undefined) === "name" ? "name" : "updated") as "updated" | "name";
+  // Filters already derived above: joined, currentFilter, query, sortBy
 
   return (
     <div className="space-y-8">

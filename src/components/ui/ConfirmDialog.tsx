@@ -9,9 +9,10 @@ type Props = {
   cancelLabel?: string;
   onConfirm: () => void;
   onCancel: () => void;
+  dataTest?: string;
 };
 
-export default function ConfirmDialog({ open, title, description, confirmLabel = "Confirm", cancelLabel = "Cancel", onConfirm, onCancel }: Props) {
+export default function ConfirmDialog({ open, title, description, confirmLabel = "Confirm", cancelLabel = "Cancel", onConfirm, onCancel, dataTest }: Props) {
   const dialogRef = useRef<HTMLDivElement | null>(null);
   const firstBtnRef = useRef<HTMLButtonElement | null>(null);
   const lastBtnRef = useRef<HTMLButtonElement | null>(null);
@@ -57,6 +58,7 @@ export default function ConfirmDialog({ open, title, description, confirmLabel =
       aria-labelledby={labeledBy}
       role="dialog"
       aria-modal="true"
+      data-test={dataTest}
     >
       <div className="absolute inset-0 bg-black/40" onClick={onCancel} />
       <div ref={dialogRef} className="relative bg-white rounded shadow-lg w-[90%] max-w-sm p-4">

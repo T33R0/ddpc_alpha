@@ -202,6 +202,7 @@ export default function TimelineClient({ events, vehicleId, canWrite = true }: {
   };
 
   return (
+    <>
     <div className="space-y-4">
       {/* Aria live region for screen readers */}
       <div aria-live="polite" className="sr-only">{liveMessage}</div>
@@ -367,21 +368,19 @@ export default function TimelineClient({ events, vehicleId, canWrite = true }: {
           </div>
         ))}
       </div>
+    </div>
+    {Boolean(confirmingDeleteId) && (
       <ConfirmDialog
-        open={!!confirmingDeleteId}
+        open={true}
         title="Delete event?"
         description="This action cannot be undone."
         confirmLabel="Delete"
         cancelLabel="Cancel"
         onCancel={() => setConfirmingDeleteId(null)}
-        onConfirm={async () => {
-          const id = confirmingDeleteId;
-          setConfirmingDeleteId(null);
-          if (!id) return;
-          await handleDelete(id);
-        }}
+        onConfirm={async () => { if (confirmingDeleteId) { const id = confirmingDeleteId; setConfirmingDeleteId(null); await handleDelete(id); } }}
+        dataTest="timeline-delete-confirm"
       />
-      )}
-    </div>
+    )}
+    </>
   );
 }
