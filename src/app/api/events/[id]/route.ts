@@ -57,7 +57,7 @@ export async function PATCH(req: NextRequest, context: unknown) {
       .select("id, created_at, created_by")
       .eq("id", id)
       .maybeSingle();
-    if (!user || existing.created_by !== user.id) {
+    if (!user || !existing || (existing as { created_by?: string | null }).created_by !== user.id) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
     if (fetchErr) throw fetchErr;

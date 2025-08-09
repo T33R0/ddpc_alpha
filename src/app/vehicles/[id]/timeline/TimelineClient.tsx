@@ -368,6 +368,7 @@ export default function TimelineClient({ events, vehicleId, canWrite = true }: {
           </div>
         ))}
       </div>
+      )}
     </div>
     {Boolean(confirmingDeleteId) && (
       <ConfirmDialog
