@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase";
 
-export async function DELETE(_req: Request, context: { params: { id: string } }) {
-  const id = context?.params?.id;
+export async function DELETE(_req: Request, context: unknown) {
+  const id = (context as { params?: { id?: string } })?.params?.id;
   if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 });
 
   try {

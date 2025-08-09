@@ -31,7 +31,7 @@ export default async function TimelinePage({ params }: { params: Promise<{ id: s
         <button type="submit" className="bg-black text-white rounded px-3 py-1">Add</button>
       </form>
 
-      <TimelineClient events={(events ?? []) as Event[]} vehicleId={vehicleId} />
+      <TimelineClient events={(events ?? []) as Event[]} />
     </div>
   );
 }
