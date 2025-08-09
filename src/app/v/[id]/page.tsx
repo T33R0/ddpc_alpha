@@ -4,9 +4,9 @@ import Image from "next/image";
 
 export const dynamic = "force-dynamic";
 
-export default async function PublicVehiclePage({ params }: { params: { id: string } }) {
+export default async function PublicVehiclePage({ params }: { params: Promise<{ id: string }> }) {
   const supabase = await getServerSupabase();
-  const id = params.id;
+  const { id } = await params;
 
   const { data: vehicle, error } = await supabase
     .from("vehicle")
