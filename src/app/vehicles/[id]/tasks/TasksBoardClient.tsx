@@ -14,6 +14,8 @@ export default function TasksBoardClient({
 }) {
   const [items, setItems] = useState<WorkItem[]>(initialItems);
   const { success, error } = useToast();
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = useState<string>("");
   // Sync when parent provides new items (e.g., after create)
   useEffect(() => {
     setItems(initialItems);
@@ -73,6 +75,40 @@ export default function TasksBoardClient({
     applyStatus(id, to);
   }, [applyStatus]);
 
+  const startEdit = useCallback((id: string, title: string) => {
+    setEditingId(id);
+    setEditingTitle(title);
+  }, []);
+
+  const cancelEdit = useCallback(() => {
+    setEditingId(null);
+    setEditingTitle("");
+  }, []);
+
+  const saveEdit = useCallback(async () => {
+    const id = editingId;
+    const title = editingTitle.trim();
+    if (!id || !title) {
+      cancelEdit();
+      return;
+    }
+    const prev = items;
+    setItems(prev.map(i => (i.id === id ? { ...i, title } : i)));
+    try {
+      await fetch(`/api/work-items/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title }),
+      }).then(r => { if (!r.ok) throw new Error("Failed to rename"); });
+      success("Task renamed");
+      cancelEdit();
+    } catch (e) {
+      setItems(prev);
+      const msg = e instanceof Error ? e.message : "Failed to rename";
+      error(msg);
+    }
+  }, [editingId, editingTitle, items]);
+
   return (
     <DragDropContext onDragEnd={onDragEnd}>
       <div className="grid md:grid-cols-4 gap-4">
@@ -91,7 +127,25 @@ export default function TasksBoardClient({
                           {...dragProvided.dragHandleProps}
                           className={`relative rounded-md border bg-white p-3 shadow hover:shadow-md transition ${snapshot.isDragging ? "z-20 ring-2 ring-blue-200" : "z-10"}`}
                         >
-                          <div className="text-sm font-semibold text-gray-900">{it.title}</div>
+                          <div className="text-sm font-semibold text-gray-900">
+                            {editingId === it.id ? (
+                              <input
+                                autoFocus
+                                value={editingTitle}
+                                onChange={(e) => setEditingTitle(e.target.value)}
+                                onBlur={saveEdit}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") saveEdit();
+                                  if (e.key === "Escape") cancelEdit();
+                                }}
+                                className="w-full border rounded px-2 py-1 text-sm"
+                              />
+                            ) : (
+                              <button className="text-left w-full hover:underline" onClick={() => startEdit(it.id, it.title)}>
+                                {it.title}
+                              </button>
+                            )}
+                          </div>
                           <div className="text-xs text-gray-600">{(it.tags ?? []).join(", ")}</div>
                           {it.due && (
                             <div className="text-xs text-gray-600">Due: {new Date(it.due).toLocaleDateString()}</div>

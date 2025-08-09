@@ -17,3 +17,21 @@ export async function DELETE(_req: NextRequest, context: RouteContext) {
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
+export async function PATCH(req: NextRequest, context: RouteContext) {
+  try {
+    const { id } = await context.params;
+    const body = await req.json();
+    const title = body?.title as string | undefined;
+    if (!id || !title) return NextResponse.json({ error: "Missing id or title" }, { status: 400 });
+
+    const supabase = await getServerSupabase();
+    const { error } = await supabase.from("work_item").update({ title }).eq("id", id);
+    if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+
+    return NextResponse.json({ ok: true });
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Unknown error";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
+}
+ 
