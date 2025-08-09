@@ -16,7 +16,7 @@ export default function AuthButtons() {
     return () => {
       sub.data.subscription.unsubscribe();
     };
-  }, []);
+  }, [supabase]);
 
   const signInWithEmail = async (e: React.FormEvent) => {
     e.preventDefault();

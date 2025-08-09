@@ -30,7 +30,7 @@ export default function TasksClient({ vehicleId, initialItems }: { vehicleId: st
       setTags("");
       setDue("");
       setStatus("BACKLOG");
-    } catch (_e) {
+    } catch {
       // Optionally surface a toast via useToast()
     } finally {
       setSubmitting(false);

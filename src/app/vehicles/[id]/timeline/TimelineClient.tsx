@@ -5,7 +5,7 @@ const TYPES = ["SERVICE","INSTALL","INSPECT","TUNE"] as const;
 
 export type TimelineEvent = { id: string; type: typeof TYPES[number]; odometer: number | null; cost: number | null; notes: string | null; created_at: string };
 
-export default function TimelineClient({ events, vehicleId }: { events: TimelineEvent[]; vehicleId: string }) {
+export default function TimelineClient({ events, vehicleId: _vehicleId }: { events: TimelineEvent[]; vehicleId: string }) {
   const [data, setData] = useState<TimelineEvent[]>(events);
   const [selected, setSelected] = useState<Set<TimelineEvent["type"]>>(new Set());
   const [from, setFrom] = useState<string>("");
@@ -54,7 +54,7 @@ export default function TimelineClient({ events, vehicleId }: { events: Timeline
       const res = await fetch(`/api/events/${id}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Failed to delete");
       setData(prev => prev.filter(e => e.id !== id));
-    } catch (e) {
+    } catch (_err) {
       // Optionally surface a toast here
     }
   };

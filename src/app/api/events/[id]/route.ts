@@ -10,7 +10,8 @@ export async function DELETE(_req: Request, context: { params: { id: string } })
     const { error } = await supabase.from("event").delete().eq("id", id);
     if (error) throw error;
     return NextResponse.json({ ok: true });
-  } catch (e: any) {
-    return NextResponse.json({ error: e?.message || "Unknown error" }, { status: 500 });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

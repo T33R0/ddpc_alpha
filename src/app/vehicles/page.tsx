@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { getServerSupabase } from "@/lib/supabase";
 import { createVehicle } from "./actions";
 import UploadPhoto from "@/components/UploadPhoto";
@@ -9,7 +10,7 @@ export const dynamic = "force-dynamic";
 export default async function VehiclesPage() {
   const supabase = await getServerSupabase();
   const { data: { user } } = await supabase.auth.getUser();
-  const { data: vehicles, error } = await supabase
+  const { data: vehicles } = await supabase
     .from("vehicle")
     .select("id, vin, year, make, model, trim, nickname, privacy, photo_url")
     .order("created_at", { ascending: false });
@@ -43,7 +44,7 @@ export default async function VehiclesPage() {
         {(vehicles ?? []).map((v) => (
           <div key={v.id} className="border rounded overflow-hidden">
             {v.photo_url ? (
-              <img src={v.photo_url} alt={v.nickname ?? `${v.year ?? ''} ${v.make} ${v.model}`} className="w-full h-40 object-cover" />
+              <Image src={v.photo_url} alt={v.nickname ?? `${v.year ?? ''} ${v.make} ${v.model}`} width={640} height={300} className="w-full h-40 object-cover" />
             ) : (
               <div className="w-full h-40 bg-gray-100 flex items-center justify-center text-gray-400">No photo</div>
             )}

@@ -17,7 +17,7 @@ async function ensureGarageId(): Promise<string> {
       .limit(1)
       .maybeSingle();
     existingId = existing?.id ?? null;
-  } catch (_) {
+  } catch {
     // ignore select errors and attempt to create
   }
   if (existingId) return existingId;
@@ -43,7 +43,7 @@ async function ensureGarageId(): Promise<string> {
   // Add owner as member (ignore errors if already exists)
   try {
     await supabase.from("garage_member").insert({ garage_id: created.id, user_id: user.id, role: "OWNER" });
-  } catch (_e) {
+  } catch {
     // ignore
   }
   return created.id as string;

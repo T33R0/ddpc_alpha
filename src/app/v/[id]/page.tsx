@@ -1,5 +1,6 @@
 import { getServerSupabase } from "@/lib/supabase";
 import Link from "next/link";
+import Image from "next/image";
 
 export const dynamic = "force-dynamic";
 
@@ -36,7 +37,7 @@ export default async function PublicVehiclePage({ params }: { params: { id: stri
         <Link className="text-sm text-blue-600 hover:underline" href="/vehicles">Back to vehicles</Link>
       </div>
       {vehicle.photo_url ? (
-        <img src={vehicle.photo_url} alt="Vehicle photo" className="w-full max-h-[420px] object-cover rounded" />
+        <Image src={vehicle.photo_url} alt="Vehicle photo" width={1280} height={720} className="w-full h-auto max-h-[420px] object-cover rounded" />
       ) : (
         <div className="w-full h-60 bg-gray-100 rounded flex items-center justify-center text-gray-400">No photo</div>
       )}
