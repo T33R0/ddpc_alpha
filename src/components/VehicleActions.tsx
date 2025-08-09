@@ -26,6 +26,26 @@ export default function VehicleActions({ id, initialNickname, initialPrivacy, in
   const { success, error } = useToast();
   const [confirming, setConfirming] = useState(false);
   const confirmTimerRef = useRef<NodeJS.Timeout | null>(null);
+  // Baseline values to determine dirty state and reset after save
+  const [base, setBase] = useState({
+    nickname: initialNickname ?? "",
+    privacy: initialPrivacy as "PUBLIC" | "PRIVATE",
+    vin: initialVin ?? "",
+    year: initialYear ? String(initialYear) : "",
+    make: initialMake ?? "",
+    model: initialModel ?? "",
+    trim: initialTrim ?? "",
+  });
+  const isDirty =
+    nickname !== base.nickname ||
+    privacy !== base.privacy ||
+    vin !== base.vin ||
+    year !== base.year ||
+    make !== base.make ||
+    model !== base.model ||
+    trim !== base.trim;
+  const [savedTick, setSavedTick] = useState(false);
+  const savedTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const onSave = () => {
     startTransition(async () => {
@@ -41,6 +61,11 @@ export default function VehicleActions({ id, initialNickname, initialPrivacy, in
         if (trim) fd.append("trim", trim);
         await updateVehicle(fd);
         success("Vehicle updated");
+        // Reset baseline and show saved tick
+        setBase({ nickname, privacy, vin, year, make, model, trim });
+        setSavedTick(true);
+        if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
+        savedTimerRef.current = setTimeout(() => setSavedTick(false), 1500);
       } catch (e) {
         const message = e instanceof Error ? e.message : "Failed to update vehicle";
         error(message);
@@ -74,6 +99,7 @@ export default function VehicleActions({ id, initialNickname, initialPrivacy, in
   useEffect(() => {
     return () => {
       if (confirmTimerRef.current) clearTimeout(confirmTimerRef.current);
+      if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
     };
   }, []);
 
@@ -89,9 +115,12 @@ export default function VehicleActions({ id, initialNickname, initialPrivacy, in
         <option value="PRIVATE">Private</option>
         <option value="PUBLIC">Public</option>
       </select>
-      <button onClick={onSave} disabled={isPending} className="text-xs px-2 py-1 rounded border hover:bg-gray-50">
-        {isPending ? "Saving..." : "Save"}
-      </button>
+      <div className="flex items-center gap-2">
+        <button onClick={onSave} disabled={isPending || !isDirty} className={`text-xs px-2 py-1 rounded border ${isPending || !isDirty ? "opacity-50 cursor-not-allowed" : "hover:bg-gray-50"}`}>
+          {isPending ? "Saving..." : "Save"}
+        </button>
+        {savedTick && <span className="text-xs text-green-600">Saved ✓</span>}
+      </div>
       <button onClick={onDelete} disabled={isPending} className={`text-xs px-2 py-1 rounded border hover:bg-red-50 ${confirming ? "border-red-600 bg-red-50 text-red-700" : "text-red-600"}`}>
         {isPending ? "Deleting..." : confirming ? "Confirm" : "Delete"}
       </button>
