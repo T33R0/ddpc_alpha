@@ -1,7 +1,13 @@
 import { getServerSupabase } from "@/lib/supabase";
 
-export type ActivityEntityType = "vehicle" | "event" | "work_item";
-export type ActivityAction = "create" | "update" | "delete";
+export type ActivityEntityType = "vehicle" | "event" | "work_item" | "garage";
+export type ActivityAction =
+  | "create"
+  | "update"
+  | "delete"
+  | "invite_created"
+  | "invite_revoked"
+  | "member_joined_from_invite";
 
 export async function logActivity(input: {
   actorId: string;

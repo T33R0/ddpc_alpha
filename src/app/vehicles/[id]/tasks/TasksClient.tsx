@@ -2,6 +2,8 @@
 import { useState } from "react";
 import TasksBoardClient, { WorkItem as ClientWorkItem } from "./TasksBoardClient";
 import { useToast } from "@/components/ui/ToastProvider";
+import TemplateQuickAdd from "@/components/tasks/TemplateQuickAdd";
+import { GLOBAL_TEMPLATES, TaskTemplate } from "@/components/tasks/templates";
 
 const STATUSES = ["BACKLOG","PLANNED","IN_PROGRESS","DONE"] as const;
 
@@ -13,6 +15,19 @@ export default function TasksClient({ vehicleId, initialItems, canWrite = true }
   const [due, setDue] = useState("");
   const [items, setItems] = useState<ClientWorkItem[]>(initialItems);
   const [submitting, setSubmitting] = useState(false);
+  const [lastTemplateId, setLastTemplateId] = useState<string | null>(null);
+
+  const applyTemplate = (t: TaskTemplate) => {
+    setTitle(t.title);
+    setTags((t.default_tags ?? []).join(", "));
+    if (t.suggested_due_interval_days && t.suggested_due_interval_days > 0) {
+      const now = new Date();
+      const ms = t.suggested_due_interval_days * 24 * 60 * 60 * 1000;
+      const dueDate = new Date(now.getTime() + ms).toISOString().slice(0, 10);
+      setDue(dueDate);
+    }
+    setLastTemplateId(t.id);
+  };
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,6 +49,8 @@ export default function TasksClient({ vehicleId, initialItems, canWrite = true }
       setDue("");
       setStatus("BACKLOG");
       success("Task created");
+      // Best-effort activity log (server may ignore).
+      console.info(JSON.stringify({ level: "info", q: "work_item_created_from_template", vehicleId, itemId: item.id, templateId: lastTemplateId }));
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Failed to create";
       error(msg);
@@ -47,6 +64,13 @@ export default function TasksClient({ vehicleId, initialItems, canWrite = true }
       <h1 className="text-2xl font-semibold">Tasks</h1>
 
       <form onSubmit={onSubmit} className="flex flex-wrap items-end gap-3 border rounded p-4 bg-white shadow-sm">
+        {canWrite && (
+          <TemplateQuickAdd
+            templates={GLOBAL_TEMPLATES}
+            canWrite={canWrite}
+            onChoose={applyTemplate}
+          />
+        )}
         <div className="flex flex-col">
           <label className="text-xs text-gray-600">Title</label>
           <input value={title} onChange={(e) => setTitle(e.target.value)} required className="border rounded px-2 py-1 w-64 disabled:opacity-50" disabled={!canWrite} title={!canWrite ? "Insufficient permissions" : undefined} />

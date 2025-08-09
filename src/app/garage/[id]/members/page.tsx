@@ -131,6 +131,9 @@ export default async function MembersPage({ params }: { params: Promise<{ id: st
     <div className="space-y-6 p-4">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Members</h1>
+        {canManage && (
+          <a href={`/garage/${garageId}/invites`} className="text-sm text-blue-600 hover:underline">Invites</a>
+        )}
       </div>
       <div className="border rounded bg-white">
         <table className="w-full text-sm">

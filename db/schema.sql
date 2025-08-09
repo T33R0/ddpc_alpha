@@ -77,6 +77,18 @@ alter table vehicle enable row level security;
 alter table work_item enable row level security;
 alter table event enable row level security;
 
+-- Invites
+create table if not exists garage_invite (
+  id uuid primary key default gen_random_uuid(),
+  garage_id uuid not null references garage(id) on delete cascade,
+  role text check (role in ('MANAGER','CONTRIBUTOR','VIEWER')) not null,
+  token text unique not null,
+  expires_at timestamptz not null default (now() + interval '7 days'),
+  created_by uuid not null references auth.users(id),
+  created_at timestamptz not null default now()
+);
+alter table garage_invite enable row level security;
+
 -- Policies (simplified):
 -- A user can see garages they own or are a member of
 drop policy if exists garage_select on garage;
@@ -86,6 +98,91 @@ for select using (
     select garage_id from garage_member gm where gm.user_id = auth.uid()
   )
 );
+
+-- Invite RLS: OWNER or MANAGER on the garage
+drop policy if exists garage_invite_select on garage_invite;
+create policy garage_invite_select on garage_invite
+for select using (
+  exists (
+    select 1 from garage g where g.id = garage_id and (
+      g.owner_id = auth.uid() or exists (
+        select 1 from garage_member gm where gm.garage_id = g.id and gm.user_id = auth.uid() and gm.role in ('OWNER','MANAGER')
+      )
+    )
+  )
+);
+
+drop policy if exists garage_invite_insert on garage_invite;
+create policy garage_invite_insert on garage_invite
+for insert with check (
+  exists (
+    select 1 from garage g where g.id = garage_invite.garage_id and (
+      g.owner_id = auth.uid() or exists (
+        select 1 from garage_member gm where gm.garage_id = g.id and gm.user_id = auth.uid() and gm.role in ('OWNER','MANAGER')
+      )
+    )
+  )
+);
+
+drop policy if exists garage_invite_delete on garage_invite;
+create policy garage_invite_delete on garage_invite
+for delete using (
+  exists (
+    select 1 from garage g where g.id = garage_id and (
+      g.owner_id = auth.uid() or exists (
+        select 1 from garage_member gm where gm.garage_id = g.id and gm.user_id = auth.uid() and gm.role in ('OWNER','MANAGER')
+      )
+    )
+  )
+);
+
+-- Helper: validate invite by token (security definer bypasses RLS, returns minimal fields)
+create or replace function validate_garage_invite(p_token text)
+returns table(garage_id uuid, role text, expires_at timestamptz) language sql security definer as $$
+  select gi.garage_id, gi.role, gi.expires_at
+  from garage_invite gi
+  where gi.token = p_token
+  limit 1;
+$$;
+comment on function validate_garage_invite(text) is 'Returns minimal invite info for a token (bypasses RLS)';
+
+-- Accept invite: upsert membership with role upgrade when applicable
+create or replace function accept_garage_invite(p_token text)
+returns table(garage_id uuid, role text) language plpgsql security definer as $$
+declare
+  v_garage uuid;
+  v_role text;
+  v_expires timestamptz;
+  current_role text;
+begin
+  select gi.garage_id, gi.role, gi.expires_at into v_garage, v_role, v_expires
+  from garage_invite gi
+  where gi.token = p_token;
+  if v_garage is null then
+    raise exception 'invalid_token';
+  end if;
+  if v_expires < now() then
+    raise exception 'expired_token';
+  end if;
+  -- Determine existing role
+  select gm.role into current_role from garage_member gm where gm.garage_id = v_garage and gm.user_id = auth.uid();
+  if current_role is null then
+    insert into garage_member (garage_id, user_id, role) values (v_garage, auth.uid(), v_role);
+  else
+    -- Upgrade only if invite role is higher in precedence: OWNER > MANAGER > CONTRIBUTOR > VIEWER
+    with ranks as (
+      select 'OWNER' as r, 4 union all select 'MANAGER', 3 union all select 'CONTRIBUTOR', 2 union all select 'VIEWER', 1
+    )
+    update garage_member gm
+    set role = v_role
+    from ranks r_new, ranks r_cur
+    where gm.garage_id = v_garage and gm.user_id = auth.uid()
+      and r_new.r = v_role and r_cur.r = current_role and r_new.r > r_cur.r;
+  end if;
+  return query select v_garage, v_role;
+end;
+$$;
+comment on function accept_garage_invite(text) is 'Accepts an invite token for auth.uid(), inserting/upgrading membership';
 
 -- Owner can insert garages
 drop policy if exists garage_insert on garage;
