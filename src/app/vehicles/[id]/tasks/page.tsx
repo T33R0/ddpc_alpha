@@ -2,6 +2,7 @@ import { getServerSupabase } from "@/lib/supabase";
 import PrivacyBadge from "@/components/PrivacyBadge";
 import { WorkItem as ClientWorkItem } from "./TasksBoardClient";
 import TasksClient from "./TasksClient";
+import Link from "next/link";
 
 export default async function TasksPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: vehicleId } = await params;
@@ -27,8 +28,8 @@ export default async function TasksPage({ params }: { params: Promise<{ id: stri
           <PrivacyBadge value={vehicle?.privacy} />
         </div>
         <div className="flex items-center gap-3">
-          {vehicle?.id && <a href={`/v/${vehicle.id}`} className="text-sm text-blue-600 hover:underline">Public page</a>}
-          <a href="/vehicles" className="text-sm text-blue-600 hover:underline">Back to vehicles</a>
+          {vehicle?.id && <Link href={`/v/${vehicle.id}`} className="text-sm text-blue-600 hover:underline">Public page</Link>}
+          <Link href="/vehicles" className="text-sm text-blue-600 hover:underline">Back to vehicles</Link>
         </div>
       </div>
 

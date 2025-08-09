@@ -28,8 +28,11 @@ export default async function VehicleOverviewPage({ params }: { params: Promise<
     );
   }
 
-  const vehicleIds = [vehicleId];
+  const vehicleIds: string[] = [vehicleId];
   const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  type WorkItemRow = { id: string; vehicle_id: string; status: "BACKLOG" | "PLANNED" | "IN_PROGRESS" | "DONE" | string };
+  type ServiceEventRow = { vehicle_id: string; created_at: string; type: string };
+  type RecentEventRow = { id: string; vehicle_id: string; created_at: string };
   const [workItemsRes, lastServicesRes, recentEventsRes] = await Promise.all([
     supabase
       .from("work_item")
@@ -49,9 +52,9 @@ export default async function VehicleOverviewPage({ params }: { params: Promise<
       .gte("created_at", thirtyDaysAgo),
   ]);
 
-  const upcoming = (workItemsRes.data ?? []).length;
-  const lastService = (lastServicesRes.data ?? []).find((e: any) => e.vehicle_id === vehicleId)?.created_at ?? null;
-  const events30 = (recentEventsRes.data ?? []).length;
+  const upcoming = ((workItemsRes.data ?? []) as WorkItemRow[]).length;
+  const lastService = ((lastServicesRes.data ?? []) as ServiceEventRow[]).find((e) => e.vehicle_id === vehicleId)?.created_at ?? null;
+  const events30 = ((recentEventsRes.data ?? []) as RecentEventRow[]).length;
 
   return (
     <div className="space-y-6">

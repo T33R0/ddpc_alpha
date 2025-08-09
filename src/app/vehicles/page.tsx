@@ -12,6 +12,18 @@ export const dynamic = "force-dynamic";
 export default async function VehiclesPage() {
   const supabase = await getServerSupabase();
   const { data: { user } } = await supabase.auth.getUser();
+  type VehicleRow = {
+    id: string;
+    vin: string | null;
+    year: number | null;
+    make: string | null;
+    model: string | null;
+    trim: string | null;
+    nickname: string | null;
+    privacy: "PUBLIC" | "PRIVATE";
+    photo_url: string | null;
+  };
+
   const { data: vehicles } = await supabase
     .from("vehicle")
     .select("id, vin, year, make, model, trim, nickname, privacy, photo_url")
@@ -20,8 +32,12 @@ export default async function VehiclesPage() {
   // Analytics v0 aggregates (batched; no N+1)
   const metrics = new Map<string, { upcoming: number; lastService: string | null; events30: number }>();
   if (vehicles && vehicles.length > 0) {
-    const vehicleIds = vehicles.map((v) => v.id);
+    const vehicleIds = (vehicles as VehicleRow[]).map((v) => v.id);
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+
+    type WorkItemRow = { id: string; vehicle_id: string; status: "BACKLOG" | "PLANNED" | "IN_PROGRESS" | "DONE" | string };
+    type ServiceEventRow = { vehicle_id: string; created_at: string; type: string };
+    type RecentEventRow = { id: string; vehicle_id: string; created_at: string };
 
     const [workItemsRes, lastServicesRes, recentEventsRes] = await Promise.all([
       supabase
@@ -43,20 +59,20 @@ export default async function VehiclesPage() {
     ]);
 
     const upcomingByVehicle = new Map<string, number>();
-    (workItemsRes.data ?? []).forEach((wi: any) => {
+    ((workItemsRes.data ?? []) as WorkItemRow[]).forEach((wi) => {
       upcomingByVehicle.set(wi.vehicle_id, (upcomingByVehicle.get(wi.vehicle_id) ?? 0) + 1);
     });
 
     const lastServiceByVehicle = new Map<string, string | null>();
     // Iterate in order (desc) and set first occurrence
-    (lastServicesRes.data ?? []).forEach((ev: any) => {
+    ((lastServicesRes.data ?? []) as ServiceEventRow[]).forEach((ev) => {
       if (!lastServiceByVehicle.has(ev.vehicle_id)) {
         lastServiceByVehicle.set(ev.vehicle_id, ev.created_at as string);
       }
     });
 
     const events30ByVehicle = new Map<string, number>();
-    (recentEventsRes.data ?? []).forEach((ev: any) => {
+    ((recentEventsRes.data ?? []) as RecentEventRow[]).forEach((ev) => {
       events30ByVehicle.set(ev.vehicle_id, (events30ByVehicle.get(ev.vehicle_id) ?? 0) + 1);
     });
 

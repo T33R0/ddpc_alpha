@@ -1,12 +1,12 @@
 import { getServerSupabase } from "@/lib/supabase";
 import PrivacyBadge from "@/components/PrivacyBadge";
 import TimelineClient from "./TimelineClient";
+import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
-const TYPES = ["SERVICE","INSTALL","INSPECT","TUNE"] as const;
-
-type Event = { id: string; type: typeof TYPES[number]; odometer: number | null; cost: number | null; notes: string | null; created_at: string };
+type EventType = "SERVICE" | "INSTALL" | "INSPECT" | "TUNE";
+type Event = { id: string; type: EventType; odometer: number | null; cost: number | null; notes: string | null; created_at: string };
 
 export default async function TimelinePage({ params }: { params: Promise<{ id: string }> }) {
   const { id: vehicleId } = await params;
@@ -30,8 +30,8 @@ export default async function TimelinePage({ params }: { params: Promise<{ id: s
           <PrivacyBadge value={vehicle?.privacy} />
         </div>
         <div className="flex items-center gap-3">
-          {vehicle?.id && <a href={`/v/${vehicle.id}`} className="text-sm text-blue-600 hover:underline">Public page</a>}
-          <a href="/vehicles" className="text-sm text-blue-600 hover:underline">Back to vehicles</a>
+          {vehicle?.id && <Link href={`/v/${vehicle.id}`} className="text-sm text-blue-600 hover:underline">Public page</Link>}
+          <Link href="/vehicles" className="text-sm text-blue-600 hover:underline">Back to vehicles</Link>
         </div>
       </div>
 
