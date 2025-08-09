@@ -47,6 +47,26 @@ export default function VehicleActions({ id, initialNickname, initialPrivacy, in
   const [savedTick, setSavedTick] = useState(false);
   const savedTimerRef = useRef<NodeJS.Timeout | null>(null);
 
+  const revertEdits = () => {
+    setNickname(base.nickname);
+    setPrivacy(base.privacy);
+    setVin(base.vin);
+    setYear(base.year);
+    setMake(base.make);
+    setModel(base.model);
+    setTrim(base.trim);
+  };
+
+  const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (isDirty && !isPending) onSave();
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      revertEdits();
+    }
+  };
+
   const onSave = () => {
     startTransition(async () => {
       try {
@@ -105,12 +125,12 @@ export default function VehicleActions({ id, initialNickname, initialPrivacy, in
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <input value={nickname} onChange={(e) => setNickname(e.target.value)} placeholder="Nickname" className="border rounded px-2 py-1 text-xs w-28 md:w-32" />
-      <input value={vin} onChange={(e) => setVin(e.target.value)} placeholder="VIN" className="border rounded px-2 py-1 text-xs w-28 md:w-32" />
-      <input value={year} onChange={(e) => setYear(e.target.value)} placeholder="Year" className="border rounded px-2 py-1 text-xs w-20" />
-      <input value={make} onChange={(e) => setMake(e.target.value)} placeholder="Make" className="border rounded px-2 py-1 text-xs w-24" />
-      <input value={model} onChange={(e) => setModel(e.target.value)} placeholder="Model" className="border rounded px-2 py-1 text-xs w-24" />
-      <input value={trim} onChange={(e) => setTrim(e.target.value)} placeholder="Trim" className="border rounded px-2 py-1 text-xs w-24" />
+      <input value={nickname} onChange={(e) => setNickname(e.target.value)} onKeyDown={onKeyDown} placeholder="Nickname" className="border rounded px-2 py-1 text-xs w-28 md:w-32" />
+      <input value={vin} onChange={(e) => setVin(e.target.value)} onKeyDown={onKeyDown} placeholder="VIN" className="border rounded px-2 py-1 text-xs w-28 md:w-32" />
+      <input value={year} onChange={(e) => setYear(e.target.value)} onKeyDown={onKeyDown} placeholder="Year" className="border rounded px-2 py-1 text-xs w-20" />
+      <input value={make} onChange={(e) => setMake(e.target.value)} onKeyDown={onKeyDown} placeholder="Make" className="border rounded px-2 py-1 text-xs w-24" />
+      <input value={model} onChange={(e) => setModel(e.target.value)} onKeyDown={onKeyDown} placeholder="Model" className="border rounded px-2 py-1 text-xs w-24" />
+      <input value={trim} onChange={(e) => setTrim(e.target.value)} onKeyDown={onKeyDown} placeholder="Trim" className="border rounded px-2 py-1 text-xs w-24" />
       <select value={privacy} onChange={(e) => setPrivacy(e.target.value as "PUBLIC" | "PRIVATE")} className="border rounded px-2 py-1 text-xs">
         <option value="PRIVATE">Private</option>
         <option value="PUBLIC">Public</option>
@@ -120,6 +140,9 @@ export default function VehicleActions({ id, initialNickname, initialPrivacy, in
           {isPending ? "Saving..." : "Save"}
         </button>
         {savedTick && <span className="text-xs text-green-600">Saved ✓</span>}
+        <button type="button" onClick={revertEdits} disabled={isPending || !isDirty} className={`text-xs px-2 py-1 rounded border ${isPending || !isDirty ? "opacity-50 cursor-not-allowed" : "hover:bg-gray-50"}`}>
+          Revert (Esc)
+        </button>
       </div>
       <button onClick={onDelete} disabled={isPending} className={`text-xs px-2 py-1 rounded border hover:bg-red-50 ${confirming ? "border-red-600 bg-red-50 text-red-700" : "text-red-600"}`}>
         {isPending ? "Deleting..." : confirming ? "Confirm" : "Delete"}

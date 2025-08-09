@@ -59,6 +59,15 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=
 - Supabase Storage:
   - Create a public bucket, e.g., `vehicle-media` (if images are used)
 
+### Required Environment Variables
+
+Set these in `.env.local` (local) and in Vercel Project Settings (Preview/Prod):
+
+```
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+```
+
 ## Run locally
 
 ```
@@ -84,6 +93,66 @@ npm run dev
    - Vehicles CRUD and image upload
    - Tasks board: create with tags/due, drag-and-drop, delete
    - Timeline: create, filter, group by month, delete
+
+## Seed the Database
+
+After authenticating at least once (so your user exists), run the seed to create a demo garage, vehicle, and tasks.
+
+1) Open Supabase SQL Editor.
+2) Paste and run the contents of `db/schema.sql` to ensure tables and policies are present.
+3) Paste and run `supabase/seed.sql` (it uses the current user's UID for ownership).
+
+Re-run the seed whenever needed to reset demo content.
+
+## Row-Level Security (RLS) Summary
+
+- Owner/members can read/write vehicles, tasks, and events via membership checks.
+- Public vehicle page: anyone can read vehicles with `privacy = 'PUBLIC'`.
+- Events: a dedicated SELECT policy allows reading events of PUBLIC vehicles; the app sanitizes the projection (no cost/odometer/invoices on public pages).
+- Storage: public bucket `vehicle-media` for vehicle photos with public read; authenticated users can manage their own uploads.
+
+Policies are defined in `db/schema.sql`. Apply them via the Supabase SQL Editor.
+
+## Storage Bucket Setup + Policy SQL
+
+Create a public bucket and apply policies (if not using the defaults above):
+
+```sql
+insert into storage.buckets (id, name, public)
+values ('vehicle-media', 'vehicle-media', true)
+on conflict (id) do nothing;
+
+-- Public read
+create policy if not exists "public read vehicle-media"
+on storage.objects
+for select
+using (
+  bucket_id = 'vehicle-media'
+);
+
+-- Authenticated insert/update/delete own
+create policy if not exists "auth insert own vehicle-media" on storage.objects for insert to authenticated with check (
+  bucket_id = 'vehicle-media' and owner = auth.uid()
+);
+create policy if not exists "auth update own vehicle-media" on storage.objects for update to authenticated using (
+  bucket_id = 'vehicle-media' and owner = auth.uid()
+) with check (
+  bucket_id = 'vehicle-media' and owner = auth.uid()
+);
+create policy if not exists "auth delete own vehicle-media" on storage.objects for delete to authenticated using (
+  bucket_id = 'vehicle-media' and owner = auth.uid()
+);
+```
+
+## Screenshots (Happy Path)
+
+Add or update screenshots under `media/screenshots/` and reference them here:
+
+- Sign-in view
+- Vehicles list with edit controls
+- Tasks Kanban board
+- Timeline with quick-add and filters
+- Public vehicle page
 
 ## Storage Setup (images)
 
