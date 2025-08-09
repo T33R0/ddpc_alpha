@@ -36,12 +36,17 @@ export default async function Image({ params }: { params: Promise<{ id: string }
         }}
       >
         {photo ? (
-          <img
-            src={photo}
-            alt=""
-            width={1200}
-            height={630}
-            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.7 }}
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              width: "100%",
+              height: "100%",
+              backgroundImage: `url(${photo})`,
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+              opacity: 0.7,
+            }}
           />
         ) : null}
         <div

@@ -7,6 +7,22 @@ import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
 
+// Public view row and mapped event types (no any)
+type PublicEventRow = {
+  id: string;
+  vehicle_id: string;
+  occurred_at: string;
+  type: "SERVICE" | "INSTALL" | "INSPECT" | "TUNE" | string;
+  display_title: string;
+};
+
+type SanitizerInputEvent = {
+  id: string;
+  created_at: string;
+  notes: string;
+  type: PublicEventRow["type"];
+};
+
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const supabase = await getServerSupabase();
   const { id } = await params;
@@ -56,19 +72,18 @@ export default async function PublicVehiclePage({ params }: { params: Promise<{ 
 
   // Fetch public-safe events via whitelist view
   const { data: publicEvents } = await supabase
-    .from("public_events")
+    .from<PublicEventRow>("public_events")
     .select("id, vehicle_id, occurred_at, type, display_title")
     .eq("vehicle_id", id)
     .order("occurred_at", { ascending: false })
     .limit(5);
 
   // Normalize to sanitizer input shape (defense-in-depth)
-  const eventsForSanitize = (publicEvents ?? []).map((e) => ({
-    id: e.id as string,
-    // map display_title into the sanitizer's expected 'notes' field
-    notes: (e as any).display_title ?? "",
-    created_at: (e as any).occurred_at as string,
-    type: (e as any).type as string,
+  const eventsForSanitize: SanitizerInputEvent[] = (publicEvents ?? []).map((e) => ({
+    id: e.id,
+    notes: e.display_title ?? "",
+    created_at: e.occurred_at,
+    type: e.type,
   }));
 
   const safe = sanitizeVehicleForPublic(vehicle, eventsForSanitize);

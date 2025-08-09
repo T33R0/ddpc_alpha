@@ -23,7 +23,6 @@ class Boundary extends React.Component<Props, State> {
   componentDidCatch(error: Error, info: React.ErrorInfo) {
     // Intentionally no toast here to avoid double messaging; callers may toast.
     if (process.env.NODE_ENV !== "production") {
-      // eslint-disable-next-line no-console
       console.error("ErrorBoundary caught: ", error, info);
     }
   }

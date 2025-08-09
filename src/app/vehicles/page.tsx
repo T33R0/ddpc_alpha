@@ -5,7 +5,7 @@ import { getServerSupabase } from "@/lib/supabase";
 import { createVehicle } from "./actions";
 import UploadPhoto from "@/components/UploadPhoto";
 import VehicleActions from "@/components/VehicleActions";
-import SummaryChips, { SummaryChipsSkeleton, SummaryChipsExtended } from "@/components/analytics/SummaryChips";
+import { SummaryChipsSkeleton, SummaryChipsExtended } from "@/components/analytics/SummaryChips";
 import ErrorBoundary from "@/components/ErrorBoundary";
 
 export const dynamic = "force-dynamic";
