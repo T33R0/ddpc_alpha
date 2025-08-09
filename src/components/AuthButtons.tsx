@@ -1,9 +1,11 @@
 "use client";
 import { getBrowserSupabase } from "@/lib/supabase-browser";
 import { useEffect, useState } from "react";
+import { useToast } from "@/components/ui/ToastProvider";
 
 export default function AuthButtons() {
   const supabase = getBrowserSupabase();
+  const { success, error: notifyError } = useToast();
   const [emailSent, setEmailSent] = useState<string | null>(null);
   const [email, setEmail] = useState("");
   const [userEmail, setUserEmail] = useState<string | null>(null);
@@ -21,21 +23,25 @@ export default function AuthButtons() {
   const signInWithEmail = async (e: React.FormEvent) => {
     e.preventDefault();
     setEmailSent(null);
-    const { error } = await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: window.location.origin } });
-    if (error) {
-      alert(error.message);
-    } else {
-      setEmailSent(email);
+    const { error: err } = await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: window.location.origin } });
+    if (err) {
+      notifyError(err.message);
+      return;
     }
+    setEmailSent(email);
+    success(`Magic link sent to ${email}`);
   };
 
   const signInWithGoogle = async () => {
-    const { error } = await supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: window.location.origin } });
-    if (error) alert(error.message);
+    const { error: err } = await supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: window.location.origin } });
+    if (err) {
+      notifyError(err.message);
+    }
   };
 
   const signOut = async () => {
     await supabase.auth.signOut();
+    success("Signed out");
   };
 
   if (userEmail) {
