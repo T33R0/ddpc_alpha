@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition, type KeyboardEventHandler } from "react";
 import { updateVehicle, deleteVehicle } from "@/app/vehicles/actions";
 import { useToast } from "@/components/ui/ToastProvider";
 
@@ -57,7 +57,17 @@ export default function VehicleActions({ id, initialNickname, initialPrivacy, in
     setTrim(base.trim);
   };
 
-  const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+  const onKeyDownInput: KeyboardEventHandler<HTMLInputElement> = (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (isDirty && !isPending) onSave();
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      revertEdits();
+    }
+  };
+
+  const onKeyDownSelect: KeyboardEventHandler<HTMLSelectElement> = (e) => {
     if (e.key === "Enter") {
       e.preventDefault();
       if (isDirty && !isPending) onSave();
@@ -125,13 +135,13 @@ export default function VehicleActions({ id, initialNickname, initialPrivacy, in
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <input value={nickname} onChange={(e) => setNickname(e.target.value)} onKeyDown={onKeyDown} placeholder="Nickname" className="border rounded px-2 py-1 text-xs w-28 md:w-32" />
-      <input value={vin} onChange={(e) => setVin(e.target.value)} onKeyDown={onKeyDown} placeholder="VIN" className="border rounded px-2 py-1 text-xs w-28 md:w-32" />
-      <input value={year} onChange={(e) => setYear(e.target.value)} onKeyDown={onKeyDown} placeholder="Year" className="border rounded px-2 py-1 text-xs w-20" />
-      <input value={make} onChange={(e) => setMake(e.target.value)} onKeyDown={onKeyDown} placeholder="Make" className="border rounded px-2 py-1 text-xs w-24" />
-      <input value={model} onChange={(e) => setModel(e.target.value)} onKeyDown={onKeyDown} placeholder="Model" className="border rounded px-2 py-1 text-xs w-24" />
-      <input value={trim} onChange={(e) => setTrim(e.target.value)} onKeyDown={onKeyDown} placeholder="Trim" className="border rounded px-2 py-1 text-xs w-24" />
-      <select value={privacy} onChange={(e) => setPrivacy(e.target.value as "PUBLIC" | "PRIVATE")} onKeyDown={onKeyDown} className="border rounded px-2 py-1 text-xs">
+      <input value={nickname} onChange={(e) => setNickname(e.target.value)} onKeyDown={onKeyDownInput} placeholder="Nickname" className="border rounded px-2 py-1 text-xs w-28 md:w-32" />
+      <input value={vin} onChange={(e) => setVin(e.target.value)} onKeyDown={onKeyDownInput} placeholder="VIN" className="border rounded px-2 py-1 text-xs w-28 md:w-32" />
+      <input value={year} onChange={(e) => setYear(e.target.value)} onKeyDown={onKeyDownInput} placeholder="Year" className="border rounded px-2 py-1 text-xs w-20" />
+      <input value={make} onChange={(e) => setMake(e.target.value)} onKeyDown={onKeyDownInput} placeholder="Make" className="border rounded px-2 py-1 text-xs w-24" />
+      <input value={model} onChange={(e) => setModel(e.target.value)} onKeyDown={onKeyDownInput} placeholder="Model" className="border rounded px-2 py-1 text-xs w-24" />
+      <input value={trim} onChange={(e) => setTrim(e.target.value)} onKeyDown={onKeyDownInput} placeholder="Trim" className="border rounded px-2 py-1 text-xs w-24" />
+      <select value={privacy} onChange={(e) => setPrivacy(e.target.value as "PUBLIC" | "PRIVATE")} onKeyDown={onKeyDownSelect} className="border rounded px-2 py-1 text-xs">
         <option value="PRIVATE">Private</option>
         <option value="PUBLIC">Public</option>
       </select>

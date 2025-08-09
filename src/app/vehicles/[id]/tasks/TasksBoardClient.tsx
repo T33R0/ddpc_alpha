@@ -72,7 +72,7 @@ export default function TasksBoardClient({
         return n;
       });
     }
-  }, [items, pendingStatusIds]);
+  }, [items, pendingStatusIds, success, error]);
 
   const applyDelete = useCallback(async (id: string) => {
     if (pendingDeleteId === id) return; // block duplicate
@@ -92,7 +92,7 @@ export default function TasksBoardClient({
     } finally {
       setPendingDeleteId(current => (current === id ? null : current));
     }
-  }, [items, pendingDeleteId]);
+  }, [items, pendingDeleteId, success, error]);
 
   const onDragEnd = useCallback((result: DropResult) => {
     if (!result.destination) return;
@@ -141,7 +141,7 @@ export default function TasksBoardClient({
     } finally {
       setPendingTitleId(current => (current === id ? null : current));
     }
-  }, [editingId, editingTitle, items, pendingTitleId, cancelEdit]);
+  }, [editingId, editingTitle, items, pendingTitleId, cancelEdit, success, error]);
 
   const startDueEdit = useCallback((id: string, dueISO: string | null) => {
     setEditingDueId(id);
@@ -186,7 +186,7 @@ export default function TasksBoardClient({
     } finally {
       setPendingDuePendingId(current => (current === id ? null : current));
     }
-  }, [editingDueId, editingDue, items, pendingDuePendingId, cancelDueEdit]);
+  }, [editingDueId, editingDue, items, pendingDuePendingId, cancelDueEdit, success, error]);
 
   const startTagsEdit = useCallback((id: string, tags: string[] | null) => {
     setEditingTagsId(id);
@@ -224,7 +224,7 @@ export default function TasksBoardClient({
     } finally {
       setPendingTagsPendingId(current => (current === id ? null : current));
     }
-  }, [editingTagsId, editingTags, items, pendingTagsPendingId, cancelTagsEdit]);
+  }, [editingTagsId, editingTags, items, pendingTagsPendingId, cancelTagsEdit, success, error]);
 
   // Derived card busy state
   const isCardBusy = useCallback((id: string) => {
