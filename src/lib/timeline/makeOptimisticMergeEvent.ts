@@ -1,3 +1,4 @@
+import type { TimelineEvent } from "@/app/vehicles/[id]/timeline/TimelineClient";
 export type MergeDetail = {
   vehicle_id?: string;
   from_plan_id?: string;
@@ -10,14 +11,7 @@ export type MergeDetail = {
   toId?: string;
 };
 
-export type OptimisticEvent = {
-  id: string;
-  type: "SERVICE"; // reuse existing type for display
-  notes: string;
-  created_at: string;
-};
-
-export function makeOptimisticMergeEvent(detail: MergeDetail): OptimisticEvent {
+export function makeOptimisticMergeEvent(detail: MergeDetail): TimelineEvent {
   const from = detail.from_plan_id || detail.fromId || "from";
   const to = detail.to_plan_id || detail.toId || "to";
   const title = (detail.title || "Merge plans").trim();
@@ -25,9 +19,12 @@ export function makeOptimisticMergeEvent(detail: MergeDetail): OptimisticEvent {
   const text = `${title}: ${from} → ${to}${notes ? ` — ${notes}` : ""}`;
   return {
     id: `merge-${Date.now()}`,
-    type: "SERVICE",
+    vehicle_id: (detail.vehicle_id || detail.vehicleId || "") as string,
+    type: "MERGE",
+    title,
     notes: text,
-    created_at: new Date().toISOString(),
+    occurred_at: detail.occurred_at ?? new Date().toISOString(),
+    optimistic: true,
   };
 }
 

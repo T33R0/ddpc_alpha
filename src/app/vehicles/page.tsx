@@ -199,7 +199,7 @@ export default async function VehiclesPage(
 
       <ErrorBoundary message="Failed to load vehicles.">
         <VehiclesListClient
-          vehicles={(vehicles ?? []).map((v: any) => ({
+          vehicles={(vehicles ?? []).map((v: { id: string; nickname: string | null; year: number | null; make: string | null; model: string | null; privacy: "PUBLIC"|"PRIVATE"; updated_at?: string|null; created_at?: string|null; photo_url: string | null; garage_id: string; }) => ({
             id: v.id,
             name: v.nickname ?? `${v.year ?? ''} ${v.make ?? ''} ${v.model ?? ''}`,
             year: v.year ?? null,
@@ -213,7 +213,7 @@ export default async function VehiclesPage(
             garage_id: v.garage_id,
           }))}
           loadCoverUrl={async (id: string, photo: string | null) => await getVehicleCoverUrl(supabase, id, photo)}
-          metrics={(vehicles ?? []).reduce<Record<string, { upcoming: number; lastService: string | null; daysSince: number | null; avgBetween: number | null }>>((acc, v: any) => {
+          metrics={(vehicles ?? []).reduce<Record<string, { upcoming: number; lastService: string | null; daysSince: number | null; avgBetween: number | null }>>((acc, v: { id: string }) => {
             acc[v.id] = metrics.get(v.id) ?? { upcoming: 0, lastService: null, daysSince: null, avgBetween: null };
             return acc;
           }, {})}
