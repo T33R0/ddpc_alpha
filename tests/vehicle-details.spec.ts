@@ -19,6 +19,11 @@ publicTest('Vehicle details renders header and snapshots @public', async ({ page
   await expect(page.locator('h1.text-2xl')).toBeVisible();
   await expect(page.getByTestId('vehicle-helper-copy')).toBeVisible();
 
+  // Image or placeholder is present
+  const img = page.locator('img');
+  const placeholder = page.getByText('No photo');
+  await expect(img.or(placeholder)).toBeVisible();
+
   // Three panels present by headings
   await expect(page.getByText('Quick stats')).toBeVisible();
   await expect(page.getByText('Open tasks')).toBeVisible();
