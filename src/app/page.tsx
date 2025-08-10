@@ -1,6 +1,5 @@
 import Link from "next/link";
 import Image from "next/image";
-import AuthButtons from "@/components/AuthButtons";
 import { getServerSupabase } from "@/lib/supabase";
 
 export default async function Home() {
@@ -13,7 +12,7 @@ export default async function Home() {
       <div className="min-h-screen p-8 space-y-6" data-testid="dashboard-hero">
         <header className="flex items-center justify-between">
           <h1 className="text-2xl font-semibold">ddpc alpha</h1>
-          <AuthButtons />
+          <div />
         </header>
         <div className="space-y-4">
           <p className="text-gray-700 max-w-2xl">Track vehicles like repos. Plan work with Tasks and log what actually happened on the Timeline. Collaborate with your garage with privacy by default.</p>
@@ -36,7 +35,7 @@ export default async function Home() {
     <div className="min-h-screen p-6 space-y-6">
       <header className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Dashboard</h1>
-        <AuthButtons />
+        <div />
       </header>
       <div className="grid md:grid-cols-3 gap-4">
         <section className="rounded-2xl border bg-white shadow-sm p-4" data-testid="dashboard-garage">
