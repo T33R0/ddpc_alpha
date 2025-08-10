@@ -15,13 +15,11 @@ export default function TasksBoardClient({
   initialItems,
   canWrite = true,
   plans = [],
-  vehicleId,
 }: {
   statuses: string[];
   initialItems: WorkItem[];
   canWrite?: boolean;
   plans?: Plan[];
-  vehicleId?: string;
 }) {
   const [items, setItems] = useState<WorkItem[]>(initialItems);
   const { success, error } = useToast();

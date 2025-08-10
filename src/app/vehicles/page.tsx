@@ -1,7 +1,6 @@
 // import Link from "next/link";
 import { getServerSupabase } from "@/lib/supabase";
 import { createVehicle } from "./actions";
-import { SummaryChipsSkeleton } from "@/components/analytics/SummaryChips";
 import VehicleCard from "@/components/vehicle/VehicleCard";
 import { getVehicleCoverUrl } from "@/lib/getVehicleCoverUrl";
 import ErrorBoundary from "@/components/ErrorBoundary";

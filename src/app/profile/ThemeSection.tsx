@@ -1,7 +1,6 @@
 "use client";
 import { useEffect, useId, useState, Suspense, startTransition } from "react";
 import { serverLog } from "@/lib/serverLog";
-import { Button } from "@/components/ui/Button";
 
 type Theme = "system" | "light" | "dark";
 

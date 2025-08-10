@@ -20,7 +20,7 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
   const redirectTo = searchParams.get("redirectTo") || "/";
 
   // Prepare a redirect response early so we can allow Supabase to set cookies on it
-  let res = NextResponse.redirect(new URL(redirectTo, req.url));
+  const res = NextResponse.redirect(new URL(redirectTo, req.url));
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -64,9 +64,11 @@ export async function GET(req: NextRequest): Promise<NextResponse> {
       project_ref: getProjectRef(process.env.NEXT_PUBLIC_SUPABASE_URL || undefined) ?? undefined,
     });
     return res;
-  } catch (e) {
-    serverLog("auth_callback_error", { reason: "exception" });
-    return errorResponse(req, "Something went wrong during sign-in. Please try again.");
+  } catch (err) {
+    await serverLog("auth_callback_error", {
+      message: err instanceof Error ? err.message : String(err),
+    });
+    return NextResponse.json({ error: "Auth failed" }, { status: 400 });
   }
 }
 
