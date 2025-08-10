@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getServerSupabase } from "@/lib/supabase";
+import { createBuildPlan } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -17,15 +18,10 @@ export default async function VehiclePlansPage({ params }: { params: Promise<{ i
     return <div className="text-red-600">Failed to load plans: {error.message}</div>;
   }
 
-  async function createPlan(formData: FormData) {
+  // creation handled by server action in ./actions
+  async function createPlanAction(formData: FormData) {
     "use server";
-    const name = (formData.get("name") || "").toString().trim();
-    if (!name) return;
-    await fetch(`${process.env.BASE_URL ?? ""}/api/build-plans`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ vehicle_id: vehicleId, name }),
-    });
+    await createBuildPlan(formData);
   }
 
   return (
@@ -35,10 +31,13 @@ export default async function VehiclePlansPage({ params }: { params: Promise<{ i
         <Link href={`/vehicles/${vehicleId}`} className="text-sm text-blue-600 hover:underline">Back</Link>
       </div>
 
-      <form action={createPlan} className="flex items-center gap-2">
-        <label htmlFor="new-plan-name" className="sr-only">New plan name</label>
-        <input id="new-plan-name" name="name" placeholder="New plan name" className="border rounded px-2 py-1" />
-        <button type="submit" data-testid="new-plan-btn" className="px-3 py-1 rounded bg-black text-white">New Plan</button>
+      <form action={createPlanAction} className="space-y-2">
+        <input type="hidden" name="vehicleId" value={vehicleId} />
+        <label className="block text-sm" htmlFor="new-plan-name">New plan name</label>
+        <input id="new-plan-name" name="name" required className="border rounded px-2 py-1 w-full" />
+        <label className="block text-sm" htmlFor="new-plan-desc">Description (optional)</label>
+        <textarea id="new-plan-desc" name="description" className="border rounded px-2 py-1 w-full min-h-[72px]"></textarea>
+        <button data-testid="new-plan-btn" className="px-3 py-1 rounded bg-black text-white">Create plan</button>
       </form>
 
       <div data-testid="plans-list" className="divide-y rounded border">
