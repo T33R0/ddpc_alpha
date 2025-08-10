@@ -18,7 +18,7 @@ auth('Header Timeline/Tasks navigate within vehicle context', async ({ page }) =
     await firstCard.click();
     // Now in vehicle context
     const navTimeline = page.locator('[data-test="nav-timeline"]');
-    const navTasks = page.locator('[data-test\="nav-tasks\"]');
+    const navTasks = page.locator('[data-test="nav-tasks"]');
     await expect(navTimeline).toHaveCount(1);
     await expect(navTasks).toHaveCount(1);
     await navTimeline.click();
@@ -33,7 +33,8 @@ auth('Search narrows results', async ({ page }) => {
   const search = page.getByTestId('vehicles-search');
   await search.fill('oil');
   // Expect at least one card remains; adjust to seeded data in CI
-  await expect(page.locator('[data-test="vehicle-card"]')).toHaveCountGreaterThan(0);
+  const remaining = await page.locator('[data-test="vehicle-card"]').count();
+  expect(remaining).toBeGreaterThan(0);
 });
 
 auth('Sort toggles order', async ({ page }) => {
@@ -53,10 +54,10 @@ auth('Cards have no per-card action buttons and are fully clickable', async ({ p
   await goto(page, '/vehicles');
   const cards = page.locator('[data-test="vehicle-card"]');
   const count = await cards.count();
-  // No per-card action links should be present regardless of count
-  await expect(page.getByRole('link', { name: 'Public page' })).toHaveCount(0);
-  await expect(page.getByRole('link', { name: 'Members' })).toHaveCount(0);
-  await expect(page.getByRole('link', { name: 'Tasks' })).toHaveCount(0);
+  // No per-card action links should be present (header links may exist)
+  await expect(page.locator('[data-test="vehicle-card"] a:has-text("Public page")')).toHaveCount(0);
+  await expect(page.locator('[data-test="vehicle-card"] a:has-text("Members")')).toHaveCount(0);
+  await expect(page.locator('[data-test="vehicle-card"] a:has-text("Tasks")')).toHaveCount(0);
 
   if (count > 0) {
     // Clicking anywhere on a card (link wrapper) navigates to /vehicles/[id]

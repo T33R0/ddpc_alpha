@@ -121,7 +121,10 @@ export default async function PublicVehiclePage({ params }: { params: Promise<{ 
           <div className="text-base font-semibold mb-3">Tasks (private)</div>
           <div className="text-sm text-gray-600">Task details are private. Sign in to view.</div>
         </div>
-        <VehicleTimelinePeek vehicleId={id} events={(safe.events ?? []).map(e => ({ id: e.id, created_at: e.occurred_at, type: e.type, notes: e.title }))} />
+        <VehicleTimelinePeek
+          vehicleId={id}
+          events={(safe.events ?? []).map((e, i) => ({ id: `public-${i}`, created_at: e.occurred_at, type: e.type ?? "SERVICE", notes: e.title }))}
+        />
       </div>
     </div>
   );
