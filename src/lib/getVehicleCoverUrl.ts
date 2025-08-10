@@ -1,5 +1,4 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { FileObject } from "@supabase/storage-js";
 
 export async function getVehicleCoverUrl(
   supabase: SupabaseClient,
@@ -15,7 +14,7 @@ export async function getVehicleCoverUrl(
     const prefix = `${vehicleId}/`;
     const { data, error } = await supabase.storage.from("vehicle-media").list(prefix, { limit: 10, sortBy: { column: "name", order: "asc" } });
     if (error || !Array.isArray(data) || data.length === 0) return null;
-    const cover: FileObject | undefined = (data as FileObject[]).find((o) => /^cover\./i.test(o.name)) ?? data[0];
+    const cover = (data as Array<{ name: string }>).find((o) => /^cover\./i.test(o.name)) ?? (data as Array<{ name: string }>)[0];
     if (!cover) return null;
     const path = `${prefix}${cover.name}`;
     try {
