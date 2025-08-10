@@ -4,6 +4,7 @@ import VehicleHeader from "@/components/vehicle/VehicleHeader";
 import VehicleQuickStats from "@/components/vehicle/VehicleQuickStats";
 import VehicleTasksPeek from "@/components/vehicle/VehicleTasksPeek";
 import VehicleTimelinePeek from "@/components/vehicle/VehicleTimelinePeek";
+import { getVehicleCoverUrl } from "@/lib/getVehicleCoverUrl";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +14,7 @@ export default async function VehicleOverviewPage({ params }: { params: Promise<
 
   const { data: vehicle } = await supabase
     .from("vehicle")
-    .select("id, vin, year, make, model, trim, nickname, privacy, garage_id")
+    .select("id, vin, year, make, model, trim, nickname, privacy, garage_id, photo_url")
     .eq("id", vehicleId)
     .maybeSingle();
 
@@ -57,9 +58,11 @@ export default async function VehicleOverviewPage({ params }: { params: Promise<
     lastActivityISO = [lastEvent, lastDone].filter(Boolean).sort((a, b) => new Date(b!).getTime() - new Date(a!).getTime())[0] ?? null;
   }
 
+  const coverUrl = await getVehicleCoverUrl(supabase, vehicleId, (vehicle as { photo_url?: string | null } | null)?.photo_url ?? null);
+
   return (
     <div className="space-y-6">
-      <VehicleHeader vehicle={{ id: vehicle.id as string, nickname: vehicle.nickname, year: vehicle.year, make: vehicle.make, model: vehicle.model, privacy: vehicle.privacy }} />
+      <VehicleHeader vehicle={{ id: vehicle.id as string, nickname: vehicle.nickname, year: vehicle.year, make: vehicle.make, model: vehicle.model, privacy: vehicle.privacy }} coverUrl={coverUrl} />
 
       <div className="grid md:grid-cols-3 gap-4">
         <VehicleQuickStats lastActivityISO={lastActivityISO} openTaskCount={openCount} doneTaskCount={doneCount} eventCount={eventCount} />
