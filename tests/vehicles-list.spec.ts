@@ -1,17 +1,18 @@
 // @ts-nocheck
-import { test as base, expect } from '@playwright/test';
+import { test, expect } from '@playwright/test';
 
 const BASE_URL = process.env.BASE_URL || 'http://localhost:3000';
 const STORAGE_STATE = process.env.STORAGE_STATE || '';
 
-const auth = STORAGE_STATE ? base.extend({ storageState: async ({}, use) => { await use(STORAGE_STATE); } }) : base.skip;
+test.describe.configure({ tag: ['@auth', '@vehicles'], mode: 'serial' });
+test.beforeAll(async () => {
+  if (!STORAGE_STATE) test.skip(true, 'STORAGE_STATE not set; skipping auth vehicles tests');
+});
+test.use({ storageState: STORAGE_STATE || undefined });
 
 async function goto(page, path) { await page.goto(`${BASE_URL}${path}`, { waitUntil: 'domcontentloaded' }); }
 
-auth.describe.configure({ tag: ['@auth', '@vehicles'] });
-
-
-auth('Search narrows results', async ({ page }) => {
+test('Search narrows results', async ({ page }) => {
   await goto(page, '/vehicles');
   const search = page.getByTestId('vehicles-search');
   await search.fill('oil');
@@ -20,20 +21,20 @@ auth('Search narrows results', async ({ page }) => {
   expect(remaining).toBeGreaterThan(0);
 });
 
-auth('Sort toggles order', async ({ page }) => {
+test('Sort toggles order', async ({ page }) => {
   await goto(page, '/vehicles');
   const sort = page.getByTestId('vehicles-sort');
   await sort.selectOption('name');
   await expect(page).toHaveURL(/sort=name/);
 });
 
-auth('Role filter hides non-matching', async ({ page }) => {
+test('Role filter hides non-matching', async ({ page }) => {
   await goto(page, '/vehicles');
   await page.getByTestId('vehicles-role-viewer').click();
   await expect(page).toHaveURL(/role=VIEWER/);
 });
 
-auth('Cards have no per-card action buttons and are fully clickable', async ({ page }) => {
+test('Cards have no per-card action buttons and are fully clickable', async ({ page }) => {
   await goto(page, '/vehicles');
   const cards = page.locator('[data-test="vehicle-card"]');
   const count = await cards.count();

@@ -16,18 +16,13 @@ async function goto(page, path) {
   await page.goto(`${BASE_URL}${path}`, { waitUntil: 'domcontentloaded' });
 }
 
-auth('Switcher updates vehicle-scoped route and combined route', async ({ page }) => {
+auth('Header has no vehicle switcher; palette still navigates via inline picker', async ({ page }) => {
   await goto(page, `/vehicles/${VEHICLE_A}`);
-  await page.getByTestId('vehicle-switcher').click();
-  await page.getByTestId('vehicle-switcher-input').fill(VEHICLE_B.slice(0, 4));
-  await page.getByTestId('vehicle-switcher-item').first().click();
-  await expect(page).toHaveURL(new RegExp(`/vehicles/${VEHICLE_B}`));
-
-  await goto(page, `/timeline?vehicleId=${VEHICLE_A}`);
-  await page.getByTestId('vehicle-switcher').click();
-  await page.getByTestId('vehicle-switcher-input').fill(VEHICLE_B.slice(0, 4));
-  await page.getByTestId('vehicle-switcher-item').first().click();
-  await expect(page).toHaveURL(new RegExp(`/timeline\?`));
+  await expect(page.getByTestId('vehicle-switcher')).toHaveCount(0);
+  await page.keyboard.press(process.platform === 'darwin' ? 'Meta+K' : 'Control+K');
+  await page.getByTestId('cmdk-input').fill('timeline');
+  await page.keyboard.press('Enter');
+  await expect(page.getByTestId('vehicle-picker-inline')).toBeVisible();
 });
 
 

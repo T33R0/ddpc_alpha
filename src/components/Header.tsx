@@ -1,7 +1,6 @@
 "use client";
 import Link from "next/link";
 import AuthButtons from "@/components/AuthButtons";
-import VehicleSwitcher from "@/components/vehicle/VehicleSwitcher";
 import CommandPalette from "@/components/CommandPalette";
 import { Suspense } from "react";
 
@@ -17,9 +16,6 @@ export default function Header() {
           </nav>
         </div>
         <div className="flex items-center gap-3">
-          <Suspense fallback={null}>
-            <VehicleSwitcher />
-          </Suspense>
           <AuthButtons />
         </div>
       </div>
