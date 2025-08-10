@@ -13,6 +13,7 @@ export default function CommandPalette() {
   const [idx, setIdx] = useState(0);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const listRef = useRef<HTMLDivElement | null>(null);
+  const [inlinePicker, setInlinePicker] = useState<null | 'timeline' | 'tasks'>(null);
 
   const currentVehicleId = getVehicleIdFromPath(pathname) || search.get("vehicleId") || null;
   const inVehicleScoped = /^\/vehicles\//.test(pathname);
@@ -37,6 +38,7 @@ export default function CommandPalette() {
     if (!open) return;
     fetch("/api/me/vehicles").then(r => r.json()).then((j) => setVehicles((j.vehicles || []).slice(0, 5))).catch(() => setVehicles([]));
     setIdx(0);
+    setInlinePicker(null);
   }, [open]);
 
   const items = useMemo(() => {
@@ -45,14 +47,13 @@ export default function CommandPalette() {
       { id: "go-timeline", label: "Go to Timeline", action: () => {
         if (inVehicleScoped && currentVehicleId) router.push(`/vehicles/${currentVehicleId}/timeline`);
         else {
-          // open switcher inline: simulate clicking the switcher button
-          document.querySelector<HTMLButtonElement>('[data-testid="vehicle-switcher"]')?.click();
+          setInlinePicker('timeline');
         }
       } },
       { id: "go-tasks", label: "Go to Tasks", action: () => {
         if (inVehicleScoped && currentVehicleId) router.push(`/vehicles/${currentVehicleId}/tasks`);
         else {
-          document.querySelector<HTMLButtonElement>('[data-testid="vehicle-switcher"]')?.click();
+          setInlinePicker('tasks');
         }
       } },
       { id: "new-task", label: "New Task", action: () => {
@@ -102,19 +103,68 @@ export default function CommandPalette() {
                 data-testid="cmdk-input"
               />
             </div>
-            <div ref={listRef} className="max-h-80 overflow-auto p-1">
-              {items.map((it, i) => (
-                <button
-                  key={it.id}
-                  onClick={() => { it.action(); setOpen(false); }}
-                  className={`w-full text-left px-3 py-2 rounded text-sm ${i === idx ? 'bg-gray-100' : 'hover:bg-gray-50'}`}
-                  data-testid={`cmdk-item-${it.id}`}
-                >{it.label}</button>
-              ))}
-            </div>
+            {inlinePicker ? (
+              <InlineVehiclePicker
+                vehicles={vehicles}
+                onPick={(vid) => {
+                  if (inVehicleScoped) {
+                    const next = pathname.replace(/^\/vehicles\/[^\/]+/, `/vehicles/${vid}`);
+                    router.push(inlinePicker === 'timeline' ? `${next}/timeline` : `${next}/tasks`);
+                  } else {
+                    router.push(inlinePicker === 'timeline' ? `/vehicles/${vid}/timeline` : `/vehicles/${vid}/tasks`);
+                  }
+                  setOpen(false);
+                }}
+              />
+            ) : (
+              <div ref={listRef} className="max-h-80 overflow-auto p-1">
+                {items.map((it, i) => (
+                  <button
+                    key={it.id}
+                    onClick={() => { it.action(); }}
+                    className={`w-full text-left px-3 py-2 rounded text-sm ${i === idx ? 'bg-gray-100' : 'hover:bg-gray-50'}`}
+                    data-testid={`cmdk-item-${it.id}`}
+                  >{it.label}</button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function InlineVehiclePicker({ vehicles, onPick }: { vehicles: Array<{ id: string; name: string }>; onPick: (id: string) => void }) {
+  const [q, setQ] = useState("");
+  const filtered = useMemo(() => {
+    const s = q.trim().toLowerCase();
+    if (!s) return vehicles;
+    return vehicles.filter(v => v.name.toLowerCase().includes(s));
+  }, [q, vehicles]);
+  return (
+    <div className="p-2 space-y-2" data-testid="vehicle-picker-inline">
+      <label className="text-xs text-gray-600">Pick a vehicle</label>
+      <input
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+        placeholder="Search vehicles…"
+        className="w-full border rounded px-2 py-1 text-sm"
+      />
+      <ul className="max-h-64 overflow-auto">
+        {filtered.length === 0 ? (
+          <li className="text-sm text-gray-500 px-2 py-1">No matches</li>
+        ) : (
+          filtered.map(v => (
+            <li key={v.id}>
+              <button
+                onClick={() => onPick(v.id)}
+                className="w-full text-left px-2 py-1 rounded hover:bg-gray-50 text-sm"
+              >{v.name}</button>
+            </li>
+          ))
+        )}
+      </ul>
     </div>
   );
 }

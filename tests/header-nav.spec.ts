@@ -15,7 +15,7 @@ test('Header shows Garage and no Timeline/Tasks (public)', async ({ page }) => {
 
 test('Visiting /timeline or /tasks redirects to / (public)', async ({ page }) => {
   await goto(page, '/timeline');
-  await expect(page).toHaveURL(/\/$/);
+  await expect.poll(async () => new URL(page.url()).pathname, { timeout: 5000 }).toBe('/');
   await goto(page, '/tasks');
-  await expect(page).toHaveURL(/\/$/);
+  await expect.poll(async () => new URL(page.url()).pathname, { timeout: 5000 }).toBe('/');
 });
