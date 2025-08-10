@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
     };
     if (created_at) payload.created_at = created_at;
     if (ENABLE_LINK && task_id) {
-      // Validate task belongs to same garage context as vehicle (type-safe, single row selects)
+      // Validate task belongs to same garage context as vehicle using scalar selects only
       const { data: veh, error: vehErr } = await supabase
         .from("vehicle")
         .select("garage_id")
@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
 
       const { data: task, error: taskErr } = await supabase
         .from("work_item")
-        .select("id, vehicle:vehicle_id(garage_id)")
+        .select("id, vehicle_id")
         .eq("id", task_id)
         .single();
 
@@ -56,12 +56,22 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "Lookup failed" }, { status: 400 });
       }
 
-      // Narrow potential array typing at compile-time (defensive for tooling that doesn't reflect .single)
-      if (!veh || Array.isArray(veh) || !task || Array.isArray(task)) {
+      if (!veh || !task) {
         return NextResponse.json({ error: "Task and vehicle mismatch" }, { status: 400 });
       }
+
+      const { data: taskVeh, error: taskVehErr } = await supabase
+        .from("vehicle")
+        .select("garage_id")
+        .eq("id", task.vehicle_id)
+        .single();
+
+      if (taskVehErr || !taskVeh) {
+        return NextResponse.json({ error: "Lookup failed" }, { status: 400 });
+      }
+
       const vehGarage = veh.garage_id;
-      const taskGarage = task.vehicle?.garage_id;
+      const taskGarage = taskVeh.garage_id;
       if (taskGarage !== vehGarage) {
         return NextResponse.json({ error: "Task and vehicle mismatch" }, { status: 400 });
       }

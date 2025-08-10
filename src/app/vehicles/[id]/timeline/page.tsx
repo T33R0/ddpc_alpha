@@ -75,6 +75,10 @@ export default async function TimelinePage({ params }: { params: Promise<{ id: s
         </div>
       </div>
 
+      <p className="text-sm text-gray-700 border rounded p-3 bg-white" data-test="timeline-helper-copy">
+        Events are immutable after 24h. Events with a ‘from task’ badge were logged at task completion.
+      </p>
+
       <ErrorBoundary message="Failed to load timeline.">
         <TimelineClient events={(events ?? []) as Event[]} vehicleId={vehicleId} canWrite={canWrite} />
       </ErrorBoundary>

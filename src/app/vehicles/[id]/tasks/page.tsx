@@ -57,6 +57,10 @@ export default async function TasksPage({ params }: { params: Promise<{ id: stri
         </div>
       </div>
 
+      <p className="text-sm text-gray-700 border rounded p-3 bg-white" data-test="tasks-helper-copy">
+        <strong>Tasks</strong> = planned work. <strong>Timeline</strong> = what actually happened. When you complete a task, you can also log a Timeline event.
+      </p>
+
       <ErrorBoundary message="Failed to load tasks.">
         <TasksClient vehicleId={vehicleId} initialItems={initialItems} canWrite={canWrite} />
       </ErrorBoundary>

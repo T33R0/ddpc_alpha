@@ -35,7 +35,17 @@ export default function TasksBoardClient({
   const [pendingDuePendingId, setPendingDuePendingId] = useState<string | null>(null);
   const [pendingTagsPendingId, setPendingTagsPendingId] = useState<string | null>(null);
   const [completingId, setCompletingId] = useState<string | null>(null);
-  const enableLink = (process.env.NEXT_PUBLIC_ENABLE_TASK_EVENT_LINK || "false") === "true";
+  // Feature flag: client gate. Allow a non-production test override via localStorage for Playwright.
+  const enableLink =
+    (process.env.NEXT_PUBLIC_ENABLE_TASK_EVENT_LINK || "false") === "true" ||
+    (process.env.NODE_ENV !== "production" && typeof window !== "undefined" &&
+      (() => {
+        try {
+          return window.localStorage.getItem("e2e_enable_task_event_link") === "1";
+        } catch {
+          return false;
+        }
+      })());
   // Sync when parent provides new items (e.g., after create)
   useEffect(() => {
     setItems(initialItems);
