@@ -266,7 +266,7 @@ export default function TasksBoardClient({
   return (
     <DragDropContext onDragEnd={onDragEnd}>
       {items.length === 0 ? (
-        <div className="flex flex-col items-center justify-center text-center border rounded p-12 bg-white text-gray-600 w-full">
+        <div className="flex flex-col items-center justify-center text-center border rounded p-12 bg-white text-gray-600 w-full" data-vehicle-id={_vehicleId}>
           <div className="text-lg font-medium text-gray-800 mb-1">No tasks yet</div>
           <div className="text-sm">Use the form above to add your first task, then drag across columns.</div>
         </div>

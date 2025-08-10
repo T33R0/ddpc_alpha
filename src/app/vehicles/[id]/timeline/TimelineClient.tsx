@@ -90,7 +90,7 @@ export default function TimelineClient({ events, vehicleId, canWrite = true }: {
     const toDate = to ? new Date(to) : null;
     return data.filter((e) => {
       if (selected.size > 0 && !selected.has(e.type)) return false;
-      const d = new Date(e.created_at);
+      const d = new Date(e.occurred_at);
       if (fromDate && d < fromDate) return false;
       if (toDate) {
         const end = new Date(toDate);
@@ -115,7 +115,7 @@ export default function TimelineClient({ events, vehicleId, canWrite = true }: {
   const groups = useMemo(() => {
     const map = new Map<string, { label: string; items: TimelineEvent[] }>();
     for (const e of filtered) {
-      const d = new Date(e.created_at);
+      const d = new Date(e.occurred_at);
       const key = `${d.getFullYear()}-${d.getMonth()}`;
       if (!map.has(key)) {
         const label = d.toLocaleDateString(undefined, { month: "long", year: "numeric" });
@@ -136,7 +136,7 @@ export default function TimelineClient({ events, vehicleId, canWrite = true }: {
     }
     if (adding) return; // prevent duplicate submits
     setAdding(true);
-    const created_at = (() => {
+    const occurred_at = (() => {
       try {
         return new Date(dateTime).toISOString();
       } catch {
@@ -146,10 +146,9 @@ export default function TimelineClient({ events, vehicleId, canWrite = true }: {
     const temp: TimelineEvent = {
       id: `tmp-${Date.now()}`,
       type: eventTypeForQuickAdd(trimmed),
-      odometer: null,
-      cost: null,
       notes: notes.trim() || trimmed,
-      created_at,
+      occurred_at,
+      vehicle_id: vehicleId,
     } as TimelineEvent;
     setData((prev) => [temp, ...prev]);
     try {
@@ -171,7 +170,7 @@ export default function TimelineClient({ events, vehicleId, canWrite = true }: {
         throw new Error((await res.json()).error || "Failed to create");
       }
       const json = await res.json();
-      const created: TimelineEvent = json.event;
+      const created: TimelineEvent = json.event as TimelineEvent;
       setData((prev) => [created, ...prev.filter((x) => x.id !== temp.id)]);
       setTitle("");
       setNotes("");
@@ -206,7 +205,7 @@ export default function TimelineClient({ events, vehicleId, canWrite = true }: {
   };
 
   const isEditable = (e: TimelineEvent) => {
-    const created = new Date(e.created_at).getTime();
+    const created = new Date(e.occurred_at).getTime();
     return Date.now() - created <= 24 * 60 * 60 * 1000;
   };
 
@@ -414,8 +413,8 @@ export default function TimelineClient({ events, vehicleId, canWrite = true }: {
                   ) : (
                     <div className="text-sm text-gray-900">{e.notes ?? "—"}</div>
                   )}
-                  <div className="text-xs text-gray-600 flex items-center gap-2">
-                    {new Date(e.created_at).toLocaleString()} • {e.odometer ? `${e.odometer} mi` : ""} {e.cost ? `• $${e.cost.toFixed(2)}` : ""}
+                   <div className="text-xs text-gray-600 flex items-center gap-2">
+                    {new Date(e.occurred_at).toLocaleString()}
                     {!!e.task_id && (
                       <span title="Created from task completion" className="inline-flex items-center text-[10px] px-1.5 py-0.5 rounded border bg-gray-50">from task</span>
                     )}
