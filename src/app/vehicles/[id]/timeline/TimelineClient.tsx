@@ -41,7 +41,10 @@ export default function TimelineClient({ events, vehicleId, canWrite = true }: {
   const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null);
 
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
   type MergeDetail = {
     vehicle_id: string;
     from_plan_id: string;
