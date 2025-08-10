@@ -2,18 +2,26 @@
 import { DragDropContext, Draggable, Droppable, DropResult } from "@hello-pangea/dnd";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import CompleteModal from "@/components/tasks/CompleteModal";
+import PlanPill from "@/components/tasks/PlanPill";
+import PlanSwitcher from "@/components/tasks/PlanSwitcher";
 import { useToast } from "@/components/ui/ToastProvider";
 
-export type WorkItem = { id: string; title: string; status: string; tags: string[] | null; due: string | null };
+export type WorkItem = { id: string; title: string; status: string; tags: string[] | null; due: string | null; build_plan_id?: string | null };
+
+type Plan = { id: string; name: string; is_default: boolean };
 
 export default function TasksBoardClient({
   statuses,
   initialItems,
   canWrite = true,
+  plans = [],
+  vehicleId,
 }: {
   statuses: string[];
   initialItems: WorkItem[];
   canWrite?: boolean;
+  plans?: Plan[];
+  vehicleId?: string;
 }) {
   const [items, setItems] = useState<WorkItem[]>(initialItems);
   const { success, error } = useToast();
@@ -241,6 +249,9 @@ export default function TasksBoardClient({
     }
   }, [editingTagsId, editingTags, items, pendingTagsPendingId, cancelTagsEdit, success, error]);
 
+  // Plan switcher state
+  const [switchPlanForId, setSwitchPlanForId] = useState<string | null>(null);
+
   // Derived card busy state
   const isCardBusy = useCallback((id: string) => {
     return (
@@ -399,7 +410,44 @@ export default function TasksBoardClient({
                               </button>
                             </div>
                           )}
-                          <div className="flex flex-wrap items-center gap-2 mt-2">
+                          <div className="flex flex-wrap items-center gap-2 mt-2 relative">
+                            <PlanPill
+                              name={(() => {
+                                const pid = it.build_plan_id ?? null;
+                                if (!pid) return "No plan";
+                                const plan = plans.find(p => p.id === pid);
+                                return plan?.name ?? "No plan";
+                              })()}
+                              onClick={() => setSwitchPlanForId(prev => (prev === it.id ? null : it.id))}
+                            />
+                            {switchPlanForId === it.id && (
+                              <PlanSwitcher
+                                plans={plans}
+                                currentPlanId={it.build_plan_id ?? null}
+                                onClose={() => setSwitchPlanForId(null)}
+                                onSelect={async (planId) => {
+                                  setSwitchPlanForId(null);
+                                  const prev = items;
+                                  setItems(prev.map(x => (x.id === it.id ? { ...x, build_plan_id: planId } : x)));
+                                  try {
+                                    // Feature flag gate; endpoint may not exist
+                                    const enabled = (process.env.NEXT_PUBLIC_ENABLE_PLAN_SWITCH || "false") === "true";
+                                    if (!enabled) throw new Error("Not yet wired");
+                                    const res = await fetch(`/api/work-items/${it.id}/plan`, {
+                                      method: "PATCH",
+                                      headers: { "Content-Type": "application/json" },
+                                      body: JSON.stringify({ build_plan_id: planId }),
+                                    });
+                                    if (!res.ok) throw new Error("Failed to update plan");
+                                    success("Plan updated");
+                                  } catch (e) {
+                                    setItems(prev);
+                                    const msg = e instanceof Error ? e.message : "Failed to update plan";
+                                    error(msg === "Not yet wired" ? msg : "Failed to update plan");
+                                  }
+                                }}
+                              />
+                            )}
                             {statuses.filter(s => s !== status).map(s => (
                               <button
                                 key={s}
