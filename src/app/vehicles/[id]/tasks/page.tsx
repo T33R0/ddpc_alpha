@@ -52,7 +52,6 @@ export default async function TasksPage({ params }: { params: Promise<{ id: stri
           <PrivacyBadge value={vehicle?.privacy} />
         </div>
         <div className="flex items-center gap-3">
-          {vehicle?.id && <Link href={`/v/${vehicle.id}`} className="text-sm text-blue-600 hover:underline">Public page</Link>}
           <Link href="/vehicles" className="text-sm text-blue-600 hover:underline">Back to vehicles</Link>
         </div>
       </div>
