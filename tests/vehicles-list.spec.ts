@@ -31,4 +31,36 @@ auth('Role filter hides non-matching', async ({ page }) => {
   await expect(page).toHaveURL(/role=VIEWER/);
 });
 
+auth('Cards have no per-card action buttons and are fully clickable', async ({ page }) => {
+  await goto(page, '/vehicles');
+  const cards = page.locator('[data-test="vehicle-card"]');
+  const count = await cards.count();
+  // No per-card action links should be present regardless of count
+  await expect(page.getByRole('link', { name: 'Public page' })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: 'Members' })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: 'Tasks' })).toHaveCount(0);
+
+  if (count > 0) {
+    // Clicking anywhere on a card (link wrapper) navigates to /vehicles/[id]
+    await page.locator('[data-test="vehicle-card"] >> [data-test="vehicle-card-link"]').first().click();
+    await expect(page).toHaveURL(/\/vehicles\/[^/]+$/);
+  }
+});
+
+auth('Header shows Timeline only on vehicle pages and links to /vehicles/[id]/timeline', async ({ page }) => {
+  // On index, Timeline should not be visible
+  await goto(page, '/vehicles');
+  await expect(page.locator('[data-test="nav-timeline"]')).toHaveCount(0);
+
+  const cardLink = page.locator('[data-test="vehicle-card-link"]').first();
+  if (await cardLink.count()) {
+    await cardLink.click();
+    const timeline = page.locator('[data-test="nav-timeline"]');
+    await expect(timeline).toHaveCount(1);
+    // href should point to /vehicles/[id]/timeline
+    await expect(timeline).toHaveAttribute('href', /\/vehicles\/[^/]+\/timeline$/);
+    await timeline.click();
+    await expect(page).toHaveURL(/\/vehicles\/[^^/]+\/timeline$/);
+  }
+});
 
