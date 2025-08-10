@@ -3,6 +3,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/ToastProvider";
 import { eventTypeForQuickAdd } from "@/lib/eventTypeForQuickAdd";
+import { isEnabled } from "@/lib/featureFlags";
+import { makeOptimisticMergeEvent } from "@/lib/timeline/makeOptimisticMergeEvent";
 
 const TYPES = ["SERVICE","INSTALL","INSPECT","TUNE"] as const;
 
@@ -36,6 +38,21 @@ export default function TimelineClient({ events, vehicleId, canWrite = true }: {
   const [savingId, setSavingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null);
+
+  // Listen for merge-plan optimistic signal
+  useEffect(() => {
+    const flag = isEnabled("NEXT_PUBLIC_ENABLE_PLAN_MERGE");
+    if (!flag) return;
+    const handler = (e: Event) => {
+      const ce = e as CustomEvent<any>;
+      const detail = ce.detail || {};
+      if ((detail.vehicleId || detail.vehicle_id) !== vehicleId) return;
+      const ev = makeOptimisticMergeEvent(detail);
+      setData(prev => [{ id: ev.id, type: ev.type as any, odometer: null, cost: null, notes: ev.notes, created_at: ev.created_at } as TimelineEvent, ...prev]);
+    };
+    document.addEventListener("plan-merge-created", handler as EventListener);
+    return () => document.removeEventListener("plan-merge-created", handler as EventListener);
+  }, [vehicleId]);
 
   // Initial micro-skeleton to cover first render
   useEffect(() => {
@@ -357,7 +374,7 @@ export default function TimelineClient({ events, vehicleId, canWrite = true }: {
           <div key={label} className="space-y-3">
             <div className="sticky top-0 z-10 bg-white/80 backdrop-blur px-1 py-1 text-xs font-semibold text-gray-700">{label}</div>
             {items.map((e) => (
-              <div key={e.id} className="border rounded p-3 flex items-start gap-4 bg-white">
+              <div key={e.id} className="border rounded p-3 flex items-start gap-4 bg-white" data-testid={e.id.startsWith("merge-") ? "timeline-merge-optimistic" : undefined}>
                 <div className="text-xs px-2 py-0.5 rounded border bg-gray-50">{editingId === e.id ? (
                   <select
                     value={editType}
