@@ -3,6 +3,8 @@ import PrivacyBadge from "@/components/PrivacyBadge";
 import TimelineClient from "./TimelineClient";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import Link from "next/link";
+import VehicleFilter from "@/components/filters/VehicleFilter";
+import { fetchAccessibleVehicles } from "@/lib/queries/vehicles";
 
 export const dynamic = "force-dynamic";
 
@@ -54,6 +56,8 @@ export default async function TimelinePage({ params }: { params: Promise<{ id: s
     canWrite = role === "OWNER" || role === "MANAGER" || role === "CONTRIBUTOR";
   }
 
+  const vehicleOptions = await fetchAccessibleVehicles(supabase);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -72,6 +76,11 @@ export default async function TimelinePage({ params }: { params: Promise<{ id: s
             <Link href="/vehicles" className="text-sm text-blue-600 hover:underline">Back to vehicles</Link>
           </div>
         </div>
+      </div>
+
+      <div className="flex items-center gap-4">
+        <VehicleFilter options={vehicleOptions} mode="scoped" currentId={vehicleId} targetSubroute="timeline" />
+        <span className="sr-only" aria-live="polite" data-testid="filter-announcer"></span>
       </div>
 
       <p className="text-sm text-gray-700 border rounded p-3 bg-white" data-test="timeline-helper-copy">

@@ -4,6 +4,8 @@ import { WorkItem as ClientWorkItem } from "./TasksBoardClient";
 import TasksClient from "./TasksClient";
 import Link from "next/link";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import VehicleFilter from "@/components/filters/VehicleFilter";
+import { fetchAccessibleVehicles } from "@/lib/queries/vehicles";
 
 type Role = "OWNER" | "MANAGER" | "CONTRIBUTOR" | "VIEWER";
 
@@ -43,6 +45,7 @@ export default async function TasksPage({ params }: { params: Promise<{ id: stri
   }
   const role = await getRole((vehicle as { garage_id?: string } | null)?.garage_id ?? null);
   const canWrite = role === "OWNER" || role === "MANAGER" || role === "CONTRIBUTOR";
+  const vehicleOptions = await fetchAccessibleVehicles(supabase);
 
   return (
     <div className="space-y-6">
@@ -54,6 +57,11 @@ export default async function TasksPage({ params }: { params: Promise<{ id: stri
         <div className="flex items-center gap-3">
           <Link href="/vehicles" className="text-sm text-blue-600 hover:underline">Back to vehicles</Link>
         </div>
+      </div>
+
+      <div className="flex items-center gap-4">
+        <VehicleFilter options={vehicleOptions} mode="scoped" currentId={vehicleId} targetSubroute="tasks" />
+        <span className="sr-only" aria-live="polite" data-testid="filter-announcer"></span>
       </div>
 
       <p className="text-sm text-gray-700 border rounded p-3 bg-white" data-test="tasks-helper-copy">

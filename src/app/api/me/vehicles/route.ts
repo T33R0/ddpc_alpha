@@ -5,7 +5,21 @@ export async function GET() {
   try {
     const supabase = await getServerSupabase();
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return NextResponse.json({ vehicles: [] });
+    if (!user) {
+      // Return PUBLIC vehicles for unauthenticated users (accessible set)
+      const { data } = await supabase
+        .from("vehicle")
+        .select("id, nickname, year, make, model, privacy")
+        .eq("privacy", "PUBLIC")
+        .order("updated_at", { ascending: false })
+        .limit(20);
+      const vehicles = (data ?? []).map((v: { id: string; nickname: string | null; year: number | null; make: string | null; model: string | null; privacy: string | null }) => ({
+        id: v.id,
+        name: v.nickname || [v.year, v.make, v.model].filter(Boolean).join(" "),
+        privacy: v.privacy,
+      }));
+      return NextResponse.json({ vehicles });
+    }
 
     const { data: memberships } = await supabase
       .from("garage_member")

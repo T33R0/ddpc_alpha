@@ -18,7 +18,8 @@ pub('Palette opens and executes basic commands', async ({ page }) => {
   await expect(page.getByTestId('cmdk-input')).toBeVisible();
   await page.getByTestId('cmdk-input').fill('timeline');
   await page.keyboard.press('Enter');
-  await expect(page).toHaveURL(/\/timeline/);
+  // With no vehicle context, switcher should open inline and not navigate yet
+  await expect(page.getByTestId('vehicle-switcher-input')).toBeVisible();
 });
 
 
