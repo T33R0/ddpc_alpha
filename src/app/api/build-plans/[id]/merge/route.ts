@@ -46,9 +46,9 @@ export async function POST(_req: NextRequest, context: RouteContext) {
     if (mergedTaskIds.length) {
       await supabase.from("work_item").update({ status: "DONE" }).in("id", mergedTaskIds);
     }
-    const { data: updated, error: updErr } = await supabase
+    const { error: updErr } = await supabase
       .from("build_plans").update({ status: "merged", is_default: false, updated_at: new Date().toISOString() }).eq("id", id)
-      .select("id, status").single();
+      .select("id").single();
     if (updErr) return NextResponse.json({ error: updErr.message }, { status: 400 });
 
     serverLog("build_plan_merged", { planId: id, vehicleId: plan.vehicle_id, userId: user.id, mergedTasks: mergedTaskIds.length });

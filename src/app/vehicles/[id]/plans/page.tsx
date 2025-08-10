@@ -21,7 +21,6 @@ export default async function VehiclePlansPage({ params }: { params: Promise<{ i
     "use server";
     const name = (formData.get("name") || "").toString().trim();
     if (!name) return;
-    const supa = await getServerSupabase();
     await fetch(`${process.env.BASE_URL ?? ""}/api/build-plans`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
