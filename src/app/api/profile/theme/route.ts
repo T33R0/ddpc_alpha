@@ -19,8 +19,9 @@ export async function POST(req: Request): Promise<Response> {
     if (!updated) return NextResponse.json({ ok: false }, { status: 400 });
     serverLog("theme_update", { user_id: user.id, theme });
     return NextResponse.json({ ok: true });
-  } catch (e) {
-    return NextResponse.json({ ok: false }, { status: 500 });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }
 }
 
