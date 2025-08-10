@@ -1,103 +1,66 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase";
-import { logActivity } from "@/lib/activity/log";
-const ENABLE_LINK = process.env.ENABLE_TASK_EVENT_LINK === "true";
+import { serverLog } from "@/lib/serverLog";
+import { validateCreateEventPayload } from "@/lib/validators/events";
 
-// POST /api/events
-// Body: { vehicle_id: string, title: string, date?: string }
-// For MVP we map title -> notes and date -> created_at; type defaults to 'SERVICE'.
 export async function POST(req: NextRequest) {
+  const requestId = Math.random().toString(36).slice(2, 10);
   try {
     const supabase = await getServerSupabase();
     const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return NextResponse.json({ error: "Unauthorized", code: 401 }, { status: 401 });
+
     const body = await req.json().catch(() => ({}));
-    const vehicle_id = (body?.vehicle_id ?? "").toString();
-    const title = (body?.title ?? "").toString().trim();
-    const dateStr = body?.date ? body.date.toString() : "";
-    const task_id = ENABLE_LINK && body?.task_id ? body.task_id.toString() : undefined;
+    const v = validateCreateEventPayload(body);
+    if (!v.ok) return NextResponse.json({ error: v.error, code: 400 }, { status: 400 });
+    const { vehicle_id, occurred_at, title, notes, type } = v.data;
 
-    if (!vehicle_id) {
-      return NextResponse.json({ error: "vehicle_id is required" }, { status: 400 });
-    }
-    if (!title) {
-      return NextResponse.json({ error: "title is required" }, { status: 400 });
-    }
+    // AuthZ: OWNER or MANAGER of vehicle's garage
+    const { data: veh } = await supabase
+      .from("vehicle")
+      .select("id, owner_id, garage_id")
+      .eq("id", vehicle_id)
+      .maybeSingle();
+    if (!veh) return NextResponse.json({ error: "Not found", code: 404 }, { status: 404 });
 
-    let created_at: string | undefined = undefined;
-    if (dateStr) {
-      const d = new Date(dateStr);
-      if (isNaN(d.getTime())) {
-        return NextResponse.json({ error: "Invalid date" }, { status: 400 });
-      }
-      created_at = d.toISOString();
+    let authorized = veh.owner_id === user.id;
+    if (!authorized && veh.garage_id) {
+      const { data: mem } = await supabase
+        .from("garage_member")
+        .select("user_id, role")
+        .eq("garage_id", veh.garage_id)
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (mem && (mem.role === "OWNER" || mem.role === "MANAGER")) authorized = true;
     }
+    if (!authorized) return NextResponse.json({ error: "Forbidden", code: 403 }, { status: 403 });
 
-    const payload: Record<string, unknown> = {
+    // Prepare insert; map title -> notes for storage if schema lacks title
+    const created_at = occurred_at ? new Date(occurred_at).toISOString() : new Date().toISOString();
+    const insertPayload: Record<string, unknown> = {
       vehicle_id,
-      type: "SERVICE",
-      notes: title,
+      type,
+      notes: title + (notes ? ` — ${notes}` : ""),
+      created_at,
     };
-    if (created_at) payload.created_at = created_at;
-    if (ENABLE_LINK && task_id) {
-      // Validate task belongs to same garage context as vehicle using scalar selects only
-      const { data: veh, error: vehErr } = await supabase
-        .from("vehicle")
-        .select("garage_id")
-        .eq("id", vehicle_id)
-        .single();
 
-      const { data: task, error: taskErr } = await supabase
-        .from("work_item")
-        .select("id, vehicle_id")
-        .eq("id", task_id)
-        .single();
-
-      if (vehErr || taskErr) {
-        return NextResponse.json({ error: "Lookup failed" }, { status: 400 });
-      }
-
-      if (!veh || !task) {
-        return NextResponse.json({ error: "Task and vehicle mismatch" }, { status: 400 });
-      }
-
-      const { data: taskVeh, error: taskVehErr } = await supabase
-        .from("vehicle")
-        .select("garage_id")
-        .eq("id", task.vehicle_id)
-        .single();
-
-      if (taskVehErr || !taskVeh) {
-        return NextResponse.json({ error: "Lookup failed" }, { status: 400 });
-      }
-
-      const vehGarage = veh.garage_id;
-      const taskGarage = taskVeh.garage_id;
-      if (taskGarage !== vehGarage) {
-        return NextResponse.json({ error: "Task and vehicle mismatch" }, { status: 400 });
-      }
-
-      payload.task_id = task_id;
-    }
-
-    const { data, error } = await supabase
+    const { data: created, error: insErr } = await supabase
       .from("event")
-      .insert(payload)
-      .select("id, type, odometer, cost, notes, created_at")
+      .insert(insertPayload)
+      .select("id, type, created_at, vehicle_id")
       .single();
+    if (insErr) return NextResponse.json({ error: "Create failed", code: 400 }, { status: 400 });
 
-    if (error) throw error;
-    if (user) {
-      await logActivity({
-        actorId: user.id,
-        entityType: "event",
-        entityId: data.id,
-        action: "create",
-        diff: { after: { notes: data.notes, type: data.type, created_at: data.created_at }, ...(ENABLE_LINK && task_id ? { linked_task_id: task_id } : {}) },
-      });
-    }
-    return NextResponse.json({ event: data, linkedTask: task_id ? { id: task_id } : null }, { status: 201 });
+    // Update vehicle.last_event_at
+    await supabase.from("vehicle").update({ last_event_at: created.created_at }).eq("id", vehicle_id);
+
+    serverLog("event_create", { userId: user.id, vehicleId: vehicle_id, type, requestId });
+    return NextResponse.json(
+      { id: created.id, vehicle_id: created.vehicle_id, type: created.type, title, occurred_at: created.created_at },
+      { status: 201 }
+    );
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: message, code: 500 }, { status: 500 });
   }
 }

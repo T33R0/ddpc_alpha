@@ -24,11 +24,18 @@ export default async function TasksPage({ params }: { params: Promise<{ id: stri
     .maybeSingle();
   const { data: items } = await supabase
     .from("work_item")
-    .select("id, title, status, tags, due")
+    .select("id, title, status, tags, due, build_plan_id")
     .eq("vehicle_id", vehicleId)
     .order("created_at", { ascending: true });
+  const { data: plans } = await supabase
+    .from("build_plans")
+    .select("id, name, is_default")
+    .eq("vehicle_id", vehicleId)
+    .order("updated_at", { ascending: false });
 
   const initialItems = (items ?? []) as unknown as ClientWorkItem[];
+  const plansList = (plans ?? []) as { id: string; name: string; is_default: boolean }[];
+  const defaultPlanId = plansList.find(p => p.is_default)?.id ?? (plansList[0]?.id ?? null);
 
   // Determine permissions: VIEWER has read-only; CONTRIBUTOR+ can write
   async function getRole(garageId: string | null | undefined): Promise<Role|null> {
@@ -69,7 +76,7 @@ export default async function TasksPage({ params }: { params: Promise<{ id: stri
       </p>
 
       <ErrorBoundary message="Failed to load tasks.">
-        <TasksClient vehicleId={vehicleId} initialItems={initialItems} canWrite={canWrite} />
+        <TasksClient vehicleId={vehicleId} initialItems={initialItems} canWrite={canWrite} plans={plansList} defaultPlanId={defaultPlanId} />
       </ErrorBoundary>
     </div>
   );

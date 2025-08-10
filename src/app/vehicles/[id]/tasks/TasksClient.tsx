@@ -7,13 +7,15 @@ import { GLOBAL_TEMPLATES, TaskTemplate } from "@/components/tasks/templates";
 
 const STATUSES = ["BACKLOG","PLANNED","IN_PROGRESS","DONE"] as const;
 
-export default function TasksClient({ vehicleId, initialItems, canWrite = true }: { vehicleId: string; initialItems: ClientWorkItem[]; canWrite?: boolean }) {
+type Plan = { id: string; name: string; is_default: boolean };
+export default function TasksClient({ vehicleId, initialItems, canWrite = true, plans = [], defaultPlanId = null }: { vehicleId: string; initialItems: ClientWorkItem[]; canWrite?: boolean; plans?: Plan[]; defaultPlanId?: string | null }) {
   const { success, error } = useToast();
   const [title, setTitle] = useState("");
   const [status, setStatus] = useState<string>("BACKLOG");
   const [tags, setTags] = useState("");
   const [due, setDue] = useState("");
   const [items, setItems] = useState<ClientWorkItem[]>(initialItems);
+  const [planId, setPlanId] = useState<string | "">(defaultPlanId ?? (plans[0]?.id ?? ""));
   const [submitting, setSubmitting] = useState(false);
   const [lastTemplateId, setLastTemplateId] = useState<string | null>(null);
 
@@ -38,7 +40,7 @@ export default function TasksClient({ vehicleId, initialItems, canWrite = true }
       const res = await fetch("/api/work-items", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ vehicle_id: vehicleId, title, status, tags: tags ? tags.split(",").map(t => t.trim()).filter(Boolean) : null, due: due || null }),
+        body: JSON.stringify({ vehicle_id: vehicleId, title, status, tags: tags ? tags.split(",").map(t => t.trim()).filter(Boolean) : null, due: due || null, build_plan_id: planId || null }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || "Failed to create");
@@ -76,6 +78,15 @@ export default function TasksClient({ vehicleId, initialItems, canWrite = true }
           <input value={title} onChange={(e) => setTitle(e.target.value)} required className="border rounded px-2 py-1 w-64 disabled:opacity-50" disabled={!canWrite} title={!canWrite ? "Insufficient permissions" : undefined} />
         </div>
         <div className="flex flex-col">
+          <label className="text-xs text-gray-600">Plan</label>
+          <select data-testid="task-plan-select" value={planId} onChange={(e) => setPlanId(e.target.value)} className="border rounded px-2 py-1 disabled:opacity-50 min-w-[10rem]" disabled={!canWrite} title={!canWrite ? "Insufficient permissions" : undefined}>
+            <option value="">No plan</option>
+            {plans.map(p => (
+              <option key={p.id} value={p.id}>{p.name}{p.is_default ? " (default)" : ""}</option>
+            ))}
+          </select>
+        </div>
+        <div className="flex flex-col">
           <label className="text-xs text-gray-600">Status</label>
           <select value={status} onChange={(e) => setStatus(e.target.value)} className="border rounded px-2 py-1 disabled:opacity-50" disabled={!canWrite} title={!canWrite ? "Insufficient permissions" : undefined}>
             {STATUSES.map(s => (<option key={s} value={s}>{s.replace("_"," ")}</option>))}
@@ -92,7 +103,7 @@ export default function TasksClient({ vehicleId, initialItems, canWrite = true }
         <button disabled={!canWrite || submitting} type="submit" className="bg-black text-white rounded px-3 py-1 disabled:opacity-50" title={!canWrite ? "Insufficient permissions" : undefined}>{submitting ? "Adding..." : "Add"}</button>
       </form>
 
-      <TasksBoardClient statuses={["BACKLOG","PLANNED","IN_PROGRESS","DONE"] as unknown as string[]} initialItems={items} canWrite={canWrite} />
+      <TasksBoardClient statuses={["BACKLOG","PLANNED","IN_PROGRESS","DONE"] as unknown as string[]} initialItems={items} canWrite={canWrite} plans={plans} vehicleId={vehicleId} />
     </div>
   );
 }

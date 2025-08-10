@@ -12,17 +12,14 @@ export async function getVehicleCoverUrl(
   // Try storage: prefer a short-lived signed URL; fall back to public URL if bucket allows it.
   try {
     const prefix = `${vehicleId}/`;
-    const { data, error } = await supabase.storage.from("vehicle-media").list(prefix, { limit: 10, sortBy: { column: "name", order: "asc" } });
-    if (error || !Array.isArray(data) || data.length === 0) return null;
-    const cover = (data as Array<{ name: string }>).find((o) => /^cover\./i.test(o.name)) ?? (data as Array<{ name: string }>)[0];
-    if (!cover) return null;
+    // Prefer cover.*; else most recently updated image
+    const { data } = await supabase.storage.from("vehicle-media").list(prefix, { limit: 100 });
+    if (!Array.isArray(data) || data.length === 0) return null;
+    const files = data as Array<{ name: string }>;
+    const cover = files.find(f => /^cover\./i.test(f.name)) ?? files[0];
     const path = `${prefix}${cover.name}`;
-    try {
-      const { data: signed } = await supabase.storage.from("vehicle-media").createSignedUrl(path, 300);
-      if (signed?.signedUrl) return signed.signedUrl as string;
-    } catch {}
-    const publicUrl = supabase.storage.from("vehicle-media").getPublicUrl(path)?.data?.publicUrl;
-    return typeof publicUrl === "string" ? publicUrl : null;
+    const { data: signed } = await supabase.storage.from("vehicle-media").createSignedUrl(path, 300);
+    return signed?.signedUrl ?? null;
   } catch {
     return null;
   }

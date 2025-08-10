@@ -100,6 +100,8 @@ This is the alpha for the "GitHub for Automobiles" app. It uses Next.js App Rout
 
 - Copy `env.sample` to `.env.local` and set values:
 
+See also: `docs/env.example.md` for the authoritative list of environment variables and notes.
+
 ```
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
@@ -291,3 +293,37 @@ Required checks for merge:
 Artifacts:
 
 - Playwright traces upload on failure. E2E also runs Pa11y and Lighthouse CI in warn-only mode; reports are uploaded for inspection.
+
+## CI seed & test users
+
+The Playwright global setup seeds deterministic data for RLS and merge tests.
+
+- **Seed entry**: `tests/utils/seed.js` (Node) and `scripts/seed-ci.ts` (wrapper)
+- **Global setup**: `tests/utils/globalSetup.js` automatically runs the seed and loads exported IDs into `process.env`.
+
+Environment variables:
+
+- **Required**
+  - `SUPABASE_URL` — service project URL (server, not public URL)
+  - `SUPABASE_SERVICE_ROLE_KEY_CI` — service key (CI-only; never ship to client)
+- **Optional**
+  - `OWNER_EMAIL` — if provided, seed will add this user as OWNER to the seeded garage (requires SQL function `resolve_user_id_by_email` as documented above)
+
+Outputs:
+
+- Seed writes IDs to `.tmp/test-env.json`. Global setup exports these into env for specs:
+  - `PUBLIC_VEHICLE_ID`
+  - `VEHICLE_ID_WRITE`
+  - `GARAGE_ID`
+  - `PLAN_FROM_ID`
+  - `PLAN_TO_ID`
+
+Auth storage states:
+
+- If you have dev/mock login routes, run `tests/auth/bootstrap.spec.ts` with envs like `OWNER_LOGIN_URL` to generate `.auth/owner.json`.
+- Specs tagged `@auth` will use `.auth/owner.json` (and `.auth/viewer.json` if present). If states are missing, tests that require them auto-skip and CI stays green.
+
+Specs consuming IDs/storage state:
+
+
+These specs rely on the seeded IDs via `process.env` populated from `.tmp/test-env.json`.

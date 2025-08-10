@@ -64,6 +64,13 @@ export default async function VehicleOverviewPage({ params }: { params: Promise<
     <div className="space-y-6">
       <VehicleHeader vehicle={{ id: vehicle.id as string, nickname: vehicle.nickname, year: vehicle.year, make: vehicle.make, model: vehicle.model, privacy: vehicle.privacy }} coverUrl={coverUrl} showPublicLink={true} />
 
+      <div className="flex items-center justify-between">
+        <div />
+        <div className="flex items-center gap-3">
+          <Link href={`/vehicles/${vehicleId}/plans`} className="text-sm px-3 py-1 rounded border" data-testid="nav-build-plans">Build Plans</Link>
+        </div>
+      </div>
+
       <div className="grid md:grid-cols-3 gap-4">
         <VehicleQuickStats lastActivityISO={lastActivityISO} openTaskCount={openCount} doneTaskCount={doneCount} eventCount={eventCount} />
         <VehicleTasksPeek vehicleId={vehicleId} tasks={tasksPeek} />

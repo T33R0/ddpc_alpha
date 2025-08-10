@@ -1,0 +1,20 @@
+/* Global theme tokens for light and dark */
+:root {
+  --bg: #ffffff;
+  --fg: #0a0a0a;
+  --card: #f7f7f7;
+  --muted: #6b7280; /* gray-500 */
+  --brand: #2563eb; /* blue-600 */
+  --ring: #3b82f6; /* blue-500 */
+}
+
+[data-theme="dark"] {
+  --bg: #0a0a0a;
+  --fg: #ededed;
+  --card: #111827; /* gray-900 */
+  --muted: #9ca3af; /* gray-400 */
+  --brand: #60a5fa; /* blue-400 */
+  --ring: #93c5fd; /* blue-300 */
+}
+
+

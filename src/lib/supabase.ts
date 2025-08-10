@@ -1,8 +1,30 @@
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 
+function getProjectRef(url?: string): string | null {
+  if (!url) return null;
+  try {
+    const u = new URL(url);
+    const [sub] = u.hostname.split(".");
+    return sub || null;
+  } catch {
+    return null;
+  }
+}
+
 export async function getServerSupabase() {
   const cookieStore = await cookies();
+  // Heuristic warning: if running locally and using a hosted Supabase ref, sessions may be shared with prod
+  try {
+    if (process.env.NODE_ENV !== "production") {
+      const ref = getProjectRef(process.env.NEXT_PUBLIC_SUPABASE_URL);
+      if (ref) {
+        console.warn("Using same Supabase project for dev and prod can share sessions.");
+      }
+    }
+  } catch {
+    // no-op
+  }
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,

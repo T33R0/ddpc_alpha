@@ -1,11 +1,9 @@
-import Link from "next/link";
-import PrivacyBadge from "@/components/PrivacyBadge";
-import Image from "next/image";
+// import Link from "next/link";
 import { getServerSupabase } from "@/lib/supabase";
 import { createVehicle } from "./actions";
-import UploadPhoto from "@/components/UploadPhoto";
-import VehicleActions from "@/components/VehicleActions";
-import { SummaryChipsSkeleton, SummaryChipsExtended } from "@/components/analytics/SummaryChips";
+// VehicleCard is rendered client-side via VehiclesListClient
+import VehiclesListClient from "@/components/vehicles/VehiclesListClient";
+import { getVehicleCoverUrl } from "@/lib/getVehicleCoverUrl";
 import ErrorBoundary from "@/components/ErrorBoundary";
 // Note: Next 15 server components should use Promise-based searchParams; no headers()/window usage here.
 import VehiclesJoinedToastClient from "./VehiclesJoinedToastClient";
@@ -29,30 +27,42 @@ export default async function VehiclesPage(
   // Derive filters from Next 15 Promise-based searchParams (avoid TDZ/shadowing)
   const sp = await props.searchParams;
   const joined = sp?.joined === "1";
-  const currentFilter: Role | "ALL" = (sp?.role as Role | undefined) ?? "ALL";
+  // const currentFilter: Role | "ALL" = (sp?.role as Role | undefined) ?? "ALL";
   const query = (sp?.q as string | undefined)?.trim() ?? "";
-  const sortBy = ((sp?.sort as string | undefined) === "name" ? "name" : "updated") as "updated" | "name";
+  // const sortBy = ((sp?.sort as string | undefined) === "name" ? "name" : "updated") as "updated" | "name";
   type VehicleRow = {
     id: string;
-    vin: string | null;
-    year: number | null;
-    make: string | null;
-    model: string | null;
-    trim: string | null;
-    nickname: string | null;
-    privacy: "PUBLIC" | "PRIVATE";
-    photo_url: string | null;
+    name: string;
+    year?: number | null;
+    make?: string | null;
+    model?: string | null;
+    is_public?: boolean | null;
+    updated_at?: string | null;
+    created_at?: string | null;
+    last_event_at?: string | null;
+    coverUrl?: string | null;
+    // legacy fields for internal mapping
+    vin?: string | null;
+    trim?: string | null;
+    nickname?: string | null;
+    privacy?: "PUBLIC" | "PRIVATE";
+    photo_url?: string | null;
     garage_id: string;
   };
 
+  const lastUpdatedMs = (v: VehicleRow) =>
+    v.last_event_at ? Date.parse(v.last_event_at)
+    : v.updated_at ? Date.parse(v.updated_at)
+    : v.created_at ? Date.parse(v.created_at)
+    : 0;
+
+  const sortByName = (a: VehicleRow, b: VehicleRow) => a.name.localeCompare(b.name);
+  const sortByYear = (a: VehicleRow, b: VehicleRow) => (b.year ?? 0) - (a.year ?? 0);
+  const sortByLastUpdated = (a: VehicleRow, b: VehicleRow) => lastUpdatedMs(b) - lastUpdatedMs(a);
+
   let vehiclesQuery = supabase
     .from("vehicle")
-    .select("id, vin, year, make, model, trim, nickname, privacy, photo_url, garage_id");
-  if (sortBy === "name") {
-    vehiclesQuery = vehiclesQuery.order("nickname", { ascending: true, nullsFirst: false });
-  } else {
-    vehiclesQuery = vehiclesQuery.order("created_at", { ascending: false });
-  }
+    .select("id, vin, year, make, model, trim, nickname, privacy, photo_url, garage_id, created_at, updated_at");
   if (query) {
     vehiclesQuery = vehiclesQuery.ilike("nickname", `%${query}%`);
   }
@@ -164,8 +174,7 @@ export default async function VehiclesPage(
         <div role="status" aria-live="polite" className="sr-only">Joined garage.</div>
       )}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">My Vehicles</h1>
-        <Link href="/" className="text-sm text-blue-600 hover:underline">Home</Link>
+        <h1 className="text-2xl font-semibold" data-testid="h1-my-garage">My Garage</h1>
       </div>
 
       <VehiclesFiltersClient />
@@ -188,87 +197,15 @@ export default async function VehiclesPage(
         <p className="text-sm text-gray-600">Sign in to add and manage vehicles.</p>
       )}
 
-      {(!vehicles || vehicles.length === 0) ? (
-        <div className="flex flex-col items-center justify-center text-center border rounded p-12 bg-white text-gray-600">
-          <div className="text-lg font-medium text-gray-800 mb-1">No vehicles yet</div>
-          <div className="text-sm">Use the form above to add your first vehicle.</div>
-        </div>
-      ) : (
       <ErrorBoundary message="Failed to load vehicles.">
-<<<<<<< Updated upstream
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {vehicles.filter(v => {
-          const role = roleByGarage.get((v as VehicleRow).garage_id) as Role | undefined;
-          const roleMatch = currentFilter === "ALL" || role === currentFilter;
-          const qMatch = !query || (v.nickname ?? "").toLowerCase().includes(query.toLowerCase()) ||
-            `${v.year ?? ''} ${v.make ?? ''} ${v.model ?? ''}`.toLowerCase().includes(query.toLowerCase());
-          return roleMatch && qMatch;
-        }).map((v) => (
-          <div key={v.id} className="border rounded overflow-hidden" data-test="vehicle-card">
-            <Link
-              href={`/vehicles/${v.id}`}
-              aria-label={`${v.nickname ?? `${v.year ?? ''} ${v.make} ${v.model}`} details`}
-              className="block focus:outline-none focus:ring-2 focus:ring-blue-500"
-              data-test="vehicle-card-link"
-            >
-              {v.photo_url ? (
-                <Image src={v.photo_url} alt={v.nickname ?? `${v.year ?? ''} ${v.make} ${v.model}`} width={640} height={300} className="w-full h-40 object-cover" />
-              ) : (
-                <div className="w-full h-40 bg-gray-100 flex items-center justify-center text-gray-400">No photo</div>
-              )}
-              <div className="p-3 space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="font-medium hover:underline">{v.nickname ?? `${v.year ?? ''} ${v.make} ${v.model}`}</div>
-                  <div className="flex items-center gap-3">
-                    <PrivacyBadge value={v.privacy} />
-                  </div>
-                </div>
-                <div className="text-xs text-gray-600">{[v.year, v.make, v.model, v.trim].filter(Boolean).join(" ")}</div>
-                {metrics.size === 0 ? (
-                  <SummaryChipsSkeleton size="sm" />
-                ) : (
-                  <SummaryChipsExtended
-                    size="sm"
-                    upcomingCount={metrics.get(v.id)?.upcoming ?? 0}
-                    lastServiceDate={metrics.get(v.id)?.lastService ?? null}
-                    events30Count={metrics.get(v.id)?.events30 ?? 0}
-                    daysSinceLastService={metrics.get(v.id)?.daysSince ?? null}
-                    avgDaysBetweenService={metrics.get(v.id)?.avgBetween ?? null}
-                  />
-                )}
-              </div>
-            </Link>
-            {/* Keep interactive controls outside the link to avoid nested interactive elements */}
-            <div className="p-3 pt-0 flex items-center gap-3">
-              {user && <UploadPhoto vehicleId={v.id} />}
-            </div>
-            {user && (
-              <div className="pt-2 border-t p-3">
-                <VehicleActions
-                  id={v.id}
-                  initialNickname={v.nickname}
-                  initialPrivacy={v.privacy}
-                  initialVin={v.vin}
-                  initialYear={v.year}
-                  initialMake={v.make}
-                  initialModel={v.model}
-                  initialTrim={v.trim}
-                  canWrite={(() => { const role = roleByGarage.get((v as VehicleRow).garage_id); return role === "OWNER" || role === "MANAGER" || role === "CONTRIBUTOR"; })()}
-                />
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-=======
         <VehiclesListClient
-          vehicles={(vehicles ?? []).map((v: { id: string; nickname: string | null; year: number | null; make: string | null; model: string | null; privacy: "PUBLIC"|"PRIVATE"; updated_at?: string|null; created_at?: string|null; photo_url: string | null; garage_id: string; }) => ({
+          vehicles={(vehicles ?? []).map((v: any) => ({
             id: v.id,
             name: v.nickname ?? `${v.year ?? ''} ${v.make ?? ''} ${v.model ?? ''}`,
             year: v.year ?? null,
             make: v.make ?? null,
             model: v.model ?? null,
-            is_public: (v.privacy ?? "PRIVATE") === "PUBLIC",
+            is_public: (v.privacy as string | null) === "PUBLIC",
             updated_at: v.updated_at ?? null,
             created_at: v.created_at ?? null,
             last_event_at: null,
@@ -276,15 +213,13 @@ export default async function VehiclesPage(
             garage_id: v.garage_id,
           }))}
           loadCoverUrl={async (id: string, photo: string | null) => await getVehicleCoverUrl(supabase, id, photo)}
-          metrics={(vehicles ?? []).reduce<Record<string, { upcoming: number; lastService: string | null; daysSince: number | null; avgBetween: number | null }>>((acc, v: { id: string }) => {
+          metrics={(vehicles ?? []).reduce<Record<string, { upcoming: number; lastService: string | null; daysSince: number | null; avgBetween: number | null }>>((acc, v: any) => {
             acc[v.id] = metrics.get(v.id) ?? { upcoming: 0, lastService: null, daysSince: null, avgBetween: null };
             return acc;
           }, {})}
           isSignedIn={!!user}
         />
->>>>>>> Stashed changes
       </ErrorBoundary>
-      )}
     </div>
   );
 }
