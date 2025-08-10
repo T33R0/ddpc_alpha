@@ -23,14 +23,14 @@ export default function VehicleHeader({ vehicle, coverUrl, backHref = "/vehicles
         </div>
         {backHref ? (
           <div className="flex items-center gap-3 text-sm">
-            <Link href={backHref} className="text-gray-600 hover:underline">Back to vehicles</Link>
+            <Link href={backHref} className="text-gray-600 hover:underline" data-testid="back-to-vehicles">← Back to Vehicles</Link>
           </div>
         ) : null}
       </div>
       <div className="text-sm text-gray-600 flex items-center gap-2">
         <span>{meta}</span>
       </div>
-      <div className="text-sm text-gray-700" data-test="vehicle-helper-copy">
+      <div className="text-sm text-gray-700" data-testid="vehicle-helper-copy">
         <strong>Tasks</strong> = planned work. <strong>Timeline</strong> = what actually happened.
       </div>
       <div className="relative rounded-2xl overflow-hidden border bg-white">
@@ -50,11 +50,11 @@ export default function VehicleHeader({ vehicle, coverUrl, backHref = "/vehicles
               placeholder="empty"
               onLoad={() => setImgLoaded(true)}
               className={`w-full h-auto max-h-[420px] object-cover ${imgLoaded ? '' : 'opacity-0'}`}
-              data-test="vehicle-cover-img"
+              data-testid="vehicle-cover-img"
             />
           </>
         ) : (
-          <div className="w-full h-56 bg-gray-100 flex items-center justify-center text-gray-400" data-test="vehicle-cover-placeholder">No photo</div>
+          <div className="w-full h-56 bg-gray-100 flex items-center justify-center text-gray-400" data-testid="vehicle-cover-placeholder">No photo</div>
         )}
       </div>
     </div>
