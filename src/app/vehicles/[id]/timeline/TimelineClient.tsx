@@ -3,12 +3,24 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/ToastProvider";
 
-const TYPES = ["SERVICE","INSTALL","INSPECT","TUNE"] as const;
+type TimelineEventType = "MERGE" | "SERVICE" | "MOD" | "DYNO" | "NOTE";
 
-export type TimelineEvent = { id: string; type: typeof TYPES[number]; odometer: number | null; cost: number | null; notes: string | null; created_at: string; task_id?: string | null };
+export type TimelineEvent = {
+  id: string;
+  vehicle_id?: string;
+  type: TimelineEventType;
+  title?: string | null;
+  notes?: string | null;
+  occurred_at?: string; // ISO (compat)
+  created_at: string; // existing
+  odometer?: number | null;
+  cost?: number | null;
+  task_id?: string | null;
+  optimistic?: boolean;
+};
 
 export default function TimelineClient({ events, vehicleId, canWrite = true }: { events: TimelineEvent[]; vehicleId: string; canWrite?: boolean }) {
-  const [data, setData] = useState<TimelineEvent[]>(events);
+  const [data, setData] = useState<TimelineEvent[]>(events as TimelineEvent[]);
   const { success, error } = useToast();
   const [selected, setSelected] = useState<Set<TimelineEvent["type"]>>(new Set());
   const [from, setFrom] = useState<string>("");
@@ -28,6 +40,31 @@ export default function TimelineClient({ events, vehicleId, canWrite = true }: {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null);
 
+<<<<<<< Updated upstream
+=======
+  type MergeDetail = {
+    vehicle_id: string;
+    from_plan_id: string;
+    to_plan_id: string;
+    title?: string;
+    notes?: string;
+    occurred_at?: string;
+  };
+
+  // Listen for merge-plan optimistic signal
+  useEffect(() => {
+    if (!isEnabled("ENABLE_PLAN_MERGE")) return;
+    const onMergeCreated = (ev: Event) => {
+      const e = ev as CustomEvent<MergeDetail>;
+      if (!e.detail || e.detail.vehicle_id !== vehicleId) return;
+      const optimistic = makeOptimisticMergeEvent(e.detail);
+      setData(prev => [optimistic, ...prev]);
+    };
+    window.addEventListener("plan-merge-created", onMergeCreated as EventListener);
+    return () => window.removeEventListener("plan-merge-created", onMergeCreated as EventListener);
+  }, [vehicleId]);
+
+>>>>>>> Stashed changes
   // Initial micro-skeleton to cover first render
   useEffect(() => {
     const t = setTimeout(() => setInitialLoading(false), 200);

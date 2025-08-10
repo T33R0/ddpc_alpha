@@ -13,7 +13,7 @@ import VehiclesFiltersClient from "./VehiclesFiltersClient";
 
 export const dynamic = "force-dynamic";
 
-type Role = "OWNER" | "MANAGER" | "CONTRIBUTOR" | "VIEWER";
+  type Role = "OWNER" | "MANAGER" | "CONTRIBUTOR" | "VIEWER";
 
 export default async function VehiclesPage(
   props: { searchParams: Promise<Record<string, string | string[] | undefined>> }
@@ -195,6 +195,7 @@ export default async function VehiclesPage(
         </div>
       ) : (
       <ErrorBoundary message="Failed to load vehicles.">
+<<<<<<< Updated upstream
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {vehicles.filter(v => {
           const role = roleByGarage.get((v as VehicleRow).garage_id) as Role | undefined;
@@ -259,6 +260,29 @@ export default async function VehiclesPage(
           </div>
         ))}
       </div>
+=======
+        <VehiclesListClient
+          vehicles={(vehicles ?? []).map((v: { id: string; nickname: string | null; year: number | null; make: string | null; model: string | null; privacy: "PUBLIC"|"PRIVATE"; updated_at?: string|null; created_at?: string|null; photo_url: string | null; garage_id: string; }) => ({
+            id: v.id,
+            name: v.nickname ?? `${v.year ?? ''} ${v.make ?? ''} ${v.model ?? ''}`,
+            year: v.year ?? null,
+            make: v.make ?? null,
+            model: v.model ?? null,
+            is_public: (v.privacy ?? "PRIVATE") === "PUBLIC",
+            updated_at: v.updated_at ?? null,
+            created_at: v.created_at ?? null,
+            last_event_at: null,
+            photo_url: v.photo_url ?? null,
+            garage_id: v.garage_id,
+          }))}
+          loadCoverUrl={async (id: string, photo: string | null) => await getVehicleCoverUrl(supabase, id, photo)}
+          metrics={(vehicles ?? []).reduce<Record<string, { upcoming: number; lastService: string | null; daysSince: number | null; avgBetween: number | null }>>((acc, v: { id: string }) => {
+            acc[v.id] = metrics.get(v.id) ?? { upcoming: 0, lastService: null, daysSince: null, avgBetween: null };
+            return acc;
+          }, {})}
+          isSignedIn={!!user}
+        />
+>>>>>>> Stashed changes
       </ErrorBoundary>
       )}
     </div>
