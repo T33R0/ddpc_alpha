@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/ToastProvider";
+import { eventTypeForQuickAdd } from "@/lib/eventTypeForQuickAdd";
 
 const TYPES = ["SERVICE","INSTALL","INSPECT","TUNE"] as const;
 
@@ -14,7 +15,15 @@ export default function TimelineClient({ events, vehicleId, canWrite = true }: {
   const [from, setFrom] = useState<string>("");
   const [to, setTo] = useState<string>("");
   const [title, setTitle] = useState<string>("");
-  const [date, setDate] = useState<string>("");
+  const [dateTime, setDateTime] = useState<string>(() => {
+    const d = new Date();
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const local = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    return local;
+  });
+  const [tagInput, setTagInput] = useState<string>("");
+  const [tags, setTags] = useState<string[]>([]);
+  const [notes, setNotes] = useState<string>("");
   const [adding, setAdding] = useState<boolean>(false);
   const titleRef = useRef<HTMLInputElement | null>(null);
   const [liveMessage, setLiveMessage] = useState<string>("");
@@ -93,22 +102,36 @@ export default function TimelineClient({ events, vehicleId, canWrite = true }: {
     }
     if (adding) return; // prevent duplicate submits
     setAdding(true);
-    const nowIso = new Date().toISOString();
-    const created_at = date ? new Date(date).toISOString() : nowIso;
+    const created_at = (() => {
+      try {
+        return new Date(dateTime).toISOString();
+      } catch {
+        return new Date().toISOString();
+      }
+    })();
     const temp: TimelineEvent = {
       id: `tmp-${Date.now()}`,
-      type: "SERVICE",
+      type: eventTypeForQuickAdd(trimmed),
       odometer: null,
       cost: null,
-      notes: trimmed,
+      notes: notes.trim() || trimmed,
       created_at,
     } as TimelineEvent;
     setData((prev) => [temp, ...prev]);
     try {
+      const enabled = (process.env.NEXT_PUBLIC_ENABLE_TIMELINE_QUICK_ADD || "false") === "true";
+      if (!enabled) {
+        // Show toast and revert shortly; keep optimistic item briefly for perceived responsiveness
+        setTimeout(() => {
+          setData((prev) => prev.filter((x) => x.id !== temp.id));
+        }, 300);
+        error("Not yet wired");
+        return;
+      }
       const res = await fetch("/api/events", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ vehicle_id: vehicleId, title: trimmed, date: date || undefined }),
+        body: JSON.stringify({ vehicle_id: vehicleId, title: trimmed, date: dateTime || undefined }),
       });
       if (!res.ok) {
         throw new Error((await res.json()).error || "Failed to create");
@@ -117,12 +140,11 @@ export default function TimelineClient({ events, vehicleId, canWrite = true }: {
       const created: TimelineEvent = json.event;
       setData((prev) => [created, ...prev.filter((x) => x.id !== temp.id)]);
       setTitle("");
-      setDate("");
+      setNotes("");
+      setTags([]);
       success("Event added");
       setLiveMessage("Event added");
-      // Clear live region shortly after announcement
       setTimeout(() => setLiveMessage(""), 1000);
-      // Refocus title input for quick entry
       titleRef.current?.focus();
     } catch (e) {
       setData((prev) => prev.filter((x) => x.id !== temp.id));
@@ -207,34 +229,69 @@ export default function TimelineClient({ events, vehicleId, canWrite = true }: {
       {/* Aria live region for screen readers */}
       <div aria-live="polite" className="sr-only">{liveMessage}</div>
       {/* Quick add */}
-      <form onSubmit={handleQuickAdd} className="grid grid-cols-1 md:grid-cols-6 gap-3 border rounded p-4 bg-white" data-test="timeline-quick-add">
+      <form onSubmit={handleQuickAdd} className="grid grid-cols-1 md:grid-cols-6 gap-3 border rounded p-4 bg-card" data-testid="timeline-quick-add-form">
         <input
           name="title"
-          placeholder="Quick add title"
-          className="border rounded px-2 py-1 md:col-span-3"
+          placeholder="Title (required)"
+          className="border rounded px-2 py-1 md:col-span-2 bg-bg text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]"
           value={title}
           ref={titleRef}
           onChange={(e) => setTitle(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Escape") {
               setTitle("");
-              setDate("");
+              setDateTime(() => {
+                const d = new Date();
+                const pad = (n: number) => String(n).padStart(2, "0");
+                return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+              });
               // slight delay to allow clearing
               requestAnimationFrame(() => titleRef.current?.focus());
             }
           }}
-          data-test="timeline-title-input"
+          data-testid="timeline-quick-add-title"
         />
         <input
           name="date"
-          type="date"
-          className="border rounded px-2 py-1 md:col-span-2"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
+          type="datetime-local"
+          className="border rounded px-2 py-1 md:col-span-2 bg-bg text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]"
+          value={dateTime}
+          onChange={(e) => setDateTime(e.target.value)}
         />
-        <button disabled={!canWrite || adding || !title.trim()} type="submit" className="bg-black text-white rounded px-3 py-1 disabled:opacity-50" title={!canWrite ? "Insufficient permissions" : undefined} data-test="timeline-add-btn">
-          {adding ? "Adding…" : "Add"}
-        </button>
+        <div className="md:col-span-2 flex flex-col gap-2">
+          <label className="text-xs text-muted">Tags</label>
+          <div className="flex flex-wrap items-center gap-2 border rounded px-2 py-1 bg-bg">
+            {tags.map((t, idx) => (
+              <span key={`${t}-${idx}`} className="inline-flex items-center text-[11px] rounded-full bg-card text-muted border px-2 py-0.5">
+                {t}
+                <button type="button" className="ml-1 text-[10px]" onClick={() => setTags(prev => prev.filter((_, i) => i !== idx))}>×</button>
+              </span>
+            ))}
+            <input
+              value={tagInput}
+              onChange={(e) => setTagInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "," || e.key === "Enter") {
+                  e.preventDefault();
+                  const v = tagInput.trim().replace(/,+$/, "");
+                  if (v) setTags(prev => Array.from(new Set([...prev, v])));
+                  setTagInput("");
+                }
+              }}
+              placeholder="Add tag"
+              className="flex-1 min-w-[6rem] bg-transparent outline-none text-sm"
+            />
+          </div>
+        </div>
+        <div className="md:col-span-4">
+          <label className="text-xs text-muted">Notes (optional)</label>
+          <textarea value={notes} onChange={(e) => setNotes(e.target.value)} className="w-full border rounded px-2 py-1 bg-bg text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]" rows={2} placeholder="Details"></textarea>
+        </div>
+        <div className="md:col-span-2 flex items-end">
+          <button disabled={!canWrite || adding || !title.trim()} type="submit" className="bg-brand text-white rounded px-3 py-1 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]" title={!canWrite ? "Insufficient permissions" : undefined} data-testid="timeline-quick-add-save">
+            {adding ? "Adding…" : "Save"}
+          </button>
+        </div>
       </form>
       {/* Filters */}
       <div className="rounded border p-3 bg-white">

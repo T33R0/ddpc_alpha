@@ -1,5 +1,7 @@
 import ThemeSection from "./ThemeSection";
 import { getServerSupabase } from "@/lib/supabase";
+import { getMySettings } from "./actions";
+import { serverLog } from "@/lib/serverLog";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -22,6 +24,9 @@ export default async function ProfilePage() {
   const email = user.email ?? "(no email)";
   const providers = Array.from(new Set([user.app_metadata?.provider, ...(user.identities?.map(i => i.provider) ?? [])].filter(Boolean))) as string[];
 
+  const { theme } = await getMySettings();
+  serverLog("theme_initialized", { userId: user.id, theme });
+
   return (
     <div className="min-h-screen p-8" data-testid="profile-page">
       <div className="max-w-2xl mx-auto rounded-2xl border bg-card p-6 shadow-sm space-y-6">
@@ -35,7 +40,7 @@ export default async function ProfilePage() {
             <div className="text-xs text-muted">Providers: {providers.join(", ")}</div>
           )}
         </section>
-        <ThemeSection />
+        <ThemeSection initialTheme={theme} userId={user.id} />
       </div>
     </div>
   );
