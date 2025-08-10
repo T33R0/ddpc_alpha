@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { getBrowserSupabase } from "@/lib/supabase-browser";
 
 export default function HeaderAuth() {
@@ -20,7 +21,7 @@ export default function HeaderAuth() {
 
   if (!email) {
     return (
-      <a href="/api/auth/signin" className="px-3 py-1 rounded border bg-white hover:bg-gray-50" data-testid="btn-signin">Sign in</a>
+      <Link href="/api/auth/signin" className="px-3 py-1 rounded border bg-white hover:bg-gray-50" data-testid="btn-signin">Sign in</Link>
     );
   }
 
@@ -31,8 +32,8 @@ export default function HeaderAuth() {
       </button>
       {menuOpen && (
         <div role="menu" className="absolute right-0 mt-2 w-40 rounded border bg-white shadow">
-          <a role="menuitem" className="block px-3 py-2 text-sm hover:bg-gray-50" href="/profile">Profile</a>
-          <a role="menuitem" className="block px-3 py-2 text-sm hover:bg-gray-50" href="/vehicles" data-testid="nav-garage">Garage</a>
+          <Link role="menuitem" className="block px-3 py-2 text-sm hover:bg-gray-50" href="/profile">Profile</Link>
+          <Link role="menuitem" className="block px-3 py-2 text-sm hover:bg-gray-50" href="/vehicles" data-testid="nav-garage">Garage</Link>
           <button role="menuitem" className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50" onClick={async () => { await supabase.auth.signOut(); window.location.reload(); }}>Sign out</button>
         </div>
       )}

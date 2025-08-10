@@ -1,11 +1,9 @@
-import Link from "next/link";
-import PrivacyBadge from "@/components/PrivacyBadge";
-import Image from "next/image";
+// import Link from "next/link";
 import { getServerSupabase } from "@/lib/supabase";
 import { createVehicle } from "./actions";
-import UploadPhoto from "@/components/UploadPhoto";
-import VehicleActions from "@/components/VehicleActions";
-import { SummaryChipsSkeleton, SummaryChipsExtended } from "@/components/analytics/SummaryChips";
+import { SummaryChipsSkeleton } from "@/components/analytics/SummaryChips";
+import VehicleCard from "@/components/vehicle/VehicleCard";
+import { getVehicleCoverUrl } from "@/lib/getVehicleCoverUrl";
 import ErrorBoundary from "@/components/ErrorBoundary";
 // Note: Next 15 server components should use Promise-based searchParams; no headers()/window usage here.
 import VehiclesJoinedToastClient from "./VehiclesJoinedToastClient";
@@ -164,8 +162,7 @@ export default async function VehiclesPage(
         <div role="status" aria-live="polite" className="sr-only">Joined garage.</div>
       )}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">My Vehicles</h1>
-        <Link href="/" className="text-sm text-blue-600 hover:underline">Home</Link>
+        <h1 className="text-2xl font-semibold" data-testid="h1-my-garage">My Garage</h1>
       </div>
 
       <VehiclesFiltersClient />
@@ -202,62 +199,13 @@ export default async function VehiclesPage(
           const qMatch = !query || (v.nickname ?? "").toLowerCase().includes(query.toLowerCase()) ||
             `${v.year ?? ''} ${v.make ?? ''} ${v.model ?? ''}`.toLowerCase().includes(query.toLowerCase());
           return roleMatch && qMatch;
-        }).map((v) => (
-          <div key={v.id} className="border rounded overflow-hidden" data-test="vehicle-card">
-            <Link
-              href={`/vehicles/${v.id}`}
-              aria-label={`${v.nickname ?? `${v.year ?? ''} ${v.make} ${v.model}`} details`}
-              className="block focus:outline-none focus:ring-2 focus:ring-blue-500"
-              data-test="vehicle-card-link"
-            >
-              {v.photo_url ? (
-                <Image src={v.photo_url} alt={v.nickname ?? `${v.year ?? ''} ${v.make} ${v.model}`} width={640} height={300} className="w-full h-40 object-cover" />
-              ) : (
-                <div className="w-full h-40 bg-gray-100 flex items-center justify-center text-gray-400">No photo</div>
-              )}
-              <div className="p-3 space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="font-medium hover:underline">{v.nickname ?? `${v.year ?? ''} ${v.make} ${v.model}`}</div>
-                  <div className="flex items-center gap-3">
-                    <PrivacyBadge value={v.privacy} />
-                  </div>
-                </div>
-                <div className="text-xs text-gray-600">{[v.year, v.make, v.model, v.trim].filter(Boolean).join(" ")}</div>
-                {metrics.size === 0 ? (
-                  <SummaryChipsSkeleton size="sm" />
-                ) : (
-                  <SummaryChipsExtended
-                    size="sm"
-                    upcomingCount={metrics.get(v.id)?.upcoming ?? 0}
-                    lastServiceDate={metrics.get(v.id)?.lastService ?? null}
-                    events30Count={metrics.get(v.id)?.events30 ?? 0}
-                    daysSinceLastService={metrics.get(v.id)?.daysSince ?? null}
-                    avgDaysBetweenService={metrics.get(v.id)?.avgBetween ?? null}
-                  />
-                )}
-              </div>
-            </Link>
-            {/* Keep interactive controls outside the link to avoid nested interactive elements */}
-            <div className="p-3 pt-0 flex items-center gap-3">
-              {user && <UploadPhoto vehicleId={v.id} />}
-            </div>
-            {user && (
-              <div className="pt-2 border-t p-3">
-                <VehicleActions
-                  id={v.id}
-                  initialNickname={v.nickname}
-                  initialPrivacy={v.privacy}
-                  initialVin={v.vin}
-                  initialYear={v.year}
-                  initialMake={v.make}
-                  initialModel={v.model}
-                  initialTrim={v.trim}
-                  canWrite={(() => { const role = roleByGarage.get((v as VehicleRow).garage_id); return role === "OWNER" || role === "MANAGER" || role === "CONTRIBUTOR"; })()}
-                />
-              </div>
-            )}
-          </div>
-        ))}
+        }).map(async (v) => {
+          const coverUrl = await getVehicleCoverUrl(supabase, v.id, v.photo_url);
+          const m = metrics.get(v.id) ?? { upcoming: 0, lastService: null, daysSince: null, avgBetween: null };
+          return (
+            <VehicleCard key={v.id} v={{ id: v.id, nickname: v.nickname, year: v.year, make: v.make, model: v.model, trim: v.trim, privacy: v.privacy, coverUrl }} m={m} isSignedIn={!!user} />
+          );
+        })}
       </div>
       </ErrorBoundary>
       )}

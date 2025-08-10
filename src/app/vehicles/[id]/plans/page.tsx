@@ -36,7 +36,8 @@ export default async function VehiclePlansPage({ params }: { params: Promise<{ i
       </div>
 
       <form action={createPlan} className="flex items-center gap-2">
-        <input name="name" placeholder="New plan name" className="border rounded px-2 py-1" />
+        <label htmlFor="new-plan-name" className="sr-only">New plan name</label>
+        <input id="new-plan-name" name="name" placeholder="New plan name" className="border rounded px-2 py-1" />
         <button type="submit" data-testid="new-plan-btn" className="px-3 py-1 rounded bg-black text-white">New Plan</button>
       </form>
 

@@ -29,6 +29,26 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
     await fetch(`${process.env.BASE_URL ?? ""}/api/build-plans/${planId}/merge`, { method: "POST" });
   }
 
+  async function updatePlan(formData: FormData) {
+    "use server";
+    const name = (formData.get("name") || "").toString().trim();
+    const description = (formData.get("description") || "").toString();
+    await fetch(`${process.env.BASE_URL ?? ""}/api/build-plans/${planId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, description }),
+    });
+  }
+
+  async function setDefault() {
+    "use server";
+    await fetch(`${process.env.BASE_URL ?? ""}/api/build-plans/${planId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ is_default: true }),
+    });
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -47,9 +67,25 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
         </div>
       </div>
 
-      {plan.description ? (
-        <p className="text-gray-700">{plan.description}</p>
-      ) : null}
+      <div className="rounded border p-4 space-y-3">
+        <div className="text-sm font-medium">Edit Plan</div>
+        <form action={updatePlan} className="grid gap-3 md:grid-cols-2">
+          <div className="flex flex-col">
+            <label htmlFor="plan-name" className="text-xs text-gray-600">Name</label>
+            <input id="plan-name" name="name" defaultValue={plan.name} className="border rounded px-2 py-1" />
+          </div>
+          <div className="flex flex-col md:col-span-2">
+            <label htmlFor="plan-description" className="text-xs text-gray-600">Description</label>
+            <textarea id="plan-description" name="description" defaultValue={plan.description ?? ""} className="border rounded px-2 py-1 min-h-[72px]"></textarea>
+          </div>
+          <div className="flex items-center gap-2 md:col-span-2">
+            <button type="submit" data-testid="plan-save-btn" className="text-sm px-3 py-1 rounded border">Save</button>
+            <form action={setDefault}>
+              <button type="submit" data-testid="plan-set-default-btn" className="text-sm px-3 py-1 rounded border" disabled={!!plan.is_default}>Set Default</button>
+            </form>
+          </div>
+        </form>
+      </div>
 
       <div className="rounded border divide-y">
         <div className="p-3 text-sm font-medium bg-gray-50">Tasks in this plan</div>
