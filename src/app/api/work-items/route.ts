@@ -4,7 +4,7 @@ import { logActivity } from "@/lib/activity/log";
 
 export async function POST(req: NextRequest) {
   try {
-    const { vehicle_id, title, status, tags, due } = await req.json();
+    const { vehicle_id, title, status, tags, due, build_plan_id } = await req.json();
     if (!vehicle_id || !title) return NextResponse.json({ error: "Missing vehicle_id or title" }, { status: 400 });
 
     const supabase = await getServerSupabase();
@@ -17,6 +17,7 @@ export async function POST(req: NextRequest) {
         status: status ?? "BACKLOG",
         tags: Array.isArray(tags) ? tags : null,
         due: due || null,
+        build_plan_id: build_plan_id || null,
       })
       .select("id, title, status, tags, due")
       .single();

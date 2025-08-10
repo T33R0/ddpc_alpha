@@ -1,0 +1,63 @@
+import Link from "next/link";
+import { getServerSupabase } from "@/lib/supabase";
+
+export const dynamic = "force-dynamic";
+
+export default async function VehiclePlansPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id: vehicleId } = await params;
+  const supabase = await getServerSupabase();
+
+  const { data: plans, error } = await supabase
+    .from("build_plans")
+    .select("id, name, description, status, is_default, updated_at")
+    .eq("vehicle_id", vehicleId)
+    .order("updated_at", { ascending: false });
+
+  if (error) {
+    return <div className="text-red-600">Failed to load plans: {error.message}</div>;
+  }
+
+  async function createPlan(formData: FormData) {
+    "use server";
+    const name = (formData.get("name") || "").toString().trim();
+    if (!name) return;
+    const supa = await getServerSupabase();
+    await fetch(`${process.env.BASE_URL ?? ""}/api/build-plans`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ vehicle_id: vehicleId, name }),
+    });
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold">Build Plans</h1>
+        <Link href={`/vehicles/${vehicleId}`} className="text-sm text-blue-600 hover:underline">Back</Link>
+      </div>
+
+      <form action={createPlan} className="flex items-center gap-2">
+        <input name="name" placeholder="New plan name" className="border rounded px-2 py-1" />
+        <button type="submit" data-testid="new-plan-btn" className="px-3 py-1 rounded bg-black text-white">New Plan</button>
+      </form>
+
+      <div data-testid="plans-list" className="divide-y rounded border">
+        {(plans ?? []).map(p => (
+          <div key={p.id} data-testid={`plan-row-${p.id}`} className="flex items-center justify-between p-3">
+            <div className="space-y-1">
+              <Link href={`/vehicles/${vehicleId}/plans/${p.id}`} className="font-medium hover:underline">{p.name}</Link>
+              {p.description ? <div className="text-xs text-gray-600">{p.description}</div> : null}
+            </div>
+            <div className="flex items-center gap-2">
+              {p.is_default ? <span className="text-xs px-2 py-0.5 rounded bg-blue-100 text-blue-800">Default</span> : null}
+              <span className="text-xs px-2 py-0.5 rounded bg-gray-100 text-gray-800">{p.status}</span>
+            </div>
+          </div>
+        ))}
+        {(plans ?? []).length === 0 && (
+          <div className="p-4 text-gray-600">No plans yet.</div>
+        )}
+      </div>
+    </div>
+  );
+}
