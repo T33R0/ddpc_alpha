@@ -19,11 +19,12 @@ export async function getUserSettings(supabase: SupabaseClient): Promise<UserSet
 
 export async function upsertUserSettings(
   supabase: SupabaseClient,
+  userId: string,
   settings: { theme: Theme }
 ): Promise<UserSettings | null> {
   const { data, error } = await supabase
     .from("user_settings")
-    .upsert({ theme: settings.theme })
+    .upsert({ user_id: userId, theme: settings.theme })
     .select("user_id, theme, created_at, updated_at")
     .maybeSingle();
   if (error) return null;

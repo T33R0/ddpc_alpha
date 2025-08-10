@@ -11,34 +11,30 @@ export default function VehicleCard({ v, m, isSignedIn }: { v: Vehicle; m: Metri
   const alt = `${title} — cover photo`;
   const prettyDate = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '—');
   return (
-    <div className="border rounded overflow-hidden" data-testid="vehicle-card">
-      <Link href={`/vehicles/${v.id}`} className="block focus:outline-none focus:ring-2 focus:ring-blue-500" data-testid="vehicle-card-link">
-        {v.coverUrl ? (
-          <Image src={v.coverUrl} alt={alt} width={640} height={300} className="w-full h-40 object-cover" data-testid="vehicle-cover" />
-        ) : (
-          <div className="w-full h-40 bg-gray-100 flex items-center justify-center text-gray-400" data-testid="vehicle-cover">No photo</div>
-        )}
-        <div className="p-3 space-y-2">
-          <div className="flex items-center justify-between">
-            <div className="font-medium hover:underline">{title}</div>
-            <div className="flex items-center gap-3">
-              <span data-testid="badge-public"><PrivacyBadge value={v.privacy} /></span>
-            </div>
-          </div>
-          <div className="text-xs text-gray-600">{[v.year, v.make, v.model, v.trim].filter(Boolean).join(" ")}</div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <StatsChip label="Upcoming" value={m.upcoming} dataTestId="chip-upcoming" />
-            <StatsChip label="Last service" value={prettyDate(m.lastService)} tooltip={m.lastService ? new Date(m.lastService).toLocaleString() : undefined} dataTestId="chip-last-service" />
-            <StatsChip label="Days since service" value={m.daysSince ?? '—'} dataTestId="chip-days-since-service" />
-            <StatsChip label="Avg days between service" value={m.avgBetween ?? '—'} dataTestId="chip-avg-days-between-service" />
-          </div>
-        </div>
-      </Link>
-      {isSignedIn && (
-        <div className="p-3 pt-0 flex items-center gap-3">
-          {/* optional per-card actions can live here if needed */}
-        </div>
+    <div className="border rounded overflow-hidden bg-card" data-testid="vehicle-card">
+      {v.coverUrl ? (
+        <Image src={v.coverUrl} alt={alt} width={640} height={300} className="w-full h-40 object-cover" data-testid="vehicle-cover" />
+      ) : (
+        <div className="w-full h-40 bg-bg text-muted flex items-center justify-center" data-testid="vehicle-cover">No photo</div>
       )}
+      <div className="p-3 space-y-2">
+        <div className="flex items-center justify-between">
+          <div id={`veh-${v.id}-title`} className="font-medium text-fg">{title}</div>
+          <div className="flex items-center gap-3">
+            <PrivacyBadge value={v.privacy} />
+          </div>
+        </div>
+        <div className="text-xs text-muted">{[v.year, v.make, v.model, v.trim].filter(Boolean).join(" ")}</div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <StatsChip label="Upcoming" value={m.upcoming} dataTestId="chip-upcoming" />
+          <StatsChip label="Last service" value={prettyDate(m.lastService)} tooltip={m.lastService ? new Date(m.lastService).toLocaleString() : undefined} dataTestId="chip-last-service" />
+          <StatsChip label="Days since service" value={m.daysSince ?? '—'} dataTestId="chip-days-since-service" />
+          <StatsChip label="Avg days between service" value={m.avgBetween ?? '—'} dataTestId="chip-avg-days-between-service" />
+        </div>
+        <div className="pt-1">
+          <Link href={`/vehicles/${v.id}`} className="inline-flex items-center rounded bg-brand text-white px-3 py-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]">View</Link>
+        </div>
+      </div>
     </div>
   );
 }

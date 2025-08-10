@@ -1,9 +1,13 @@
 "use client";
 import { useEffect, useId, useState, Suspense, startTransition } from "react";
 import { serverLog } from "@/lib/serverLog";
-import { Button } from "@/components/ui/Button";
 
 type Theme = "system" | "light" | "dark";
+
+interface ThemeSectionProps {
+  initialTheme: Theme;
+  userId: string;
+}
 
 async function updateTheme(theme: Theme): Promise<void> {
   // Optimistic: update immediately
@@ -16,18 +20,18 @@ async function updateTheme(theme: Theme): Promise<void> {
   });
 }
 
-function ThemeForm() {
-  const [value, setValue] = useState<Theme>(() => {
-    const current = document.documentElement.dataset.theme;
-    // We can't detect 'system' reliably from dataset; default to 'system'
-    if (current === "light" || current === "dark") return current;
-    return "system";
-  });
+function ThemeForm({ initialTheme, userId }: ThemeSectionProps) {
+  const [value, setValue] = useState<Theme>(initialTheme);
   const name = useId();
 
   useEffect(() => {
-    serverLog("profile_theme_ui_init");
-  }, []);
+    // apply initial theme to document for consistency on first render
+    const applied = initialTheme === "system"
+      ? (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
+      : initialTheme;
+    document.documentElement.dataset.theme = applied;
+    serverLog("profile_theme_ui_init", { userId });
+  }, [initialTheme, userId]);
 
   function onChange(next: Theme) {
     setValue(next);
@@ -57,10 +61,10 @@ function ThemeForm() {
   );
 }
 
-export default function ThemeSection() {
+export default function ThemeSection({ initialTheme, userId }: ThemeSectionProps) {
   return (
     <Suspense fallback={null}>
-      <ThemeForm />
+      <ThemeForm initialTheme={initialTheme} userId={userId} />
     </Suspense>
   );
 }

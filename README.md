@@ -100,6 +100,8 @@ This is the alpha for the "GitHub for Automobiles" app. It uses Next.js App Rout
 
 - Copy `env.sample` to `.env.local` and set values:
 
+See also: `docs/env.example.md` for the authoritative list of environment variables and notes.
+
 ```
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=

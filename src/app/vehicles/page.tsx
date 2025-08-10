@@ -1,8 +1,8 @@
 // import Link from "next/link";
 import { getServerSupabase } from "@/lib/supabase";
 import { createVehicle } from "./actions";
-import { SummaryChipsSkeleton } from "@/components/analytics/SummaryChips";
 import VehicleCard from "@/components/vehicle/VehicleCard";
+import VehiclesListClient from "@/components/vehicles/VehiclesListClient";
 import { getVehicleCoverUrl } from "@/lib/getVehicleCoverUrl";
 import ErrorBoundary from "@/components/ErrorBoundary";
 // Note: Next 15 server components should use Promise-based searchParams; no headers()/window usage here.
@@ -45,12 +45,7 @@ export default async function VehiclesPage(
 
   let vehiclesQuery = supabase
     .from("vehicle")
-    .select("id, vin, year, make, model, trim, nickname, privacy, photo_url, garage_id");
-  if (sortBy === "name") {
-    vehiclesQuery = vehiclesQuery.order("nickname", { ascending: true, nullsFirst: false });
-  } else {
-    vehiclesQuery = vehiclesQuery.order("created_at", { ascending: false });
-  }
+    .select("id, vin, year, make, model, trim, nickname, privacy, photo_url, garage_id, created_at, updated_at");
   if (query) {
     vehiclesQuery = vehiclesQuery.ilike("nickname", `%${query}%`);
   }
@@ -185,30 +180,29 @@ export default async function VehiclesPage(
         <p className="text-sm text-gray-600">Sign in to add and manage vehicles.</p>
       )}
 
-      {(!vehicles || vehicles.length === 0) ? (
-        <div className="flex flex-col items-center justify-center text-center border rounded p-12 bg-white text-gray-600">
-          <div className="text-lg font-medium text-gray-800 mb-1">No vehicles yet</div>
-          <div className="text-sm">Use the form above to add your first vehicle.</div>
-        </div>
-      ) : (
       <ErrorBoundary message="Failed to load vehicles.">
-      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {vehicles.filter(v => {
-          const role = roleByGarage.get((v as VehicleRow).garage_id) as Role | undefined;
-          const roleMatch = currentFilter === "ALL" || role === currentFilter;
-          const qMatch = !query || (v.nickname ?? "").toLowerCase().includes(query.toLowerCase()) ||
-            `${v.year ?? ''} ${v.make ?? ''} ${v.model ?? ''}`.toLowerCase().includes(query.toLowerCase());
-          return roleMatch && qMatch;
-        }).map(async (v) => {
-          const coverUrl = await getVehicleCoverUrl(supabase, v.id, v.photo_url);
-          const m = metrics.get(v.id) ?? { upcoming: 0, lastService: null, daysSince: null, avgBetween: null };
-          return (
-            <VehicleCard key={v.id} v={{ id: v.id, nickname: v.nickname, year: v.year, make: v.make, model: v.model, trim: v.trim, privacy: v.privacy, coverUrl }} m={m} isSignedIn={!!user} />
-          );
-        })}
-      </div>
+        <VehiclesListClient
+          vehicles={(vehicles ?? []).map(v => ({
+            id: v.id,
+            nickname: v.nickname,
+            year: v.year,
+            make: v.make,
+            model: v.model,
+            trim: v.trim,
+            privacy: v.privacy,
+            photo_url: v.photo_url,
+            created_at: (v as any).created_at ?? null,
+            updated_at: (v as any).updated_at ?? null,
+            garage_id: (v as any).garage_id,
+          }))}
+          loadCoverUrl={async (id: string, photo: string | null) => await getVehicleCoverUrl(supabase, id, photo)}
+          metrics={(vehicles ?? []).reduce<Record<string, { upcoming: number; lastService: string | null; daysSince: number | null; avgBetween: number | null }>>((acc, v) => {
+            acc[v.id] = metrics.get(v.id) ?? { upcoming: 0, lastService: null, daysSince: null, avgBetween: null };
+            return acc;
+          }, {})}
+          isSignedIn={!!user}
+        />
       </ErrorBoundary>
-      )}
     </div>
   );
 }

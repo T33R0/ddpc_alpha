@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase";
 import { serverLog } from "@/lib/serverLog";
-
-type Theme = "system" | "light" | "dark";
+import { upsertUserSettings } from "@/lib/queries/userSettings";
 
 export async function POST(req: Request): Promise<Response> {
   try {
@@ -16,10 +15,9 @@ export async function POST(req: Request): Promise<Response> {
       return NextResponse.json({ ok: false }, { status: 400 });
     }
 
-    const meta = { ...(user.user_metadata as Record<string, unknown>), theme_pref: theme };
-    const { error } = await supabase.auth.updateUser({ data: meta });
-    if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
-    serverLog("theme_updated", { user_id: user.id });
+    const updated = await upsertUserSettings(supabase, user.id, { theme: theme as "system"|"light"|"dark" });
+    if (!updated) return NextResponse.json({ ok: false }, { status: 400 });
+    serverLog("theme_update", { user_id: user.id, theme });
     return NextResponse.json({ ok: true });
   } catch (e) {
     return NextResponse.json({ ok: false }, { status: 500 });
