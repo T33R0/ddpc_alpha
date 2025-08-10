@@ -43,10 +43,17 @@ export default function CommandPalette() {
     const base = [
       { id: "go-vehicles", label: "Go to Vehicles", action: () => router.push("/vehicles") },
       { id: "go-timeline", label: "Go to Timeline", action: () => {
-        if (inVehicleScoped && currentVehicleId) router.push(`/vehicles/${currentVehicleId}/timeline`); else router.push("/timeline");
+        if (inVehicleScoped && currentVehicleId) router.push(`/vehicles/${currentVehicleId}/timeline`);
+        else {
+          // open switcher inline: simulate clicking the switcher button
+          document.querySelector<HTMLButtonElement>('[data-testid="vehicle-switcher"]')?.click();
+        }
       } },
       { id: "go-tasks", label: "Go to Tasks", action: () => {
-        if (inVehicleScoped && currentVehicleId) router.push(`/vehicles/${currentVehicleId}/tasks`); else router.push("/tasks");
+        if (inVehicleScoped && currentVehicleId) router.push(`/vehicles/${currentVehicleId}/tasks`);
+        else {
+          document.querySelector<HTMLButtonElement>('[data-testid="vehicle-switcher"]')?.click();
+        }
       } },
       { id: "new-task", label: "New Task", action: () => {
         if (inVehicleScoped && currentVehicleId) router.push(`/vehicles/${currentVehicleId}/tasks`); else router.push("/vehicles");

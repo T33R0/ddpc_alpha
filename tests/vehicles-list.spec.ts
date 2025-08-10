@@ -10,23 +10,6 @@ async function goto(page, path) { await page.goto(`${BASE_URL}${path}`, { waitUn
 
 auth.describe.configure({ tag: ['@auth', '@vehicles'] });
 
-auth('Header Timeline/Tasks navigate within vehicle context', async ({ page }) => {
-  // Navigate to a vehicle page first if available
-  await goto(page, '/vehicles');
-  const firstCard = page.locator('[data-test="vehicle-card-link"]').first();
-  if (await firstCard.count()) {
-    await firstCard.click();
-    // Now in vehicle context
-    const navTimeline = page.locator('[data-testid="nav-timeline"]');
-    const navTasks = page.locator('[data-testid="nav-tasks"]');
-    await expect(navTimeline).toHaveCount(1);
-    await expect(navTasks).toHaveCount(1);
-    await navTimeline.click();
-    await expect(page).toHaveURL(/\/vehicles\/[^/]+\/timeline$/);
-    await navTasks.click();
-    await expect(page).toHaveURL(/\/vehicles\/[^/]+\/tasks$/);
-  }
-});
 
 auth('Search narrows results', async ({ page }) => {
   await goto(page, '/vehicles');
@@ -66,17 +49,5 @@ auth('Cards have no per-card action buttons and are fully clickable', async ({ p
   }
 });
 
-auth('Header always shows Timeline/Tasks; out-of-context click routes to /vehicles and shows toast', async ({ page }) => {
-  await goto(page, '/');
-  const navTimeline = page.locator('[data-testid="nav-timeline"]');
-  const navTasks = page.locator('[data-testid="nav-tasks"]');
-  await expect(navTimeline).toHaveCount(1);
-  await expect(navTasks).toHaveCount(1);
-  await navTimeline.click();
-  await expect(page).toHaveURL(/\/timeline$/);
-  await expect(page.getByTestId('filter-vehicle')).toBeVisible();
-  await navTasks.click();
-  await expect(page).toHaveURL(/\/tasks$/);
-  await expect(page.getByTestId('filter-vehicle')).toBeVisible();
-});
+// Header nav behavior moved to header-nav.spec.ts under new scope
 
