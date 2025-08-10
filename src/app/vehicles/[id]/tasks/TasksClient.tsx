@@ -15,7 +15,7 @@ export default function TasksClient({ vehicleId, initialItems, canWrite = true, 
   const [tags, setTags] = useState("");
   const [due, setDue] = useState("");
   const [items, setItems] = useState<ClientWorkItem[]>(initialItems);
-  const [planId, setPlanId] = useState<string | "">(defaultPlanId ?? "");
+  const [planId, setPlanId] = useState<string | "">(defaultPlanId ?? (plans[0]?.id ?? ""));
   const [submitting, setSubmitting] = useState(false);
   const [lastTemplateId, setLastTemplateId] = useState<string | null>(null);
 
@@ -103,7 +103,7 @@ export default function TasksClient({ vehicleId, initialItems, canWrite = true, 
         <button disabled={!canWrite || submitting} type="submit" className="bg-black text-white rounded px-3 py-1 disabled:opacity-50" title={!canWrite ? "Insufficient permissions" : undefined}>{submitting ? "Adding..." : "Add"}</button>
       </form>
 
-      <TasksBoardClient statuses={["BACKLOG","PLANNED","IN_PROGRESS","DONE"] as unknown as string[]} initialItems={items} canWrite={canWrite} />
+      <TasksBoardClient statuses={["BACKLOG","PLANNED","IN_PROGRESS","DONE"] as unknown as string[]} initialItems={items} canWrite={canWrite} plans={plans} vehicleId={vehicleId} />
     </div>
   );
 }
