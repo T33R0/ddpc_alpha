@@ -22,7 +22,8 @@ test.describe('@auth RLS — merge and reads', () => {
     });
     expect(res.status()).toBe(201);
     const body = await res.json();
-    expect(body?.event?.type).toBe('MERGE');
+    expect(body?.type).toBe('MERGE');
+    expect(body?.id).toBeTruthy();
   });
 
   test('non-owner cannot create merge event', async () => {
