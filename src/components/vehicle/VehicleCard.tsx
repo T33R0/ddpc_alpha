@@ -6,7 +6,7 @@ import StatsChip from "@/components/ui/StatsChip";
 type Vehicle = { id: string; nickname: string | null; year: number | null; make: string | null; model: string | null; trim: string | null; privacy: string; coverUrl: string | null };
 type Metrics = { upcoming: number; lastService: string | null; daysSince: number | null; avgBetween: number | null };
 
-export default function VehicleCard({ v, m, isSignedIn }: { v: Vehicle; m: Metrics; isSignedIn: boolean }) {
+export default function VehicleCard({ v, m }: { v: Vehicle; m: Metrics }) {
   const title = v.nickname ?? `${v.year ?? ''} ${v.make ?? ''} ${v.model ?? ''}`;
   const alt = `${title} — cover photo`;
   const prettyDate = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '—');

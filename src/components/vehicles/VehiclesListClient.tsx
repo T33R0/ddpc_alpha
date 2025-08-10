@@ -3,14 +3,14 @@ import { useEffect, useMemo, useState } from "react";
 import VehicleCard from "@/components/vehicle/VehicleCard";
 import VehicleCardSkeleton from "@/components/vehicles/VehicleCardSkeleton";
 
-type VehicleRow = {
+export type VehicleRow = {
   id: string;
-  nickname: string | null;
+  name: string;
   year: number | null;
   make: string | null;
   model: string | null;
   trim: string | null;
-  privacy: string | null;
+  privacy?: string | null;
   photo_url: string | null;
   created_at: string | null;
   updated_at: string | null;
@@ -33,7 +33,7 @@ export default function VehiclesListClient({
   const [loading, setLoading] = useState<boolean>(true);
   const [covers, setCovers] = useState<Record<string, string | null>>({});
   const [q, setQ] = useState<string>("");
-  const [sort, setSort] = useState<"updated" | "name" | "year">("updated");
+  const [sortKey, setSortKey] = useState<"updated" | "name" | "year">("updated");
 
   useEffect(() => {
     let cancelled = false;
@@ -55,11 +55,11 @@ export default function VehiclesListClient({
     };
   }, [vehicles, loadCoverUrl]);
 
-  const filtered = useMemo(() => {
+  const filtered: VehicleRow[] = useMemo(() => {
     const ql = q.trim().toLowerCase();
-    const list = ql
+    const list: VehicleRow[] = ql
       ? vehicles.filter((v) => {
-          const name = (v.nickname ?? "").toLowerCase();
+          const name = (v.name ?? "").toLowerCase();
           const y = v.year ? String(v.year) : "";
           const mm = `${v.make ?? ""} ${v.model ?? ""}`.toLowerCase();
           return (
@@ -67,33 +67,13 @@ export default function VehiclesListClient({
           );
         })
       : vehicles.slice();
-    list.sort((a, b) => {
-      if (sort === "name") {
-        const an = (a.nickname ?? "").toLowerCase();
-        const bn = (b.nickname ?? "").toLowerCase();
-        if (an < bn) return -1; if (an > bn) return 1; return a.id.localeCompare(b.id);
-      }
-      if (sort === "year") {
-        const ay = a.year ?? -Infinity;
-        const by = b.year ?? -Infinity;
-        if (ay !== by) return by - ay; // desc year by default
-        return a.id.localeCompare(b.id);
-      }
-      // updated
-      const aKey = a.updated_at ?? a.created_at ?? "";
-      const bKey = b.updated_at ?? b.created_at ?? "";
-      if (aKey && bKey) {
-        const ad = new Date(aKey).getTime();
-        const bd = new Date(bKey).getTime();
-        if (ad !== bd) return bd - ad; // desc
-        return a.id.localeCompare(b.id);
-      }
-      if (aKey) return -1;
-      if (bKey) return 1;
-      return a.id.localeCompare(b.id);
-    });
-    return list;
-  }, [vehicles, q, sort]);
+    const lastUpdatedMs = (v: VehicleRow) => (v.updated_at ? Date.parse(v.updated_at) : v.created_at ? Date.parse(v.created_at) : 0);
+    const sortByName = (a: VehicleRow, b: VehicleRow) => a.name.localeCompare(b.name);
+    const sortByYear = (a: VehicleRow, b: VehicleRow) => (b.year ?? 0) - (a.year ?? 0);
+    const sortByLastUpdated = (a: VehicleRow, b: VehicleRow) => lastUpdatedMs(b) - lastUpdatedMs(a);
+    const sorted: VehicleRow[] = [...list].sort(sortKey === "name" ? sortByName : sortKey === "year" ? sortByYear : sortByLastUpdated);
+    return sorted;
+  }, [vehicles, q, sortKey]);
 
   return (
     <div className="space-y-4">
@@ -111,8 +91,8 @@ export default function VehiclesListClient({
         <div>
           <label className="text-xs text-muted">Sort</label>
           <select
-            value={sort}
-            onChange={(e) => setSort(e.target.value as any)}
+            value={sortKey}
+            onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setSortKey(e.target.value as any)}
             className="border rounded px-2 py-1 bg-bg text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]"
             data-testid="vehicles-sort"
           >

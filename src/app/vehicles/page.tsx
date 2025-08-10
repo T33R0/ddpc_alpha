@@ -1,7 +1,7 @@
 // import Link from "next/link";
 import { getServerSupabase } from "@/lib/supabase";
 import { createVehicle } from "./actions";
-import VehicleCard from "@/components/vehicle/VehicleCard";
+// VehicleCard is rendered client-side via VehiclesListClient
 import VehiclesListClient from "@/components/vehicles/VehiclesListClient";
 import { getVehicleCoverUrl } from "@/lib/getVehicleCoverUrl";
 import ErrorBoundary from "@/components/ErrorBoundary";
@@ -27,21 +27,38 @@ export default async function VehiclesPage(
   // Derive filters from Next 15 Promise-based searchParams (avoid TDZ/shadowing)
   const sp = await props.searchParams;
   const joined = sp?.joined === "1";
-  const currentFilter: Role | "ALL" = (sp?.role as Role | undefined) ?? "ALL";
+  // const currentFilter: Role | "ALL" = (sp?.role as Role | undefined) ?? "ALL";
   const query = (sp?.q as string | undefined)?.trim() ?? "";
-  const sortBy = ((sp?.sort as string | undefined) === "name" ? "name" : "updated") as "updated" | "name";
+  // const sortBy = ((sp?.sort as string | undefined) === "name" ? "name" : "updated") as "updated" | "name";
   type VehicleRow = {
     id: string;
-    vin: string | null;
-    year: number | null;
-    make: string | null;
-    model: string | null;
-    trim: string | null;
-    nickname: string | null;
-    privacy: "PUBLIC" | "PRIVATE";
-    photo_url: string | null;
+    name: string;
+    year?: number | null;
+    make?: string | null;
+    model?: string | null;
+    is_public?: boolean | null;
+    updated_at?: string | null;
+    created_at?: string | null;
+    last_event_at?: string | null;
+    coverUrl?: string | null;
+    // legacy fields for internal mapping
+    vin?: string | null;
+    trim?: string | null;
+    nickname?: string | null;
+    privacy?: "PUBLIC" | "PRIVATE";
+    photo_url?: string | null;
     garage_id: string;
   };
+
+  const lastUpdatedMs = (v: VehicleRow) =>
+    v.last_event_at ? Date.parse(v.last_event_at)
+    : v.updated_at ? Date.parse(v.updated_at)
+    : v.created_at ? Date.parse(v.created_at)
+    : 0;
+
+  const sortByName = (a: VehicleRow, b: VehicleRow) => a.name.localeCompare(b.name);
+  const sortByYear = (a: VehicleRow, b: VehicleRow) => (b.year ?? 0) - (a.year ?? 0);
+  const sortByLastUpdated = (a: VehicleRow, b: VehicleRow) => lastUpdatedMs(b) - lastUpdatedMs(a);
 
   let vehiclesQuery = supabase
     .from("vehicle")
@@ -182,21 +199,21 @@ export default async function VehiclesPage(
 
       <ErrorBoundary message="Failed to load vehicles.">
         <VehiclesListClient
-          vehicles={(vehicles ?? []).map(v => ({
+          vehicles={(vehicles ?? []).map((v: any) => ({
             id: v.id,
-            nickname: v.nickname,
-            year: v.year,
-            make: v.make,
-            model: v.model,
-            trim: v.trim,
-            privacy: v.privacy,
-            photo_url: v.photo_url,
-            created_at: (v as any).created_at ?? null,
-            updated_at: (v as any).updated_at ?? null,
-            garage_id: (v as any).garage_id,
+            name: v.nickname ?? `${v.year ?? ''} ${v.make ?? ''} ${v.model ?? ''}`,
+            year: v.year ?? null,
+            make: v.make ?? null,
+            model: v.model ?? null,
+            is_public: (v.privacy as string | null) === "PUBLIC",
+            updated_at: v.updated_at ?? null,
+            created_at: v.created_at ?? null,
+            last_event_at: null,
+            photo_url: v.photo_url ?? null,
+            garage_id: v.garage_id,
           }))}
           loadCoverUrl={async (id: string, photo: string | null) => await getVehicleCoverUrl(supabase, id, photo)}
-          metrics={(vehicles ?? []).reduce<Record<string, { upcoming: number; lastService: string | null; daysSince: number | null; avgBetween: number | null }>>((acc, v) => {
+          metrics={(vehicles ?? []).reduce<Record<string, { upcoming: number; lastService: string | null; daysSince: number | null; avgBetween: number | null }>>((acc, v: any) => {
             acc[v.id] = metrics.get(v.id) ?? { upcoming: 0, lastService: null, daysSince: null, avgBetween: null };
             return acc;
           }, {})}

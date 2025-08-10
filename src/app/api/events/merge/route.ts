@@ -11,7 +11,11 @@ export async function POST(req: NextRequest): Promise<Response> {
   const body = await req.json().catch(() => ({}));
   const v = validateMergePayload(body);
   if (!v.ok) {
-    serverLog("merge_event_rejected", { reason: v.error, userId: user.id });
+    const raw = (body && typeof body === 'object') ? (body as Record<string, unknown>) : {};
+    const fromPlanId = typeof raw.from_plan_id === 'string' ? raw.from_plan_id : undefined;
+    const toPlanId = typeof raw.to_plan_id === 'string' ? raw.to_plan_id : undefined;
+    const vehicleId = typeof raw.vehicle_id === 'string' ? raw.vehicle_id : undefined;
+    serverLog("merge_event_rejected", { reason: v.error, userId: user.id, vehicleId, fromPlanId, toPlanId });
     return NextResponse.json({ error: v.error }, { status: 400 });
   }
   const { from_plan_id, to_plan_id, vehicle_id, title, notes } = v.data;

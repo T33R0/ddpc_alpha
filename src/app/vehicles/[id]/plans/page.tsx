@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { useState } from "react";
+import MergePlansModal from "@/components/plans/MergePlansModal";
 import { getServerSupabase } from "@/lib/supabase";
 import { createBuildPlan } from "./actions";
 
@@ -57,6 +59,21 @@ export default async function VehiclePlansPage({ params }: { params: Promise<{ i
           <div className="p-4 text-gray-600">No plans yet.</div>
         )}
       </div>
+
+      {/* Client entry for merge plans */}
+      <MergePlansClient vehicleId={vehicleId} plans={(plans ?? []).map(p => ({ id: p.id, name: p.name }))} />
+    </div>
+  );
+}
+
+// Client wrapper for the merge modal toggle
+function MergePlansClient({ vehicleId, plans }: { vehicleId: string; plans: { id: string; name: string }[] }) {
+  "use client";
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="flex items-center justify-end">
+      <button type="button" onClick={() => setOpen(true)} className="rounded bg-brand text-white px-3 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]" data-testid="merge-plans-open">Merge Plans</button>
+      <MergePlansModal open={open} onClose={() => setOpen(false)} vehicleId={vehicleId} plans={plans} />
     </div>
   );
 }
