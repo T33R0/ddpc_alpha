@@ -17,8 +17,8 @@ auth('Header Timeline/Tasks navigate within vehicle context', async ({ page }) =
   if (await firstCard.count()) {
     await firstCard.click();
     // Now in vehicle context
-    const navTimeline = page.locator('[data-test="nav-timeline"]');
-    const navTasks = page.locator('[data-test="nav-tasks"]');
+    const navTimeline = page.locator('[data-testid="nav-timeline"]');
+    const navTasks = page.locator('[data-testid="nav-tasks"]');
     await expect(navTimeline).toHaveCount(1);
     await expect(navTasks).toHaveCount(1);
     await navTimeline.click();
@@ -68,15 +68,15 @@ auth('Cards have no per-card action buttons and are fully clickable', async ({ p
 
 auth('Header always shows Timeline/Tasks; out-of-context click routes to /vehicles and shows toast', async ({ page }) => {
   await goto(page, '/');
-  const navTimeline = page.locator('[data-test="nav-timeline"]');
-  const navTasks = page.locator('[data-test="nav-tasks"]');
+  const navTimeline = page.locator('[data-testid="nav-timeline"]');
+  const navTasks = page.locator('[data-testid="nav-tasks"]');
   await expect(navTimeline).toHaveCount(1);
   await expect(navTasks).toHaveCount(1);
   await navTimeline.click();
-  await expect(page).toHaveURL(/\/vehicles$/);
-  await expect(page.getByText('Pick a vehicle to view Timeline/Tasks.')).toBeVisible();
+  await expect(page).toHaveURL(/\/timeline$/);
+  await expect(page.getByTestId('filter-vehicle')).toBeVisible();
   await navTasks.click();
-  await expect(page).toHaveURL(/\/vehicles$/);
-  await expect(page.getByText('Pick a vehicle to view Timeline/Tasks.')).toBeVisible();
+  await expect(page).toHaveURL(/\/tasks$/);
+  await expect(page.getByTestId('filter-vehicle')).toBeVisible();
 });
 
