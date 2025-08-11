@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json().catch(() => ({}));
     const v = validateCreateEventPayload(body);
     if (!v.ok) return NextResponse.json({ error: v.error, code: 400 }, { status: 400 });
-    const { vehicle_id, occurred_at, title, notes, type, tags } = v.data;
+    const { vehicle_id, occurred_at, title, notes, type } = v.data;
 
     // AuthZ: OWNER or MANAGER of vehicle's garage
     const { data: veh } = await supabase
@@ -42,14 +42,12 @@ export async function POST(req: NextRequest) {
       type: string;
       notes: string;
       created_at: string;
-      tags?: string[];
     } = {
       vehicle_id,
       type,
       notes: title + (notes ? ` — ${notes}` : ""),
       created_at,
     };
-    if (Array.isArray(tags) && tags.length > 0) insertPayload.tags = tags as string[];
 
     const { data: created, error: insErr } = await supabase
       .from("event")
@@ -62,10 +60,8 @@ export async function POST(req: NextRequest) {
     await supabase.from("vehicle").update({ last_event_at: created.created_at }).eq("id", vehicle_id);
 
     serverLog("event_create", { userId: user.id, vehicleId: vehicle_id, type, requestId });
-    return NextResponse.json(
-      { id: created.id, vehicle_id: created.vehicle_id, type: created.type, title, occurred_at: created.created_at },
-      { status: 201 }
-    );
+    const event = { id: created.id, vehicle_id: created.vehicle_id, type: created.type, title, occurred_at: created.created_at };
+    return NextResponse.json({ event }, { status: 201 });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Unknown error";
     return NextResponse.json({ error: message, code: 500 }, { status: 500 });
