@@ -13,7 +13,9 @@ function getProjectRef(url?: string): string | null {
 }
 
 export async function getServerSupabase() {
-  const cookieStore = await cookies();
+  // Support both Next 14 (sync cookies()) and Next 15 (async cookies())
+  const maybe = (cookies as unknown as () => any)();
+  const cookieStore = typeof (maybe as any)?.then === "function" ? await maybe : maybe;
   // Heuristic warning: if running locally and using a hosted Supabase ref, sessions may be shared with prod
   try {
     if (process.env.NODE_ENV !== "production") {

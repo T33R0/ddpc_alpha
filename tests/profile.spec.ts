@@ -22,3 +22,13 @@ auth('profile page renders for signed-in users', async ({ page }) => {
   await goto(page, '/profile');
   await expect(page.getByTestId('profile-page')).toBeVisible();
 });
+<<<<<<< Current (Your changes)
+=======
+
+auth('profile page shows edit form and billing link', async ({ page }) => {
+  await goto(page, '/profile');
+  await expect(page.getByTestId('profile-edit-form')).toBeVisible();
+  await page.getByRole('link', { name: 'Billing' }).click();
+  await expect(page.getByTestId('billing-page')).toBeVisible();
+});
+>>>>>>> Incoming (Background Agent changes)

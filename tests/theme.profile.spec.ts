@@ -11,6 +11,7 @@ test('Profile ThemeSection visible and toggles dark, persists', async ({ page })
   const html = page.locator('html');
 
   await page.getByTestId('radio-theme-dark').check();
+  await page.getByRole('button', { name: 'Save' }).click();
   await expect(async () => {
     const theme = await html.getAttribute('data-theme');
     expect(theme).toBe('dark');
