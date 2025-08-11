@@ -10,9 +10,7 @@ interface ThemeSectionProps {
 }
 
 async function updateTheme(theme: Theme): Promise<void> {
-  // Optimistic: update immediately
   document.documentElement.dataset.theme = theme === "system" ? (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light") : theme;
-  // Persist via server action route
   await fetch("/api/profile/theme", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -22,10 +20,10 @@ async function updateTheme(theme: Theme): Promise<void> {
 
 function ThemeForm({ initialTheme, userId }: ThemeSectionProps) {
   const [value, setValue] = useState<Theme>(initialTheme);
+  const [dirty, setDirty] = useState(false);
   const name = useId();
 
   useEffect(() => {
-    // apply initial theme to document for consistency on first render
     const applied = initialTheme === "system"
       ? (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
       : initialTheme;
@@ -35,20 +33,25 @@ function ThemeForm({ initialTheme, userId }: ThemeSectionProps) {
 
   function onChange(next: Theme) {
     setValue(next);
+    setDirty(true);
+  }
+
+  function onSave() {
+    setDirty(false);
     startTransition(() => {
-      updateTheme(next).catch(() => {});
+      updateTheme(value).catch(() => {});
     });
   }
 
   return (
     <fieldset className="space-y-3" data-testid="profile-theme-section">
       <legend className="text-sm font-medium">Theme</legend>
-      <div role="radiogroup" aria-label="Theme">
-        <label className="inline-flex items-center gap-2 mr-4">
+      <div role="radiogroup" aria-label="Theme" className="flex items-center gap-4">
+        <label className="inline-flex items-center gap-2">
           <input data-testid="radio-theme-system" type="radio" name={name} value="system" checked={value === "system"} onChange={() => onChange("system")} className="accent-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]" />
           <span>System</span>
         </label>
-        <label className="inline-flex items-center gap-2 mr-4">
+        <label className="inline-flex items-center gap-2">
           <input data-testid="radio-theme-light" type="radio" name={name} value="light" checked={value === "light"} onChange={() => onChange("light")} className="accent-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]" />
           <span>Light</span>
         </label>
@@ -56,6 +59,7 @@ function ThemeForm({ initialTheme, userId }: ThemeSectionProps) {
           <input data-testid="radio-theme-dark" type="radio" name={name} value="dark" checked={value === "dark"} onChange={() => onChange("dark")} className="accent-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]" />
           <span>Dark</span>
         </label>
+        <button type="button" onClick={onSave} disabled={!dirty} className="ml-auto px-3 py-1 rounded border disabled:opacity-50">Save</button>
       </div>
     </fieldset>
   );
