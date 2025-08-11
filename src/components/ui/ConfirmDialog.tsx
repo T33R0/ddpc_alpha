@@ -60,13 +60,13 @@ export default function ConfirmDialog({ open, title, description, confirmLabel =
       aria-modal="true"
       data-test={dataTest}
     >
-      <div className="absolute inset-0 bg-black/40" onClick={onCancel} />
-      <div ref={dialogRef} className="relative bg-white rounded shadow-lg w-[90%] max-w-sm p-4">
-        <h2 id={labeledBy} className="text-sm font-semibold mb-2">{title}</h2>
-        {description && <p className="text-sm text-gray-700 mb-3">{description}</p>}
+      <div className="absolute inset-0 bg-bg/60" onClick={onCancel} />
+      <div ref={dialogRef} className="relative bg-card rounded shadow-lg w-[90%] max-w-sm p-4 border">
+        <h2 id={labeledBy} className="text-sm font-semibold mb-2 text-fg">{title}</h2>
+        {description && <p className="text-sm text-muted mb-3">{description}</p>}
         <div className="flex items-center justify-end gap-2">
-          <button ref={firstBtnRef} type="button" className="text-xs px-2 py-1 rounded border" onClick={onCancel}>{cancelLabel}</button>
-          <button ref={lastBtnRef} type="button" className="text-xs px-2 py-1 rounded border bg-red-50 text-red-700" onClick={onConfirm}>{confirmLabel}</button>
+          <button ref={firstBtnRef} type="button" className="text-xs px-2 py-1 rounded border bg-bg text-fg" onClick={onCancel}>{cancelLabel}</button>
+          <button ref={lastBtnRef} type="button" className="text-xs px-2 py-1 rounded bg-red-600 text-white hover:bg-red-700" onClick={onConfirm}>{confirmLabel}</button>
         </div>
       </div>
     </div>
