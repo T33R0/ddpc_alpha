@@ -61,6 +61,23 @@ export default async function VehiclesPage(
     updated_at: string | null;
   };
 
+  // Prefetch user garage ids to aid debugging and optionally pre-filter
+  const userGarageIds: string[] = [];
+  if (supabase && user) {
+    try {
+      const { data: gm } = await supabase
+        .from("garage_member")
+        .select("garage_id")
+        .eq("user_id", user.id);
+      (gm as Array<{ garage_id: string }> | null)?.forEach(r => userGarageIds.push(r.garage_id));
+      if (process.env.NODE_ENV !== 'production') {
+        console.log(JSON.stringify({ level: 'info', q: 'vehicles_user_garages', reqId, count: userGarageIds.length }));
+      }
+    } catch (e) {
+      console.error("vehicles_user_garages_error", { reqId, err: e instanceof Error ? e.message : String(e) });
+    }
+  }
+
   let vehicleRows: VehicleSelect[] | null = null;
   if (supabase) {
     try {
@@ -70,11 +87,17 @@ export default async function VehiclesPage(
       if (query) {
         vehiclesQuery = vehiclesQuery.ilike("nickname", `%${query}%`);
       }
-      const { data, error } = await vehiclesQuery;
+      if (userGarageIds.length > 0) {
+        vehiclesQuery = vehiclesQuery.in("garage_id", userGarageIds);
+      }
+      const { data, error } = await vehiclesQuery.order("updated_at", { ascending: false });
       if (error) {
         console.error("vehicles_query_error", { reqId, error: error.message });
       }
       vehicleRows = (data as unknown as VehicleSelect[]) ?? null;
+      if (process.env.NODE_ENV !== 'production') {
+        console.log(JSON.stringify({ level: 'info', q: 'vehicles_query_result', reqId, count: vehicleRows?.length ?? 0 }));
+      }
     } catch (e) {
       console.error("vehicles_query_throw", { reqId, err: e instanceof Error ? e.message : String(e) });
     }
