@@ -49,6 +49,7 @@ export default function TimelineClient({ events, vehicleId, canWrite = true }: {
   const [notes, setNotes] = useState<string>("");
   const [adding, setAdding] = useState<boolean>(false);
   const titleRef = useRef<HTMLInputElement | null>(null);
+  const dateRef = useRef<HTMLInputElement | null>(null);
   const [liveMessage, setLiveMessage] = useState<string>("");
   const [initialLoading, setInitialLoading] = useState<boolean>(true);
   const [filterLoading, setFilterLoading] = useState<boolean>(false);
@@ -152,15 +153,6 @@ export default function TimelineClient({ events, vehicleId, canWrite = true }: {
     } as TimelineEvent;
     setData((prev) => [temp, ...prev]);
     try {
-      const enabled = (process.env.NEXT_PUBLIC_ENABLE_TIMELINE_QUICK_ADD || "false") === "true";
-      if (!enabled) {
-        // Show toast and revert shortly; keep optimistic item briefly for perceived responsiveness
-        setTimeout(() => {
-          setData((prev) => prev.filter((x) => x.id !== temp.id));
-        }, 300);
-        error("Not yet wired");
-        return;
-      }
       const res = await fetch("/api/events", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -266,7 +258,7 @@ export default function TimelineClient({ events, vehicleId, canWrite = true }: {
         <input
           name="title"
           placeholder="Title (required)"
-          className="border rounded px-2 py-1 md:col-span-2 bg-bg text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]"
+          className="border rounded h-9 px-2 md:col-span-2 bg-bg text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]"
           value={title}
           ref={titleRef}
           onChange={(e) => setTitle(e.target.value)}
@@ -285,13 +277,32 @@ export default function TimelineClient({ events, vehicleId, canWrite = true }: {
         <input
           name="date"
           type="date"
-          className="border rounded px-2 py-1 md:col-span-2 bg-bg text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]"
+          className="border rounded h-9 px-2 md:col-span-2 bg-bg text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]"
           value={dateOnly}
           onChange={(e) => setDateOnly(e.target.value)}
+          ref={dateRef}
         />
+        <div className="flex items-end">
+          <button
+            type="button"
+            className="h-9 px-3 rounded border bg-bg text-fg"
+            onClick={() => {
+              try {
+                // Prefer showPicker if supported for consistent calendar pop-up
+                (dateRef.current as any)?.showPicker?.();
+              } catch {
+                dateRef.current?.focus();
+                dateRef.current?.click();
+              }
+            }}
+            title="Open calendar"
+          >
+            📅
+          </button>
+        </div>
         <div className="md:col-span-2 flex flex-col gap-2">
           <label className="text-xs text-muted">Tags</label>
-          <div className="flex flex-wrap items-center gap-2 border rounded px-2 py-1 bg-bg">
+          <div className="flex flex-wrap items-center gap-2 border rounded px-2 bg-bg min-h-[2.25rem]">
             {tags.map((t, idx) => (
               <span key={`${t}-${idx}`} className="inline-flex items-center text-[11px] rounded-full bg-card text-muted border px-2 py-0.5">
                 {t}
@@ -310,13 +321,13 @@ export default function TimelineClient({ events, vehicleId, canWrite = true }: {
                 }
               }}
               placeholder="Add tag"
-              className="flex-1 min-w-[6rem] bg-transparent outline-none text-sm"
+              className="flex-1 min-w-[6rem] bg-transparent outline-none text-sm h-8"
             />
           </div>
         </div>
         <div className="flex items-center gap-2">
           <label className="text-xs text-muted">Type</label>
-          <select value={selectedType} onChange={(e) => setSelectedType(e.target.value as TimelineEvent["type"]) } className="border rounded px-2 py-1 bg-bg text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]">
+          <select value={selectedType} onChange={(e) => setSelectedType(e.target.value as TimelineEvent["type"]) } className="border rounded h-9 px-2 bg-bg text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]">
             {TYPES.map(t => <option key={t} value={t}>{t}</option>)}
           </select>
         </div>
