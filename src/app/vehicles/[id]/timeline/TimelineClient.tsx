@@ -27,7 +27,7 @@ type MergeDetail = {
   occurred_at?: string;
 };
 
-const TYPES = ["SERVICE","INSTALL","INSPECT","TUNE"] as const;
+const TYPES: TimelineEventType[] = ["SERVICE", "MOD", "DYNO", "NOTE"];
 
 export default function TimelineClient({ events, vehicleId, canWrite = true }: { events: TimelineEvent[]; vehicleId: string; canWrite?: boolean }) {
   const [data, setData] = useState<TimelineEvent[]>(events as TimelineEvent[]);
