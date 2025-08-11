@@ -1,4 +1,5 @@
 import ThemeSection from "./ThemeSection";
+import AvatarUpload from "./AvatarUpload";
 import { getServerSupabase } from "@/lib/supabase";
 import { getMySettings, getProfile, updateProfile } from "./actions";
 import { serverLog } from "@/lib/serverLog";
@@ -108,14 +109,5 @@ export default async function ProfilePage() {
         <ThemeSection initialTheme={theme} userId={user.id} />
       </div>
     </div>
-  );
-}
-
-function AvatarUpload() {
-  return (
-    <form action="/api/profile/avatar" method="post" encType="multipart/form-data" className="flex items-center gap-2">
-      <input type="file" name="file" accept="image/*" className="text-sm" />
-      <button type="submit" className="px-2 py-1 rounded border">Upload</button>
-    </form>
   );
 }
