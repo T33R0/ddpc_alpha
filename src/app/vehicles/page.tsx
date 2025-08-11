@@ -3,8 +3,8 @@ import { getServerSupabase } from "@/lib/supabase";
 import { createVehicle } from "./actions";
 // VehicleCard is rendered client-side via VehiclesListClient
 import VehiclesListClient from "@/components/vehicles/VehiclesListClient";
-import { getVehicleCoverUrl } from "@/lib/getVehicleCoverUrl";
 import ErrorBoundary from "@/components/ErrorBoundary";
+
 // Compatible with Next 14/15; see searchParams handling below.
 import VehiclesJoinedToastClient from "./VehiclesJoinedToastClient";
 import VehiclesFiltersClient from "./VehiclesFiltersClient";
@@ -83,14 +83,14 @@ export default async function VehiclesPage(
     try {
       let vehiclesQuery = supabase
         .from("vehicle")
-        .select("id, vin, year, make, model, trim, nickname, privacy, photo_url, garage_id, created_at, updated_at");
+        .select("id, vin, year, make, model, trim, nickname, privacy, photo_url, garage_id, created_at");
       if (query) {
         vehiclesQuery = vehiclesQuery.ilike("nickname", `%${query}%`);
       }
       if (userGarageIds.length > 0) {
         vehiclesQuery = vehiclesQuery.in("garage_id", userGarageIds);
       }
-      const { data, error } = await vehiclesQuery.order("updated_at", { ascending: false });
+      const { data, error } = await vehiclesQuery.order("created_at", { ascending: false });
       if (error) {
         console.error("vehicles_query_error", { reqId, error: error.message });
       }
