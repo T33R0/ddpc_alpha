@@ -33,7 +33,8 @@ const TYPES: TimelineEventType[] = ["SERVICE", "MOD", "DYNO", "NOTE"];
 export default function TimelineClient({ events, vehicleId, canWrite = true }: { events: TimelineEvent[]; vehicleId: string; canWrite?: boolean }) {
   const [data, setData] = useState<TimelineEvent[]>(events as TimelineEvent[]);
   const { success, error } = useToast();
-  const [selected, setSelected] = useState<Set<TimelineEvent["type"]>>(new Set());
+  // Removed type checkbox filtering; keep empty set for compatibility
+  const [selected] = useState<Set<TimelineEvent["type"]>>(new Set());
   const [selectedType, setSelectedType] = useState<TimelineEventType>("SERVICE");
   const [from, setFrom] = useState<string>("");
   const [to, setTo] = useState<string>("");
@@ -272,11 +273,9 @@ export default function TimelineClient({ events, vehicleId, canWrite = true }: {
           onKeyDown={(e) => {
             if (e.key === "Escape") {
               setTitle("");
-              setDateTime(() => {
-                const d = new Date();
-                const pad = (n: number) => String(n).padStart(2, "0");
-                return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-              });
+              const d = new Date();
+              const pad = (n: number) => String(n).padStart(2, "0");
+              setDateOnly(`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`);
               // slight delay to allow clearing
               requestAnimationFrame(() => titleRef.current?.focus());
             }
