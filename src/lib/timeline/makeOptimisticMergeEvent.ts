@@ -5,6 +5,7 @@ export type MergeDetail = {
   to_plan_id?: string;
   title?: string;
   notes?: string;
+  occurred_at?: string; // ISO timestamp when the merge occurred
   // Alt keys from our modal emitter
   vehicleId?: string;
   fromId?: string;
