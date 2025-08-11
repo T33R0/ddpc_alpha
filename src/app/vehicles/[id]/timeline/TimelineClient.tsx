@@ -61,7 +61,11 @@ export default function TimelineClient({ events, vehicleId, canWrite = true }: {
 
   // Listen for merge-plan optimistic signal
   useEffect(() => {
-    if (!isEnabled("ENABLE_PLAN_MERGE")) return;
+    try {
+      if (!isEnabled("ENABLE_PLAN_MERGE")) return;
+    } catch {
+      return;
+    }
     const onMergeCreated = (ev: Event) => {
       const e = ev as CustomEvent<MergeDetail>;
       if (!e.detail || e.detail.vehicle_id !== vehicleId) return;
