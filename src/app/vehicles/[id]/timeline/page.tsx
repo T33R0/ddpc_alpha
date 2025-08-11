@@ -1,6 +1,6 @@
 import { getServerSupabase } from "@/lib/supabase";
 import PrivacyBadge from "@/components/PrivacyBadge";
-import TimelineClient from "./TimelineClient";
+import TimelineClient, { type TimelineEvent } from "./TimelineClient";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import Link from "next/link";
 import VehicleFilter from "@/components/filters/VehicleFilter";
@@ -42,6 +42,29 @@ export default async function TimelinePage({ params }: { params: Promise<{ id: s
     .select("id, type, odometer, cost, notes, created_at")
     .eq("vehicle_id", vehicleId)
     .order("created_at", { ascending: false });
+
+  // Adapt legacy Event rows to TimelineEvent shape expected by TimelineClient
+  const mapType = (t: EventType): TimelineEvent["type"] => {
+    switch (t) {
+      case "SERVICE":
+        return "SERVICE";
+      case "INSTALL":
+        return "MOD";
+      case "INSPECT":
+        return "NOTE";
+      case "TUNE":
+        return "DYNO";
+      default:
+        return "NOTE";
+    }
+  };
+  const timelineEvents: TimelineEvent[] = (events ?? []).map((e) => ({
+    id: e.id,
+    vehicle_id: vehicleId,
+    type: mapType(e.type),
+    notes: e.notes,
+    occurred_at: e.created_at,
+  }));
 
   // Determine role for UI gating (VIEWER => read-only; CONTRIBUTOR+ => write)
   let canWrite = false;
@@ -88,7 +111,7 @@ export default async function TimelinePage({ params }: { params: Promise<{ id: s
       </p>
 
       <ErrorBoundary message="Failed to load timeline.">
-        <TimelineClient events={(events ?? []) as Event[]} vehicleId={vehicleId} canWrite={canWrite} />
+        <TimelineClient events={timelineEvents} vehicleId={vehicleId} canWrite={canWrite} />
       </ErrorBoundary>
     </div>
   );
