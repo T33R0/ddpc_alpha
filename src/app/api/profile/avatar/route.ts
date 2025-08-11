@@ -4,7 +4,7 @@ import { getServerSupabase } from "@/lib/supabase";
 export async function POST(req: Request): Promise<Response> {
   const supabase = await getServerSupabase();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ ok: false }, { status: 401 });
+  if (!user) return NextResponse.json({ ok: false, error: 'unauthorized' }, { status: 401 });
 
   const formData = await req.formData();
   const file = formData.get('file');
@@ -13,20 +13,19 @@ export async function POST(req: Request): Promise<Response> {
   }
 
   try {
-    const arrayBuffer = await file.arrayBuffer();
-    const bytes = new Uint8Array(arrayBuffer);
     const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
     const path = `${user.id}/${Date.now()}.${ext}`;
 
-    const { error: upErr } = await supabase.storage.from('avatars').upload(path, bytes, {
-      contentType: file.type || 'image/jpeg',
+    const { error: upErr } = await supabase.storage.from('avatars').upload(path, file, {
+      contentType: file.type || 'application/octet-stream',
       upsert: true,
     });
     if (upErr) {
-      if (upErr.message && /Bucket not found/i.test(upErr.message)) {
+      const msg = upErr.message || String(upErr);
+      if (/Bucket not found/i.test(msg)) {
         return NextResponse.json({ ok: false, error: 'Bucket not found. Please create a public bucket named "avatars" in Supabase Storage.' }, { status: 500 });
       }
-      throw upErr;
+      return NextResponse.json({ ok: false, error: msg }, { status: 500 });
     }
 
     const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(path);
@@ -37,9 +36,11 @@ export async function POST(req: Request): Promise<Response> {
       .upsert({ user_id: user.id, avatar_url: avatarUrl }, { onConflict: 'user_id' })
       .select('user_id')
       .maybeSingle();
-    if (profErr) throw profErr;
+    if (profErr) {
+      return NextResponse.json({ ok: false, error: profErr.message || String(profErr) }, { status: 500 });
+    }
 
-    return NextResponse.redirect(new URL('/profile', req.url));
+    return NextResponse.json({ ok: true, url: avatarUrl });
   } catch (e) {
     const message = e instanceof Error ? e.message : 'upload_failed';
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
