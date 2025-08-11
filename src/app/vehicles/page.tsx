@@ -39,25 +39,7 @@ export default async function VehiclesPage(
   // const currentFilter: Role | "ALL" = (sp?.role as Role | undefined) ?? "ALL";
   const query = (sp?.q as string | undefined)?.trim() ?? "";
   // const sortBy = ((sp?.sort as string | undefined) === "name" ? "name" : "updated") as "updated" | "name";
-  type VehicleRow = {
-    id: string;
-    name: string;
-    year?: number | null;
-    make?: string | null;
-    model?: string | null;
-    is_public?: boolean | null;
-    updated_at?: string | null;
-    created_at?: string | null;
-    last_event_at?: string | null;
-    coverUrl?: string | null;
-    // legacy fields for internal mapping
-    vin?: string | null;
-    trim?: string | null;
-    nickname?: string | null;
-    privacy?: "PUBLIC" | "PRIVATE";
-    photo_url?: string | null;
-    garage_id: string;
-  };
+  // Note: Client shape for VehiclesListClient is constructed directly below; no local alias needed.
   // Use a typed shape matching our select for strong typing without any-casts
   type VehicleSelect = {
     id: string;

@@ -12,10 +12,19 @@ function getProjectRef(url?: string): string | null {
   }
 }
 
+type CookieStore = { get(name: string): { value: string } | undefined };
+type CookiesFnSync = () => CookieStore;
+type CookiesFnAsync = () => Promise<CookieStore>;
+
+function isPromise<T>(v: unknown): v is Promise<T> {
+  return !!v && (typeof v === "object" || typeof v === "function") && "then" in (v as object);
+}
+
 export async function getServerSupabase() {
   // Support both Next 14 (sync cookies()) and Next 15 (async cookies())
-  const maybe = (cookies as unknown as () => any)();
-  const cookieStore = typeof (maybe as any)?.then === "function" ? await maybe : maybe;
+  const fn = cookies as unknown as CookiesFnSync | CookiesFnAsync;
+  const result = fn();
+  const cookieStore: CookieStore = isPromise<CookieStore>(result) ? await result : result;
   // Heuristic warning: if running locally and using a hosted Supabase ref, sessions may be shared with prod
   try {
     if (process.env.NODE_ENV !== "production") {
