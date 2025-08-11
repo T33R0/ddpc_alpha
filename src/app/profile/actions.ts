@@ -24,15 +24,20 @@ export async function updateProfile(formData: FormData): Promise<void> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return;
 
+  const username = (formData.get('username') as string | null)?.trim() || '';
   const input = {
-    username: (formData.get('username') as string | null) || null,
+    username,
     display_name: (formData.get('display_name') as string | null) || null,
     location: (formData.get('location') as string | null) || null,
     website: (formData.get('website') as string | null) || null,
     bio: (formData.get('bio') as string | null) || null,
     avatar_url: (formData.get('avatar_url') as string | null) || null,
     is_public: (formData.get('is_public') as string | null) === 'on',
-  };
+  } as const;
+
+  if (!username) {
+    throw new Error('username_required');
+  }
 
   await upsertMyProfile(supabase, user.id, input);
 }

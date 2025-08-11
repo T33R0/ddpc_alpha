@@ -35,50 +35,87 @@ export default async function ProfilePage() {
           <Link href="/profile/billing" className="text-sm text-brand hover:underline">Billing</Link>
         </header>
 
-        <section className="space-y-1">
+        {/* Static profile info */}
+        <section className="space-y-3">
+          <div className="flex items-center gap-4">
+            <div className="w-16 h-16 rounded-full bg-gray-200 overflow-hidden">
+              {/* Simple avatar display from URL; upload handled in editor below */}
+              {profile?.avatar_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={profile.avatar_url} alt="avatar" className="w-full h-full object-cover" />
+              ) : null}
+            </div>
+            <div>
+              <div className="text-base font-medium">{profile?.display_name || profile?.username || "User"}</div>
+              <div className="text-sm text-muted">@{profile?.username || "(username required)"}</div>
+            </div>
+          </div>
           <div className="text-sm text-muted">Signed in as</div>
           <div className="text-base">{email}</div>
           {providers.length > 0 && (
             <div className="text-xs text-muted">Providers: {providers.join(", ")}</div>
           )}
+          {profile?.location && <div className="text-sm">Location: {profile.location}</div>}
+          {profile?.website && (
+            <div className="text-sm">
+              Website: <a href={profile.website} target="_blank" rel="noreferrer" className="underline">{profile.website}</a>
+            </div>
+          )}
+          {profile?.bio && <p className="text-sm whitespace-pre-line">{profile.bio}</p>}
         </section>
 
-        <form action={updateProfile} className="space-y-4" data-testid="profile-edit-form">
-          <div className="grid grid-cols-1 gap-3">
-            <label className="text-sm">Username
-              <input name="username" defaultValue={profile?.username ?? ''} placeholder="username" className="mt-1 w-full border rounded px-2 py-1" />
-            </label>
-            <label className="text-sm">Display name
-              <input name="display_name" defaultValue={profile?.display_name ?? ''} placeholder="Full name" className="mt-1 w-full border rounded px-2 py-1" />
-            </label>
-            <label className="text-sm">Location
-              <input name="location" defaultValue={profile?.location ?? ''} placeholder="City, Country" className="mt-1 w-full border rounded px-2 py-1" />
-            </label>
-            <label className="text-sm">Website
-              <input name="website" defaultValue={profile?.website ?? ''} placeholder="https://" className="mt-1 w-full border rounded px-2 py-1" />
-            </label>
-            <label className="text-sm">Bio
-              <textarea name="bio" defaultValue={profile?.bio ?? ''} placeholder="Short bio" className="mt-1 w-full border rounded px-2 py-1" />
-            </label>
-            <label className="inline-flex items-center gap-2 text-sm">
-              <input type="checkbox" name="is_public" defaultChecked={profile?.is_public ?? true} className="accent-brand" />
-              Public profile
-            </label>
+        {/* Edit section collapsed by default */}
+        <details className="rounded border bg-background" data-testid="profile-edit-form">
+          <summary className="cursor-pointer px-4 py-2 select-none">Edit profile</summary>
+          <div className="p-4 border-t space-y-4">
+            <form action={updateProfile} className="space-y-4">
+              <div className="grid grid-cols-1 gap-3">
+                <label className="text-sm">Username (required)
+                  <input name="username" required defaultValue={profile?.username ?? ''} placeholder="username" className="mt-1 w-full border rounded px-2 py-1" />
+                </label>
+                <label className="text-sm">Display name
+                  <input name="display_name" defaultValue={profile?.display_name ?? ''} placeholder="Full name" className="mt-1 w-full border rounded px-2 py-1" />
+                </label>
+                <label className="text-sm">Location
+                  <input name="location" defaultValue={profile?.location ?? ''} placeholder="City, Country" className="mt-1 w-full border rounded px-2 py-1" />
+                </label>
+                <label className="text-sm">Website
+                  <input name="website" defaultValue={profile?.website ?? ''} placeholder="https://" className="mt-1 w-full border rounded px-2 py-1" />
+                </label>
+                <label className="text-sm">Bio
+                  <textarea name="bio" defaultValue={profile?.bio ?? ''} placeholder="Short bio" className="mt-1 w-full border rounded px-2 py-1" />
+                </label>
+                <label className="inline-flex items-center gap-2 text-sm">
+                  <input type="checkbox" name="is_public" defaultChecked={profile?.is_public ?? true} className="accent-brand" />
+                  Public profile
+                </label>
 
-            <div>
-              <label className="text-sm">Avatar URL
-                <input name="avatar_url" defaultValue={profile?.avatar_url ?? ''} placeholder="https://..." className="mt-1 w-full border rounded px-2 py-1" />
-              </label>
-            </div>
+                <div className="space-y-2">
+                  <label className="text-sm">Avatar URL
+                    <input name="avatar_url" defaultValue={profile?.avatar_url ?? ''} placeholder="https://..." className="mt-1 w-full border rounded px-2 py-1" />
+                  </label>
+                  <AvatarUpload />
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <button type="submit" className="px-3 py-1 rounded bg-black text-white">Save Profile</button>
+                <Link href={`/u/${encodeURIComponent(profile?.username || user.id)}`} className="text-sm underline">View public profile</Link>
+              </div>
+            </form>
           </div>
-          <div className="flex gap-3">
-            <button type="submit" className="px-3 py-1 rounded bg-black text-white">Save Profile</button>
-            <Link href={`/u/${encodeURIComponent(profile?.username || user.id)}`} className="text-sm underline">View public profile</Link>
-          </div>
-        </form>
+        </details>
 
         <ThemeSection initialTheme={theme} userId={user.id} />
       </div>
     </div>
+  );
+}
+
+function AvatarUpload() {
+  return (
+    <form action="/api/profile/avatar" method="post" encType="multipart/form-data" className="flex items-center gap-2">
+      <input type="file" name="file" accept="image/*" className="text-sm" />
+      <button type="submit" className="px-2 py-1 rounded border">Upload</button>
+    </form>
   );
 }

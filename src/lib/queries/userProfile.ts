@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 export interface UserProfile {
   user_id: string;
-  username: string | null;
+  username: string; // required
   display_name: string | null;
   location: string | null;
   website: string | null;
@@ -27,6 +27,9 @@ export async function upsertMyProfile(
   userId: string,
   input: Partial<Pick<UserProfile, "username" | "display_name" | "location" | "website" | "bio" | "avatar_url" | "is_public">>
 ): Promise<UserProfile | null> {
+  if (!input.username || input.username.trim() === "") {
+    throw new Error("username_required");
+  }
   const { data, error } = await supabase
     .from("user_profile")
     .upsert({ user_id: userId, ...input })
