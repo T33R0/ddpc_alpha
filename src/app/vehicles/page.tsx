@@ -1,6 +1,5 @@
 // import Link from "next/link";
 import { getServerSupabase } from "@/lib/supabase";
-import { createVehicle } from "./actions";
 // VehicleCard is rendered client-side via VehiclesListClient
 import VehiclesListClient from "@/components/vehicles/VehiclesListClient";
 import ErrorBoundary from "@/components/ErrorBoundary";

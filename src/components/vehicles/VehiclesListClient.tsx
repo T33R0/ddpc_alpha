@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import VehicleCard from "@/components/vehicle/VehicleCard";
 import VehicleCardSkeleton from "@/components/vehicles/VehicleCardSkeleton";
@@ -124,7 +125,7 @@ export default function VehiclesListClient({
         <div className="flex flex-col items-center justify-center text-center border rounded p-12 bg-card text-muted" data-testid="vehicles-empty">
           <div className="text-lg font-medium text-fg mb-1">No vehicles match your search</div>
           <div className="text-sm mb-3">Try adjusting your search or add a new vehicle.</div>
-          <a href="/vehicles?new=1" className="bg-brand text-white rounded px-3 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]">Add vehicle</a>
+          <Link href="/vehicles?new=1" className="bg-brand text-white rounded px-3 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]">Add vehicle</Link>
         </div>
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
