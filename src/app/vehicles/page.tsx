@@ -11,7 +11,7 @@ import VehiclesFiltersClient from "./VehiclesFiltersClient";
 
 export const dynamic = "force-dynamic";
 
-  type Role = "OWNER" | "MANAGER" | "CONTRIBUTOR" | "VIEWER";
+  // type Role = "OWNER" | "MANAGER" | "CONTRIBUTOR" | "VIEWER";
 
 export default async function VehiclesPage(
   props: { searchParams: Promise<Record<string, string | string[] | undefined>> }
@@ -55,10 +55,6 @@ export default async function VehiclesPage(
     : v.updated_at ? Date.parse(v.updated_at)
     : v.created_at ? Date.parse(v.created_at)
     : 0;
-
-  const sortByName = (a: VehicleRow, b: VehicleRow) => a.name.localeCompare(b.name);
-  const sortByYear = (a: VehicleRow, b: VehicleRow) => (b.year ?? 0) - (a.year ?? 0);
-  const sortByLastUpdated = (a: VehicleRow, b: VehicleRow) => lastUpdatedMs(b) - lastUpdatedMs(a);
 
   let vehiclesQuery = supabase
     .from("vehicle")
@@ -217,7 +213,7 @@ export default async function VehiclesPage(
             acc[v.id] = metrics.get(v.id) ?? { upcoming: 0, lastService: null, daysSince: null, avgBetween: null };
             return acc;
           }, {})}
-          isSignedIn={!!user}
+          isSignedIn={undefined as never}
         />
       </ErrorBoundary>
     </div>

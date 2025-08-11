@@ -25,12 +25,10 @@ export default function VehiclesListClient({
   vehicles,
   loadCoverUrl,
   metrics,
-  isSignedIn,
 }: {
   vehicles: VehicleRow[];
   loadCoverUrl: (id: string, photoUrl: string | null) => Promise<string | null>;
   metrics: Record<string, Metrics>;
-  isSignedIn: boolean;
 }) {
   const [loading, setLoading] = useState<boolean>(true);
   const [covers, setCovers] = useState<Record<string, string | null>>({});
