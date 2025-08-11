@@ -16,12 +16,21 @@ export const dynamic = "force-dynamic";
 export default async function VehiclesPage(
   props: { searchParams: Promise<Record<string, string | string[] | undefined>> }
 ) {
-  const supabase = await getServerSupabase();
-  const { data: { user } } = await supabase.auth.getUser();
+  // Defaults to keep render resilient if Supabase/env fails
+  let supabase: Awaited<ReturnType<typeof getServerSupabase>> | null = null;
+  let user: { id: string } | null = null;
   const reqId = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}`;
-  if (process.env.NODE_ENV !== 'production') {
-    // Server-only structured log: no PII
-    console.log(JSON.stringify({ level: 'info', q: 'vehicles_page_load', reqId, actor: user?.id ?? null }));
+  try {
+    supabase = await getServerSupabase();
+    const auth = await supabase.auth.getUser();
+    user = auth.data.user as { id: string } | null;
+    if (process.env.NODE_ENV !== 'production') {
+      // Server-only structured log: no PII
+      console.log(JSON.stringify({ level: 'info', q: 'vehicles_page_load', reqId, actor: user?.id ?? null }));
+    }
+  } catch (e) {
+    // Log server-side; avoid crashing SSR
+    console.error("vehicles_page_init_error", { reqId, err: e instanceof Error ? e.message : String(e) });
   }
 
   // Derive filters from Next 15 Promise-based searchParams (avoid TDZ/shadowing)
@@ -56,17 +65,28 @@ export default async function VehiclesPage(
     : v.created_at ? Date.parse(v.created_at)
     : 0;
 
-  let vehiclesQuery = supabase
-    .from("vehicle")
-    .select("id, vin, year, make, model, trim, nickname, privacy, photo_url, garage_id, created_at, updated_at");
-  if (query) {
-    vehiclesQuery = vehiclesQuery.ilike("nickname", `%${query}%`);
+  let vehicles: VehicleRow[] | null = null;
+  if (supabase) {
+    try {
+      let vehiclesQuery = supabase
+        .from("vehicle")
+        .select("id, vin, year, make, model, trim, nickname, privacy, photo_url, garage_id, created_at, updated_at");
+      if (query) {
+        vehiclesQuery = vehiclesQuery.ilike("nickname", `%${query}%`);
+      }
+      const { data, error } = await vehiclesQuery;
+      if (error) {
+        console.error("vehicles_query_error", { reqId, error: error.message });
+      }
+      vehicles = (data as any) ?? null;
+    } catch (e) {
+      console.error("vehicles_query_throw", { reqId, err: e instanceof Error ? e.message : String(e) });
+    }
   }
-  const { data: vehicles } = await vehiclesQuery;
 
   // Build role map for current user across listed vehicles' garages
   const roleByGarage = new Map<string, string>();
-  if (user && vehicles && vehicles.length > 0) {
+  if (user && vehicles && vehicles.length > 0 && supabase) {
     const garageIds = Array.from(new Set((vehicles as VehicleRow[]).map(v => v.garage_id)));
     const { data: rolesData } = await supabase
       .from("garage_member")
@@ -80,7 +100,7 @@ export default async function VehiclesPage(
 
   // Analytics v0 aggregates (batched; no N+1)
   const metrics = new Map<string, { upcoming: number; lastService: string | null; events30: number; daysSince: number | null; avgBetween: number | null }>();
-  if (vehicles && vehicles.length > 0) {
+  if (vehicles && vehicles.length > 0 && supabase) {
     const vehicleIds = (vehicles as VehicleRow[]).map((v) => v.id);
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
@@ -195,7 +215,7 @@ export default async function VehiclesPage(
 
       <ErrorBoundary message="Failed to load vehicles.">
         <VehiclesListClient
-          vehicles={(vehicles ?? []).map((v: { id: string; nickname: string | null; year: number | null; make: string | null; model: string | null; privacy: "PUBLIC"|"PRIVATE"; updated_at?: string|null; created_at?: string|null; photo_url: string | null; garage_id: string; }) => ({
+          vehicles={((vehicles ?? []) as any[]).map((v: { id: string; nickname: string | null; year: number | null; make: string | null; model: string | null; privacy: "PUBLIC"|"PRIVATE"; updated_at?: string|null; created_at?: string|null; photo_url: string | null; garage_id: string; }) => ({
             id: v.id,
             name: v.nickname ?? `${v.year ?? ''} ${v.make ?? ''} ${v.model ?? ''}`,
             year: v.year ?? null,
@@ -208,7 +228,7 @@ export default async function VehiclesPage(
             photo_url: v.photo_url ?? null,
             garage_id: v.garage_id,
           }))}
-          loadCoverUrl={async (id: string, photo: string | null) => await getVehicleCoverUrl(supabase, id, photo)}
+          loadCoverUrl={async (id: string, photo: string | null) => (supabase ? await getVehicleCoverUrl(supabase, id, photo) : null)}
           metrics={(vehicles ?? []).reduce<Record<string, { upcoming: number; lastService: string | null; daysSince: number | null; avgBetween: number | null }>>((acc, v: { id: string }) => {
             acc[v.id] = metrics.get(v.id) ?? { upcoming: 0, lastService: null, daysSince: null, avgBetween: null };
             return acc;
