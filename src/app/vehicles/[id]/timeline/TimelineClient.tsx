@@ -34,14 +34,14 @@ export default function TimelineClient({ events, vehicleId, canWrite = true }: {
   const [data, setData] = useState<TimelineEvent[]>(events as TimelineEvent[]);
   const { success, error } = useToast();
   const [selected, setSelected] = useState<Set<TimelineEvent["type"]>>(new Set());
+  const [selectedType, setSelectedType] = useState<TimelineEventType>("SERVICE");
   const [from, setFrom] = useState<string>("");
   const [to, setTo] = useState<string>("");
   const [title, setTitle] = useState<string>("");
-  const [dateTime, setDateTime] = useState<string>(() => {
+  const [dateOnly, setDateOnly] = useState<string>(() => {
     const d = new Date();
     const pad = (n: number) => String(n).padStart(2, "0");
-    const local = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-    return local;
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
   });
   const [tagInput, setTagInput] = useState<string>("");
   const [tags, setTags] = useState<string[]>([]);
@@ -143,7 +143,7 @@ export default function TimelineClient({ events, vehicleId, canWrite = true }: {
     setAdding(true);
     const occurred_at = (() => {
       try {
-        return new Date(dateTime).toISOString();
+        return new Date(`${dateOnly}T00:00:00`).toISOString();
       } catch {
         return new Date().toISOString();
       }
@@ -169,14 +169,14 @@ export default function TimelineClient({ events, vehicleId, canWrite = true }: {
       const res = await fetch("/api/events", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ vehicle_id: vehicleId, title: trimmed, date: dateTime || undefined }),
+        body: JSON.stringify({ vehicle_id: vehicleId, title: trimmed, occurred_at: `${dateOnly}T00:00:00`, type: selectedType, tags }),
       });
       if (!res.ok) {
         throw new Error((await res.json()).error || "Failed to create");
       }
       const json = await res.json();
       const created: TimelineEvent = json.event as TimelineEvent;
-      setData((prev) => [created, ...prev.filter((x) => x.id !== temp.id)]);
+      setData((prev) => [created as TimelineEvent, ...prev.filter((x) => x.id !== temp.id)]);
       setTitle("");
       setNotes("");
       setTags([]);
@@ -291,10 +291,10 @@ export default function TimelineClient({ events, vehicleId, canWrite = true }: {
         />
         <input
           name="date"
-          type="datetime-local"
+          type="date"
           className="border rounded px-2 py-1 md:col-span-2 bg-bg text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]"
-          value={dateTime}
-          onChange={(e) => setDateTime(e.target.value)}
+          value={dateOnly}
+          onChange={(e) => setDateOnly(e.target.value)}
         />
         <div className="md:col-span-2 flex flex-col gap-2">
           <label className="text-xs text-muted">Tags</label>
@@ -321,6 +321,12 @@ export default function TimelineClient({ events, vehicleId, canWrite = true }: {
             />
           </div>
         </div>
+        <div className="flex items-center gap-2">
+          <label className="text-xs text-muted">Type</label>
+          <select value={selectedType} onChange={(e) => setSelectedType(e.target.value as TimelineEvent["type"]) } className="border rounded px-2 py-1 bg-bg text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]">
+            {TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+          </select>
+        </div>
         <div className="md:col-span-4">
           <label className="text-xs text-muted">Notes (optional)</label>
           <textarea value={notes} onChange={(e) => setNotes(e.target.value)} className="w-full border rounded px-2 py-1 bg-bg text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]" rows={2} placeholder="Details"></textarea>
@@ -332,26 +338,13 @@ export default function TimelineClient({ events, vehicleId, canWrite = true }: {
         </div>
       </form>
       {/* Filters */}
-      <div className="rounded border p-3 bg-white">
+      <div className="rounded border p-3 bg-card">
         <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-2 flex-wrap">
-            {TYPES.map((t) => (
-              <label key={t} className="inline-flex items-center gap-1 text-xs border rounded px-2 py-1 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  className="accent-black"
-                  checked={selected.has(t)}
-                  onChange={() => toggleType(t)}
-                />
-                <span>{t}</span>
-              </label>
-            ))}
-          </div>
           <div className="ml-auto flex items-center gap-2 text-xs">
             <label className="text-gray-600">From</label>
-            <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="border rounded px-2 py-1" />
+            <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="border rounded px-2 py-1 bg-bg text-fg" />
             <label className="text-gray-600">To</label>
-            <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="border rounded px-2 py-1" />
+            <input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="border rounded px-2 py-1 bg-bg text-fg" />
           </div>
         </div>
       </div>
@@ -379,13 +372,13 @@ export default function TimelineClient({ events, vehicleId, canWrite = true }: {
             >Add an event</button>
           </div>
         ) : (
-          <div className="flex flex-col items-center justify-center text-center border rounded p-12 bg-white text-gray-600">
-            <div className="text-lg font-medium text-gray-800 mb-1">No events match your filters</div>
-            <div className="text-sm mb-3">Try adjusting the type or date filters.</div>
+          <div className="flex flex-col items-center justify-center text-center border rounded p-12 bg-card text-muted">
+            <div className="text-lg font-medium text-fg mb-1">No events match your filters</div>
+            <div className="text-sm mb-3">Try adjusting the date filters.</div>
             <button
               type="button"
-              className="text-xs px-3 py-1 border rounded bg-gray-50"
-              onClick={() => { setSelected(new Set()); setFrom(""); setTo(""); }}
+              className="text-xs px-3 py-1 border rounded bg-bg text-fg"
+              onClick={() => { setFrom(""); setTo(""); }}
             >Clear filters</button>
           </div>
         )

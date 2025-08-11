@@ -3,8 +3,7 @@ import PrivacyBadge from "@/components/PrivacyBadge";
 import TimelineClient, { type TimelineEvent } from "./TimelineClient";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import Link from "next/link";
-import VehicleFilter from "@/components/filters/VehicleFilter";
-import { fetchAccessibleVehicles } from "@/lib/queries/vehicles";
+// Removed vehicle filter on timeline per UX update
 
 export const dynamic = "force-dynamic";
 
@@ -78,7 +77,7 @@ export default async function TimelinePage({ params }: { params: Promise<{ id: s
     canWrite = role === "OWNER" || role === "MANAGER" || role === "CONTRIBUTOR";
   }
 
-  const vehicleOptions = await fetchAccessibleVehicles(supabase);
+  // no vehicle switcher here
 
   return (
     <div className="space-y-6">
@@ -100,10 +99,7 @@ export default async function TimelinePage({ params }: { params: Promise<{ id: s
         </div>
       </div>
 
-      <div className="flex items-center gap-4">
-        <VehicleFilter options={vehicleOptions} mode="scoped" currentId={vehicleId} targetSubroute="timeline" />
-        <span className="sr-only" aria-live="polite" data-testid="filter-announcer"></span>
-      </div>
+      {/* Vehicle switcher removed on timeline page */}
 
       <p className="text-sm text-gray-700 border rounded p-3 bg-white" data-test="timeline-helper-copy">
         Events are immutable after 24h. Events with a ‘from task’ badge were logged at task completion.

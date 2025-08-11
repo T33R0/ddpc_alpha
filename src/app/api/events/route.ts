@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json().catch(() => ({}));
     const v = validateCreateEventPayload(body);
     if (!v.ok) return NextResponse.json({ error: v.error, code: 400 }, { status: 400 });
-    const { vehicle_id, occurred_at, title, notes, type } = v.data;
+    const { vehicle_id, occurred_at, title, notes, type, tags } = v.data;
 
     // AuthZ: OWNER or MANAGER of vehicle's garage
     const { data: veh } = await supabase
@@ -43,6 +43,7 @@ export async function POST(req: NextRequest) {
       notes: title + (notes ? ` — ${notes}` : ""),
       created_at,
     };
+    if (Array.isArray(tags) && tags.length > 0) (insertPayload as any).tags = tags;
 
     const { data: created, error: insErr } = await supabase
       .from("event")
