@@ -37,13 +37,19 @@ export async function POST(req: NextRequest) {
 
     // Prepare insert; map title -> notes for storage if schema lacks title
     const created_at = occurred_at ? new Date(occurred_at).toISOString() : new Date().toISOString();
-    const insertPayload: Record<string, unknown> = {
+    const insertPayload: {
+      vehicle_id: string;
+      type: string;
+      notes: string;
+      created_at: string;
+      tags?: string[];
+    } = {
       vehicle_id,
       type,
       notes: title + (notes ? ` — ${notes}` : ""),
       created_at,
     };
-    if (Array.isArray(tags) && tags.length > 0) (insertPayload as any).tags = tags;
+    if (Array.isArray(tags) && tags.length > 0) insertPayload.tags = tags as string[];
 
     const { data: created, error: insErr } = await supabase
       .from("event")

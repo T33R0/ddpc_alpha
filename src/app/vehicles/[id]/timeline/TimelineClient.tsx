@@ -82,13 +82,7 @@ export default function TimelineClient({ events, vehicleId, canWrite = true }: {
     return () => clearTimeout(t);
   }, []);
 
-  const toggleType = (t: TimelineEvent["type"]) => {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(t)) next.delete(t); else next.add(t);
-      return next;
-    });
-  };
+  // Note: type checkbox filters removed; keep function stub minimal (unused)
 
   const filtered = useMemo(() => {
     const fromDate = from ? new Date(from) : null;
