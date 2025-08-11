@@ -8,6 +8,7 @@ import ErrorBoundary from "@/components/ErrorBoundary";
 // Compatible with Next 14/15; see searchParams handling below.
 import VehiclesJoinedToastClient from "./VehiclesJoinedToastClient";
 import VehiclesFiltersClient from "./VehiclesFiltersClient";
+import AddVehicleModalClient from "./AddVehicleModalClient";
 
 export const dynamic = "force-dynamic";
 
@@ -210,24 +211,13 @@ export default async function VehiclesPage(
       )}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold" data-testid="h1-my-garage">My Garage</h1>
+        <AddVehicleModalClient />
       </div>
 
       <VehiclesFiltersClient />
 
       {user ? (
-        <form action={createVehicle} className="grid grid-cols-1 md:grid-cols-6 gap-3 border rounded p-4">
-          <input name="vin" placeholder="VIN" className="border rounded px-2 py-1 md:col-span-2" />
-          <input name="year" placeholder="Year" type="number" className="border rounded px-2 py-1" />
-          <input name="make" placeholder="Make" className="border rounded px-2 py-1" required />
-          <input name="model" placeholder="Model" className="border rounded px-2 py-1" required />
-          <input name="trim" placeholder="Trim" className="border rounded px-2 py-1" />
-          <input name="nickname" placeholder="Nickname" className="border rounded px-2 py-1 md:col-span-2" />
-          <select name="privacy" className="border rounded px-2 py-1">
-            <option value="PRIVATE">Private</option>
-            <option value="PUBLIC">Public</option>
-          </select>
-          <button type="submit" className="bg-black text-white rounded px-3 py-1 md:col-span-2">Add Vehicle</button>
-        </form>
+        <div className="text-sm text-gray-600">Use the New Vehicle button to add a vehicle.</div>
       ) : (
         <p className="text-sm text-gray-600">Sign in to add and manage vehicles.</p>
       )}

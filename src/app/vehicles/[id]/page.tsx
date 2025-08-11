@@ -5,6 +5,7 @@ import VehicleQuickStats from "@/components/vehicle/VehicleQuickStats";
 import VehicleTasksPeek from "@/components/vehicle/VehicleTasksPeek";
 import VehicleTimelinePeek from "@/components/vehicle/VehicleTimelinePeek";
 import { getVehicleCoverUrl } from "@/lib/getVehicleCoverUrl";
+import DeleteVehicleButtonClient from "./DeleteVehicleButtonClient";
 
 export const dynamic = "force-dynamic";
 
@@ -68,6 +69,7 @@ export default async function VehicleOverviewPage({ params }: { params: Promise<
         <div />
         <div className="flex items-center gap-3">
           <Link href={`/vehicles/${vehicleId}/plans`} className="text-sm px-3 py-1 rounded border" data-testid="nav-build-plans">Build Plans</Link>
+          <DeleteVehicleButtonClient vehicleId={vehicleId} />
         </div>
       </div>
 
