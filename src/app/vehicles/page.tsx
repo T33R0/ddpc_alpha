@@ -213,7 +213,6 @@ export default async function VehiclesPage(
             acc[v.id] = metrics.get(v.id) ?? { upcoming: 0, lastService: null, daysSince: null, avgBetween: null };
             return acc;
           }, {})}
-          isSignedIn={undefined as never}
         />
       </ErrorBoundary>
     </div>
