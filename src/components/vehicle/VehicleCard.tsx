@@ -7,7 +7,7 @@ type Vehicle = { id: string; nickname: string | null; year: number | null; make:
 type Metrics = { upcoming: number; lastService: string | null; daysSince: number | null; avgBetween: number | null };
 
 export default function VehicleCard({ v, m }: { v: Vehicle; m: Metrics }) {
-  const title = v.nickname ?? `${v.year ?? ''} ${v.make ?? ''} ${v.model ?? ''}`;
+  const title = v.nickname && v.nickname.trim().length > 0 ? v.nickname : `${v.year ?? ''} ${v.make ?? ''} ${v.model ?? ''}`;
   const alt = `${title} — cover photo`;
   const prettyDate = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '—');
   return (

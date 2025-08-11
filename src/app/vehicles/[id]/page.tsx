@@ -6,6 +6,7 @@ import VehicleTasksPeek from "@/components/vehicle/VehicleTasksPeek";
 import VehicleTimelinePeek from "@/components/vehicle/VehicleTimelinePeek";
 import { getVehicleCoverUrl } from "@/lib/getVehicleCoverUrl";
 import DeleteVehicleButtonClient from "./DeleteVehicleButtonClient";
+import VehicleEditClient from "./VehicleEditClient";
 
 export const dynamic = "force-dynamic";
 
@@ -74,7 +75,20 @@ export default async function VehicleOverviewPage({ params }: { params: Promise<
       </div>
 
       <div className="grid md:grid-cols-3 gap-4">
-        <VehicleQuickStats lastActivityISO={lastActivityISO} openTaskCount={openCount} doneTaskCount={doneCount} eventCount={eventCount} />
+        <div className="space-y-4">
+          <VehicleQuickStats lastActivityISO={lastActivityISO} openTaskCount={openCount} doneTaskCount={doneCount} eventCount={eventCount} />
+          <VehicleEditClient
+            vehicleId={vehicleId}
+            initial={{
+              nickname: vehicle.nickname,
+              year: vehicle.year,
+              make: vehicle.make,
+              model: vehicle.model,
+              trim: vehicle.trim,
+              privacy: vehicle.privacy as string,
+            }}
+          />
+        </div>
         <VehicleTasksPeek vehicleId={vehicleId} tasks={tasksPeek} />
         <VehicleTimelinePeek vehicleId={vehicleId} events={eventsPeek} />
       </div>
