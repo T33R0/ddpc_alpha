@@ -11,8 +11,6 @@ export async function getMySettings(): Promise<{ theme: Theme }> {
   const settings = await getUserSettings(supabase);
   return { theme: settings?.theme ?? 'system' };
 }
-<<<<<<< Current (Your changes)
-=======
 
 export async function getProfile(): Promise<UserProfile | null> {
   const supabase = await getServerSupabase();
@@ -38,4 +36,3 @@ export async function updateProfile(formData: FormData): Promise<void> {
 
   await upsertMyProfile(supabase, user.id, input);
 }
->>>>>>> Incoming (Background Agent changes)
