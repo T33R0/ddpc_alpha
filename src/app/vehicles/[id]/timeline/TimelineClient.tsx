@@ -15,6 +15,7 @@ export type TimelineEvent = {
   title?: string | null;
   notes?: string | null;
   occurred_at: string; // ISO
+  task_id?: string; // optional link to originating task
   optimistic?: boolean;
 };
 
