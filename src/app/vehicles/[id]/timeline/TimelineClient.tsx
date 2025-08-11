@@ -288,8 +288,13 @@ export default function TimelineClient({ events, vehicleId, canWrite = true }: {
             className="h-9 px-3 rounded border bg-bg text-fg"
             onClick={() => {
               try {
-                // Prefer showPicker if supported for consistent calendar pop-up
-                (dateRef.current as any)?.showPicker?.();
+                const el = dateRef.current as (HTMLInputElement & { showPicker?: () => void }) | null;
+                if (el && typeof el.showPicker === "function") {
+                  el.showPicker();
+                } else {
+                  el?.focus();
+                  el?.click();
+                }
               } catch {
                 dateRef.current?.focus();
                 dateRef.current?.click();
