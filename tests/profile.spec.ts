@@ -22,13 +22,15 @@ auth('profile page renders for signed-in users', async ({ page }) => {
   await goto(page, '/profile');
   await expect(page.getByTestId('profile-page')).toBeVisible();
 });
-<<<<<<< Current (Your changes)
-=======
 
 auth('profile page shows edit form and billing link', async ({ page }) => {
   await goto(page, '/profile');
   await expect(page.getByTestId('profile-edit-form')).toBeVisible();
   await page.getByRole('link', { name: 'Billing' }).click();
   await expect(page.getByTestId('billing-page')).toBeVisible();
+  await expect(page.getByText('Driver')).toBeVisible();
+  await expect(page.getByText('Builder')).toBeVisible();
+  await expect(page.getByText('Pro')).toBeVisible();
+  await expect(page.getByText('2 garage slots and basic maintenance records')).toBeVisible();
+  await expect(page.getByText('Unlimited garage slots and advanced maintenance tracking')).toBeVisible();
 });
->>>>>>> Incoming (Background Agent changes)
