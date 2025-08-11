@@ -5,7 +5,7 @@ import { createVehicle } from "./actions";
 import VehiclesListClient from "@/components/vehicles/VehiclesListClient";
 import { getVehicleCoverUrl } from "@/lib/getVehicleCoverUrl";
 import ErrorBoundary from "@/components/ErrorBoundary";
-// Note: Next 15 server components should use Promise-based searchParams; no headers()/window usage here.
+// Compatible with Next 14/15; see searchParams handling below.
 import VehiclesJoinedToastClient from "./VehiclesJoinedToastClient";
 import VehiclesFiltersClient from "./VehiclesFiltersClient";
 
@@ -14,8 +14,12 @@ export const dynamic = "force-dynamic";
   // type Role = "OWNER" | "MANAGER" | "CONTRIBUTOR" | "VIEWER";
 
 export default async function VehiclesPage(
-  props: { searchParams: Promise<Record<string, string | string[] | undefined>> }
+  props: { searchParams?: Record<string, string | string[] | undefined> | Promise<Record<string, string | string[] | undefined>> }
 ) {
+  // Small local promise guard to support Next 14/15 differences
+  const isPromise = <T,>(v: unknown): v is Promise<T> => !!v && (typeof v === "object" || typeof v === "function") && "then" in (v as object);
+
+  try {
   // Defaults to keep render resilient if Supabase/env fails
   let supabase: Awaited<ReturnType<typeof getServerSupabase>> | null = null;
   let user: { id: string } | null = null;
@@ -33,8 +37,9 @@ export default async function VehiclesPage(
     console.error("vehicles_page_init_error", { reqId, err: e instanceof Error ? e.message : String(e) });
   }
 
-  // Derive filters from Next 15 Promise-based searchParams (avoid TDZ/shadowing)
-  const sp = await props.searchParams;
+  // Derive filters; support both object (Next 14) and Promise (Next 15)
+  const spMaybe = props.searchParams;
+  const sp = isPromise<Record<string, string | string[] | undefined>>(spMaybe) ? await spMaybe : (spMaybe ?? {});
   const joined = sp?.joined === "1";
   // const currentFilter: Role | "ALL" = (sp?.role as Role | undefined) ?? "ALL";
   const query = (sp?.q as string | undefined)?.trim() ?? "";
@@ -219,7 +224,6 @@ export default async function VehiclesPage(
             photo_url: v.photo_url ?? null,
             garage_id: v.garage_id,
           }))}
-          loadCoverUrl={async (id: string, photo: string | null) => (supabase ? await getVehicleCoverUrl(supabase, id, photo) : null)}
           metrics={(vehicleRows ?? []).reduce<Record<string, { upcoming: number; lastService: string | null; daysSince: number | null; avgBetween: number | null }>>((acc, v) => {
             acc[v.id] = metrics.get(v.id) ?? { upcoming: 0, lastService: null, daysSince: null, avgBetween: null };
             return acc;
@@ -228,4 +232,14 @@ export default async function VehiclesPage(
       </ErrorBoundary>
     </div>
   );
+  } catch (e) {
+    // Final safety net: never crash SSR; render minimal fallback
+    console.error("vehicles_page_fatal", { err: e instanceof Error ? e.message : String(e) });
+    return (
+      <div className="space-y-4">
+        <h1 className="text-2xl font-semibold">My Garage</h1>
+        <div className="border rounded bg-red-50 text-red-700 text-sm p-3">Failed to load vehicles.</div>
+      </div>
+    );
+  }
 }

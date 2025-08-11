@@ -23,11 +23,9 @@ type Metrics = { upcoming: number; lastService: string | null; daysSince: number
 
 export default function VehiclesListClient({
   vehicles,
-  loadCoverUrl,
   metrics,
 }: {
   vehicles: VehicleRow[];
-  loadCoverUrl: (id: string, photoUrl: string | null) => Promise<string | null>;
   metrics: Record<string, Metrics>;
 }) {
   const [loading, setLoading] = useState<boolean>(true);
@@ -40,7 +38,20 @@ export default function VehiclesListClient({
     async function run() {
       setLoading(true);
       const entries = await Promise.all(
-        vehicles.map(async (v) => [v.id, await loadCoverUrl(v.id, v.photo_url)] as const)
+        vehicles.map(async (v) => {
+          try {
+            // Prefer existing DB column on client if present
+            if (v.photo_url && v.photo_url.trim().length > 0) {
+              return [v.id, v.photo_url] as const;
+            }
+            const res = await fetch(`/api/vehicles/${v.id}/cover-url`, { cache: "no-store" });
+            if (!res.ok) return [v.id, null] as const;
+            const json = (await res.json()) as { url: string | null };
+            return [v.id, json.url ?? null] as const;
+          } catch {
+            return [v.id, null] as const;
+          }
+        })
       );
       if (!cancelled) {
         const map: Record<string, string | null> = {};
@@ -53,7 +64,7 @@ export default function VehiclesListClient({
     return () => {
       cancelled = true;
     };
-  }, [vehicles, loadCoverUrl]);
+  }, [vehicles]);
 
   const filtered: VehicleRow[] = useMemo(() => {
     const ql = q.trim().toLowerCase();
