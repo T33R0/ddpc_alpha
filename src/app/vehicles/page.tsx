@@ -58,14 +58,23 @@ export default async function VehiclesPage(
     photo_url?: string | null;
     garage_id: string;
   };
+  // Use a typed shape matching our select for strong typing without any-casts
+  type VehicleSelect = {
+    id: string;
+    vin: string | null;
+    year: number | null;
+    make: string | null;
+    model: string | null;
+    trim: string | null;
+    nickname: string | null;
+    privacy: "PUBLIC" | "PRIVATE" | string;
+    photo_url: string | null;
+    garage_id: string;
+    created_at: string | null;
+    updated_at: string | null;
+  };
 
-  const lastUpdatedMs = (v: VehicleRow) =>
-    v.last_event_at ? Date.parse(v.last_event_at)
-    : v.updated_at ? Date.parse(v.updated_at)
-    : v.created_at ? Date.parse(v.created_at)
-    : 0;
-
-  let vehicles: VehicleRow[] | null = null;
+  let vehicleRows: VehicleSelect[] | null = null;
   if (supabase) {
     try {
       let vehiclesQuery = supabase
@@ -78,7 +87,7 @@ export default async function VehiclesPage(
       if (error) {
         console.error("vehicles_query_error", { reqId, error: error.message });
       }
-      vehicles = (data as any) ?? null;
+      vehicleRows = (data as unknown as VehicleSelect[]) ?? null;
     } catch (e) {
       console.error("vehicles_query_throw", { reqId, err: e instanceof Error ? e.message : String(e) });
     }
@@ -86,8 +95,8 @@ export default async function VehiclesPage(
 
   // Build role map for current user across listed vehicles' garages
   const roleByGarage = new Map<string, string>();
-  if (user && vehicles && vehicles.length > 0 && supabase) {
-    const garageIds = Array.from(new Set((vehicles as VehicleRow[]).map(v => v.garage_id)));
+  if (user && vehicleRows && vehicleRows.length > 0 && supabase) {
+    const garageIds = Array.from(new Set(vehicleRows.map(v => v.garage_id)));
     const { data: rolesData } = await supabase
       .from("garage_member")
       .select("garage_id, role")
@@ -100,8 +109,8 @@ export default async function VehiclesPage(
 
   // Analytics v0 aggregates (batched; no N+1)
   const metrics = new Map<string, { upcoming: number; lastService: string | null; events30: number; daysSince: number | null; avgBetween: number | null }>();
-  if (vehicles && vehicles.length > 0 && supabase) {
-    const vehicleIds = (vehicles as VehicleRow[]).map((v) => v.id);
+  if (vehicleRows && vehicleRows.length > 0 && supabase) {
+    const vehicleIds = vehicleRows.map((v) => v.id);
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
     type WorkItemRow = { id: string; vehicle_id: string; status: "BACKLOG" | "PLANNED" | "IN_PROGRESS" | "DONE" | string };
@@ -215,7 +224,7 @@ export default async function VehiclesPage(
 
       <ErrorBoundary message="Failed to load vehicles.">
         <VehiclesListClient
-          vehicles={((vehicles ?? []) as any[]).map((v: { id: string; nickname: string | null; year: number | null; make: string | null; model: string | null; privacy: "PUBLIC"|"PRIVATE"; updated_at?: string|null; created_at?: string|null; photo_url: string | null; garage_id: string; }) => ({
+          vehicles={(vehicleRows ?? []).map((v) => ({
             id: v.id,
             name: v.nickname ?? `${v.year ?? ''} ${v.make ?? ''} ${v.model ?? ''}`,
             year: v.year ?? null,
@@ -229,7 +238,7 @@ export default async function VehiclesPage(
             garage_id: v.garage_id,
           }))}
           loadCoverUrl={async (id: string, photo: string | null) => (supabase ? await getVehicleCoverUrl(supabase, id, photo) : null)}
-          metrics={(vehicles ?? []).reduce<Record<string, { upcoming: number; lastService: string | null; daysSince: number | null; avgBetween: number | null }>>((acc, v: { id: string }) => {
+          metrics={(vehicleRows ?? []).reduce<Record<string, { upcoming: number; lastService: string | null; daysSince: number | null; avgBetween: number | null }>>((acc, v) => {
             acc[v.id] = metrics.get(v.id) ?? { upcoming: 0, lastService: null, daysSince: null, avgBetween: null };
             return acc;
           }, {})}

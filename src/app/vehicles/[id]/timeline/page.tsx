@@ -9,7 +9,6 @@ import { fetchAccessibleVehicles } from "@/lib/queries/vehicles";
 export const dynamic = "force-dynamic";
 
 type EventType = "SERVICE" | "INSTALL" | "INSPECT" | "TUNE";
-type Event = { id: string; type: EventType; odometer: number | null; cost: number | null; notes: string | null; created_at: string };
 
 export default async function TimelinePage({ params }: { params: Promise<{ id: string }> }) {
   const { id: vehicleId } = await params;
