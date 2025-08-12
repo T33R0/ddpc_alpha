@@ -205,7 +205,7 @@ export default async function Home() {
   // Vehicles at a glance enrichments
   const topVehicles = (Array.isArray(topVehiclesRaw) ? topVehiclesRaw : []) as Array<{ id: string; nickname: string | null; year: number | null; make: string | null; model: string | null; photo_url: string | null; privacy: string | null; last_event_at: string | null }>;
   const topIds = topVehicles.map(v => v.id);
-  let perVehicle: Record<string, {
+  const perVehicle: Record<string, {
     openTasks: number;
     nextDue: string | null;
     spendYTD: number;
@@ -213,8 +213,7 @@ export default async function Home() {
     defaultPlanName: string | null;
   }> = {};
   if (topIds.length > 0) {
-    const [openByVehRes, nextDueByVehRes, spendByVehRes, milesByVehRes, plansRes] = await Promise.all([
-      supabase.from("work_item").select("vehicle_id", { count: "exact", head: true }).in("vehicle_id", topIds).in("status", ["PLANNED", "IN_PROGRESS"]),
+    const [nextDueByVehRes, spendByVehRes, milesByVehRes, plansRes] = await Promise.all([
       supabase.from("work_item").select("vehicle_id, due").in("vehicle_id", topIds).in("status", ["PLANNED", "IN_PROGRESS"]).not("due", "is", null).order("due", { ascending: true }),
       supabase.from("event").select("vehicle_id, cost, created_at").in("vehicle_id", topIds).gte("created_at", startOfYear),
       supabase.from("event").select("vehicle_id, odometer, created_at").in("vehicle_id", topIds).gte("created_at", startOfYear).not("odometer", "is", null).order("created_at", { ascending: true }),
@@ -481,7 +480,7 @@ export default async function Home() {
       {/* Build Plan Activity */}
       <section className="rounded-2xl border bg-card shadow-sm p-4">
         <div className="text-sm font-semibold mb-3">Build Plan Activity</div>
-        <PlanActivity supabaseUrl={process.env.NEXT_PUBLIC_SUPABASE_URL ?? ""} />
+        <PlanActivity />
       </section>
 
       {/* Share & Privacy */}
@@ -554,7 +553,7 @@ async function SharePrivacySection() {
   );
 }
 
-async function PlanActivity({ supabaseUrl }: { supabaseUrl: string }) {
+async function PlanActivity() {
   const supabase = await getServerSupabase();
   const { data } = await supabase
     .from("build_plans")
