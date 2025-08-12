@@ -20,17 +20,18 @@ const auth = STORAGE_STATE ? test.extend({
   storageState: async ({}, use) => { await use(STORAGE_STATE); },
 }) : test.skip;
 
-auth('Signed-in: widgets render @dashboard', async ({ page }) => {
+auth('Signed-in: KPI strip, upcoming, activity and charts render @dashboard', async ({ page }) => {
   await goto(page, '/');
-  await expect(page.getByTestId('dashboard-garage')).toBeVisible();
-  await expect(page.getByTestId('dashboard-upcoming-tasks')).toBeVisible();
-  await expect(page.getByTestId('dashboard-recent-events')).toBeVisible();
-  await expect(page.getByTestId('dashboard-overdue-tasks')).toBeVisible();
-  await expect(page.getByTestId('dashboard-recent-vehicles')).toBeVisible();
-  await expect(page.getByTestId('dashboard-stat-vehicles')).toBeVisible();
-  await expect(page.getByTestId('dashboard-stat-open-tasks')).toBeVisible();
-  await expect(page.getByTestId('dashboard-stat-overdue')).toBeVisible();
-  await expect(page.getByTestId('dashboard-quick-actions')).toBeVisible();
+  await expect(page.getByTestId('kpi-vehicles')).toBeVisible();
+  await expect(page.getByTestId('kpi-open-tasks')).toBeVisible();
+  await expect(page.getByTestId('kpi-next-due')).toBeVisible();
+  await expect(page.getByTestId('kpi-spend-ytd')).toBeVisible();
+  await expect(page.getByTestId('kpi-miles-ytd')).toBeVisible();
+  await expect(page.getByTestId('kpi-health')).toBeVisible();
+  await expect(page.getByTestId('upcoming-list')).toBeVisible();
+  await expect(page.getByTestId('activity-feed')).toBeVisible();
+  await expect(page.getByTestId('chart-spend')).toBeVisible();
+  await expect(page.getByTestId('chart-miles')).toBeVisible();
 });
 
 

@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 
-export default function CopyToClipboard({ text, label = "Copy" }: { text: string; label?: string }) {
+export default function CopyToClipboard({ text, label = "Copy", dataTestId }: { text: string; label?: string; dataTestId?: string }) {
   const [copied, setCopied] = useState(false);
   const onCopy = async () => {
     try {
@@ -13,7 +13,7 @@ export default function CopyToClipboard({ text, label = "Copy" }: { text: string
     }
   };
   return (
-    <button type="button" onClick={onCopy} className="text-xs px-2 py-1 border rounded bg-white hover:bg-gray-50" aria-label="Copy to clipboard">
+    <button type="button" onClick={onCopy} className="text-xs px-2 py-1 border rounded bg-white hover:bg-gray-50" aria-label="Copy to clipboard" data-testid={dataTestId}>
       {copied ? "Copied!" : label}
     </button>
   );

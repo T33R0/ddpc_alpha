@@ -1,7 +1,14 @@
 import Link from "next/link";
-import { SignInButton } from "@/components/auth/SignInButton";
 import Image from "next/image";
+import { SignInButton } from "@/components/auth/SignInButton";
 import { getServerSupabase } from "@/lib/supabase";
+import CopyToClipboard from "@/components/CopyToClipboard";
+import { serverLog } from "@/lib/serverLog";
+import PrivacyBadge from "@/components/PrivacyBadge";
+import { getVehicleCoverUrl } from "@/lib/getVehicleCoverUrl";
+import UpcomingListClient from "@/components/dashboard/UpcomingListClient";
+import ActivityFeedClient from "@/components/dashboard/ActivityFeedClient";
+import { SpendBreakdownChart, MilesTrendChart } from "@/components/dashboard/Charts";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +35,10 @@ export default async function Home() {
     );
   }
 
-  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  const now = new Date();
+  const today = now.toISOString().slice(0, 10); // YYYY-MM-DD
+  const startOfYear = new Date(Date.UTC(now.getUTCFullYear(), 0, 1)).toISOString();
+  const ninetyDaysAgoISO = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000).toISOString();
 
   // Determine user's garages to scope dashboard data strictly to "my" context
   const garageIds: string[] = [];
@@ -51,48 +61,32 @@ export default async function Home() {
   } catch {}
 
   const [
-    { data: vehicles },
-    { data: upcoming },
-    { data: recent },
+    // Vehicles total scoped
+    vehiclesCountRes,
+    // Open/Overdue counts scoped
     openTasksCountRes,
     overdueTasksCountRes,
-    vehiclesCountRes,
+    // Next due (soonest)
+    { data: nextDueRow },
+    // Spend YTD and Miles YTD (owner-scoped)
+    { data: spendRows },
+    { data: milesRows },
+    // Recent events (10)
+    { data: recent },
+    // Upcoming tasks next 7 days and overdue
+    { data: upcoming },
+    // Vehicles at a glance (top 3 by last_event_at)
+    { data: topVehiclesRaw },
+    // Alerts: overdue tasks list (limit 6)
     { data: overdue }
   ] = await Promise.all([
-    // Vehicles for "My Garage" (restrict to membership/ownership)
     (async () => {
-      if (garageIds.length === 0) return { data: [] } as { data: unknown };
+      if (garageIds.length === 0) return { count: 0 } as { count: number };
       return await supabase
         .from("vehicle")
-        .select("id, nickname, year, make, model, photo_url, created_at, garage_id")
-        .in("garage_id", garageIds)
-        .order("created_at", { ascending: false })
-        .limit(6);
+        .select("id", { count: "exact", head: true })
+        .in("garage_id", garageIds);
     })(),
-    // Upcoming tasks (active statuses, due today or later) scoped to user's garages
-    (async () => {
-      if (garageIds.length === 0) return { data: [] } as { data: unknown };
-      return await supabase
-        .from("work_item")
-        .select("id, title, due, vehicle_id, vehicle:vehicle!inner(garage_id)")
-        .in("status", ["PLANNED", "IN_PROGRESS"])
-        .not("due", "is", null)
-        .gte("due", today)
-        .in("vehicle.garage_id", garageIds)
-        .order("due", { ascending: true })
-        .limit(6);
-    })(),
-    // Recent events scoped to user's garages
-    (async () => {
-      if (garageIds.length === 0) return { data: [] } as { data: unknown };
-      return await supabase
-        .from("event")
-        .select("id, notes, created_at, vehicle_id, type, vehicle:vehicle!inner(garage_id)")
-        .in("vehicle.garage_id", garageIds)
-        .order("created_at", { ascending: false })
-        .limit(10);
-    })(),
-    // Stats: open tasks count scoped
     (async () => {
       if (garageIds.length === 0) return { count: 0 } as { count: number };
       return await supabase
@@ -101,7 +95,6 @@ export default async function Home() {
         .in("status", ["PLANNED", "IN_PROGRESS"])
         .in("vehicle.garage_id", garageIds);
     })(),
-    // Stats: overdue tasks count scoped
     (async () => {
       if (garageIds.length === 0) return { count: 0 } as { count: number };
       return await supabase
@@ -111,15 +104,76 @@ export default async function Home() {
         .lt("due", today)
         .in("vehicle.garage_id", garageIds);
     })(),
-    // Stats: vehicles count scoped
     (async () => {
-      if (garageIds.length === 0) return { count: 0 } as { count: number };
+      if (garageIds.length === 0) return { data: [{ next_due: null }] } as { data: Array<{ next_due: string | null }> };
+      const { data } = await supabase
+        .from("work_item")
+        .select("due, vehicle:vehicle!inner(garage_id)")
+        .in("status", ["PLANNED", "IN_PROGRESS"])
+        .not("due", "is", null)
+        .in("vehicle.garage_id", garageIds)
+        .order("due", { ascending: true })
+        .limit(1);
+      return { data: [{ next_due: Array.isArray(data) && data[0] ? (data[0] as { due: string }).due : null }] };
+    })(),
+    // Spend YTD across events with cost
+    (async () => {
+      if (garageIds.length === 0) return { data: [{ spend_ytd: 0 }] } as { data: Array<{ spend_ytd: number }> };
+      const { data } = await supabase
+        .from("event")
+        .select("cost, created_at, vehicle:vehicle!inner(garage_id)")
+        .gte("created_at", startOfYear)
+        .in("vehicle.garage_id", garageIds);
+      const rows = Array.isArray(data) ? (data as Array<{ cost: number | null }>) : [];
+      const sum = rows.reduce((acc, r) => acc + (Number(r.cost) || 0), 0);
+      return { data: [{ spend_ytd: sum }] };
+    })(),
+    // Miles YTD across odometer events
+    (async () => {
+      if (garageIds.length === 0) return { data: [{ miles_ytd: 0 }] } as { data: Array<{ miles_ytd: number }> };
+      const { data } = await supabase
+        .from("event")
+        .select("odometer, created_at, vehicle:vehicle!inner(garage_id)")
+        .gte("created_at", startOfYear)
+        .not("odometer", "is", null)
+        .in("vehicle.garage_id", garageIds)
+        .order("created_at", { ascending: true });
+      const rows = Array.isArray(data) ? (data as Array<{ odometer: number | null }>) : [];
+      const odo = rows.map(r => Number(r.odometer)).filter(n => !Number.isNaN(n));
+      const miles = odo.length > 0 ? Math.max(...odo) - Math.min(...odo) : 0;
+      return { data: [{ miles_ytd: miles }] };
+    })(),
+    (async () => {
+      if (garageIds.length === 0) return { data: [] } as { data: unknown };
+      return await supabase
+        .from("event")
+        .select("id, notes, created_at, vehicle_id, type, vehicle:vehicle!inner(garage_id)")
+        .in("vehicle.garage_id", garageIds)
+        .order("created_at", { ascending: false })
+        .limit(10);
+    })(),
+    (async () => {
+      if (garageIds.length === 0) return { data: [] } as { data: unknown };
+      const seven = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+      return await supabase
+        .from("work_item")
+        .select("id, title, due, vehicle_id, status, vehicle:vehicle!inner(garage_id)")
+        .in("status", ["PLANNED", "IN_PROGRESS"])
+        .not("due", "is", null)
+        .lte("due", seven)
+        .in("vehicle.garage_id", garageIds)
+        .order("due", { ascending: true })
+        .limit(50);
+    })(),
+    (async () => {
+      if (garageIds.length === 0) return { data: [] } as { data: unknown };
       return await supabase
         .from("vehicle")
-        .select("id", { count: "exact", head: true })
-        .in("garage_id", garageIds);
+        .select("id, nickname, year, make, model, photo_url, privacy, last_event_at, garage_id")
+        .in("garage_id", garageIds)
+        .order("last_event_at", { ascending: false })
+        .limit(3);
     })(),
-    // Overdue tasks list scoped
     (async () => {
       if (garageIds.length === 0) return { data: [] } as { data: unknown };
       return await supabase
@@ -137,149 +191,389 @@ export default async function Home() {
   const vehiclesCount = vehiclesCountRes.count ?? 0;
   const openTasksCount = openTasksCountRes.count ?? 0;
   const overdueTasksCount = overdueTasksCountRes.count ?? 0;
+  const nextDue: string | null = Array.isArray(nextDueRow) ? (nextDueRow[0] as { next_due: string | null }).next_due : (nextDueRow as unknown as { next_due: string | null }).next_due;
+  const spendYTD = Array.isArray(spendRows) && spendRows[0] ? (spendRows[0] as { spend_ytd: number }).spend_ytd : 0;
+  const milesYTD = Array.isArray(milesRows) && milesRows[0] ? (milesRows[0] as { miles_ytd: number }).miles_ytd : 0;
 
-  // Row types for dashboard lists
-  type VehicleRow = { id: string; nickname: string | null; year: number | null; make: string | null; model: string | null; photo_url: string | null };
-  type TaskRow = { id: string; title: string; due: string | null; vehicle_id: string };
-  type EventRow = { id: string; notes: string | null; created_at: string; vehicle_id: string; type: string };
-  type TaskScopedRow = TaskRow & { vehicle?: { garage_id: string } };
-  type EventScopedRow = EventRow & { vehicle?: { garage_id: string } };
+  // Health composite: 100 - clamp(overdue*6 + due_7d*2 + open*1, 0, 100)
+  const dueSoonCount = Array.isArray(upcoming) ? (upcoming as Array<{ id: string; due: string }>).filter(r => {
+    try { return r.due && new Date(r.due) >= new Date(today); } catch { return false; }
+  }).length : 0;
+  const rawHealth = 100 - Math.min(100, overdueTasksCount * 6 + dueSoonCount * 2 + openTasksCount * 1);
+  const health = Math.max(0, rawHealth);
 
-  // Normalize lists to arrays to satisfy type checks
-  const vehiclesArr: VehicleRow[] = Array.isArray(vehicles) ? (vehicles as VehicleRow[]) : [];
-  const upcomingArr: TaskScopedRow[] = Array.isArray(upcoming) ? (upcoming as TaskScopedRow[]) : [];
-  const recentArr: EventScopedRow[] = Array.isArray(recent) ? (recent as EventScopedRow[]) : [];
-  const overdueArr: TaskScopedRow[] = Array.isArray(overdue) ? (overdue as TaskScopedRow[]) : [];
-
-  // Derive recently active vehicles by deduping vehicle_ids from recent events
-  const recentVehicleIds: string[] = Array.from(
-    new Set(recentArr.map((e) => e.vehicle_id))
-  ).slice(0, 6);
-  let recentVehicles: Array<{ id: string; nickname: string | null; year: number | null; make: string | null; model: string | null; photo_url: string | null }> = [];
-  if (recentVehicleIds.length > 0) {
-    const { data: rv } = await supabase
-      .from("vehicle")
-      .select("id, nickname, year, make, model, photo_url")
-      .in("id", recentVehicleIds);
-    recentVehicles = (rv ?? []) as typeof recentVehicles;
+  // Vehicles at a glance enrichments
+  const topVehicles = (Array.isArray(topVehiclesRaw) ? topVehiclesRaw : []) as Array<{ id: string; nickname: string | null; year: number | null; make: string | null; model: string | null; photo_url: string | null; privacy: string | null; last_event_at: string | null }>;
+  const topIds = topVehicles.map(v => v.id);
+  let perVehicle: Record<string, {
+    openTasks: number;
+    nextDue: string | null;
+    spendYTD: number;
+    milesYTD: number;
+    defaultPlanName: string | null;
+  }> = {};
+  if (topIds.length > 0) {
+    const [openByVehRes, nextDueByVehRes, spendByVehRes, milesByVehRes, plansRes] = await Promise.all([
+      supabase.from("work_item").select("vehicle_id", { count: "exact", head: true }).in("vehicle_id", topIds).in("status", ["PLANNED", "IN_PROGRESS"]),
+      supabase.from("work_item").select("vehicle_id, due").in("vehicle_id", topIds).in("status", ["PLANNED", "IN_PROGRESS"]).not("due", "is", null).order("due", { ascending: true }),
+      supabase.from("event").select("vehicle_id, cost, created_at").in("vehicle_id", topIds).gte("created_at", startOfYear),
+      supabase.from("event").select("vehicle_id, odometer, created_at").in("vehicle_id", topIds).gte("created_at", startOfYear).not("odometer", "is", null).order("created_at", { ascending: true }),
+      supabase.from("build_plans").select("vehicle_id, name, is_default").in("vehicle_id", topIds).eq("is_default", true),
+    ]);
+    // openByVehRes.count is global; instead compute via grouping nextDueByVehRes or separate query per id is heavy; fallback to counting from work_item select without head
+    const { data: openItems } = await supabase.from("work_item").select("id, vehicle_id").in("vehicle_id", topIds).in("status", ["PLANNED", "IN_PROGRESS"]);
+    const openCounts: Record<string, number> = {};
+    (openItems ?? []).forEach((wi: { vehicle_id: string }) => { openCounts[wi.vehicle_id] = (openCounts[wi.vehicle_id] ?? 0) + 1; });
+    const nextDueMap: Record<string, string | null> = {};
+    (nextDueByVehRes.data ?? []).forEach((row: { vehicle_id: string; due: string }) => {
+      if (!(row.vehicle_id in nextDueMap)) nextDueMap[row.vehicle_id] = row.due;
+    });
+    const spendMap: Record<string, number> = {};
+    (spendByVehRes.data ?? []).forEach((r: { vehicle_id: string; cost: number | null }) => { spendMap[r.vehicle_id] = (spendMap[r.vehicle_id] ?? 0) + (Number(r.cost) || 0); });
+    const milesMap: Record<string, number> = {};
+    const groupedOdo: Record<string, number[]> = {};
+    (milesByVehRes.data ?? []).forEach((r: { vehicle_id: string; odometer: number | null }) => {
+      const val = Number(r.odometer);
+      if (Number.isNaN(val)) return;
+      (groupedOdo[r.vehicle_id] ??= []).push(val);
+    });
+    for (const vid of Object.keys(groupedOdo)) {
+      const arr = groupedOdo[vid];
+      if (arr.length > 0) milesMap[vid] = Math.max(...arr) - Math.min(...arr);
+    }
+    const planMap: Record<string, string | null> = {};
+    (plansRes.data ?? []).forEach((p: { vehicle_id: string; name: string; is_default: boolean }) => { if (p.is_default) planMap[p.vehicle_id] = p.name; });
+    for (const vid of topIds) {
+      perVehicle[vid] = {
+        openTasks: openCounts[vid] ?? 0,
+        nextDue: nextDueMap[vid] ?? null,
+        spendYTD: spendMap[vid] ?? 0,
+        milesYTD: milesMap[vid] ?? 0,
+        defaultPlanName: planMap[vid] ?? null,
+      };
+    }
   }
+
+  // Compute spend breakdown YTD and miles trend 12mo for charts
+  const { data: spendCat } = await supabase
+    .from("event")
+    .select("type, cost, created_at, vehicle:vehicle!inner(garage_id)")
+    .gte("created_at", startOfYear)
+    .in("vehicle.garage_id", garageIds);
+  const spendBreakdown = (() => {
+    const rows = Array.isArray(spendCat) ? (spendCat as Array<{ type: string; cost: number | null }>) : [];
+    const service = rows.filter(r => r.type === "SERVICE").reduce((a, r) => a + (Number(r.cost) || 0), 0);
+    const mods = rows.filter(r => r.type === "INSTALL" || r.type === "TUNE").reduce((a, r) => a + (Number(r.cost) || 0), 0);
+    return { service, mods } as { service: number; mods: number };
+  })();
+  const twelveMonthsAgo = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 11, 1));
+  const { data: milesCat } = await supabase
+    .from("event")
+    .select("odometer, created_at, vehicle:vehicle!inner(garage_id)")
+    .gte("created_at", twelveMonthsAgo.toISOString())
+    .not("odometer", "is", null)
+    .in("vehicle.garage_id", garageIds)
+    .order("created_at", { ascending: true });
+  const milesTrend = (() => {
+    const points: Array<{ month: string; value: number }> = [];
+    const rows = Array.isArray(milesCat) ? (milesCat as Array<{ odometer: number | null; created_at: string }>) : [];
+    // Group by YYYY-MM
+    const groups: Record<string, number[]> = {};
+    rows.forEach(r => {
+      const d = new Date(r.created_at);
+      const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+      const val = Number(r.odometer);
+      if (!Number.isNaN(val)) (groups[key] ??= []).push(val);
+    });
+    // Build 12 months sequence
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1));
+      const key = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+      const arr = groups[key] ?? [];
+      const val = arr.length > 0 ? Math.max(...arr) - Math.min(...arr) : 0;
+      points.push({ month: key, value: val });
+    }
+    return points;
+  })();
+  // Rolling 90d CPM
+  const { data: last90 } = await supabase
+    .from("event")
+    .select("cost, odometer, created_at, vehicle:vehicle!inner(garage_id)")
+    .gte("created_at", ninetyDaysAgoISO)
+    .in("vehicle.garage_id", garageIds);
+  const last90Rows = Array.isArray(last90) ? (last90 as Array<{ cost: number | null; odometer: number | null }>) : [];
+  const cost90 = last90Rows.reduce((a, r) => a + (Number(r.cost) || 0), 0);
+  const odo90 = last90Rows.map(r => Number(r.odometer)).filter(n => !Number.isNaN(n));
+  const miles90 = odo90.length > 0 ? Math.max(...odo90) - Math.min(...odo90) : 0;
+  const cpm90 = miles90 > 0 ? cost90 / miles90 : null;
+  // Avg days between services (fleet-wide)
+  const { data: svcRows } = await supabase
+    .from("event")
+    .select("created_at, type, vehicle:vehicle!inner(garage_id)")
+    .eq("type", "SERVICE")
+    .in("vehicle.garage_id", garageIds)
+    .order("created_at", { ascending: true });
+  const svcDates = (Array.isArray(svcRows) ? svcRows : []).map((r: { created_at: string }) => new Date(r.created_at).getTime());
+  const diffs: number[] = [];
+  for (let i = 1; i < svcDates.length; i++) diffs.push((svcDates[i] - svcDates[i - 1]) / (1000 * 60 * 60 * 24));
+  const avgDaysBetween = diffs.length > 0 ? Math.round(diffs.reduce((a, n) => a + n, 0) / diffs.length) : null;
+
+  // Log KPI load (sampled)
+  serverLog("owner_dashboard_kpi", { vehiclesCount, openTasksCount });
+
+  type TaskRow = { id: string; title: string; due: string | null; vehicle_id: string; status: string };
+  type EventRow = { id: string; notes: string | null; created_at: string; vehicle_id: string; type: string };
+  const upcomingArr: TaskRow[] = Array.isArray(upcoming) ? (upcoming as TaskRow[]) : [];
+  const recentArr: EventRow[] = Array.isArray(recent) ? (recent as EventRow[]) : [];
+  const overdueArr: TaskRow[] = Array.isArray(overdue) ? (overdue as TaskRow[]) : [];
 
   return (
     <div className="min-h-screen p-6 space-y-6">
       <header className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Dashboard</h1>
-        <div />
+        <h1 className="text-2xl font-semibold">Fleet Dashboard</h1>
+        <div className="flex items-center gap-2">
+          <Link href="/vehicles?new=1" className="text-xs px-3 py-1 rounded border" data-testid="cta-add-vehicle">Add Vehicle</Link>
+          <Link href="/" className="text-xs px-3 py-1 rounded border" data-testid="cta-import">Import</Link>
+        </div>
       </header>
-      {/* Stats row */}
-      <div className="grid md:grid-cols-3 gap-4">
-        <section className="rounded-2xl border bg-card shadow-sm p-4" data-testid="dashboard-stat-vehicles">
-          <div className="text-sm text-muted">Vehicles</div>
-          <div className="text-2xl font-semibold">{vehiclesCount}</div>
+
+      {/* KPI strip */}
+      <section className="grid grid-cols-2 md:grid-cols-6 gap-3">
+        <div className="rounded-2xl border bg-card shadow-sm p-3" data-testid="kpi-vehicles">
+          <div className="text-xs text-muted">Vehicles</div>
+          <div className="text-xl font-semibold">{vehiclesCount}</div>
+        </div>
+        <div className="rounded-2xl border bg-card shadow-sm p-3" data-testid="kpi-open-tasks">
+          <div className="flex items-center justify-between">
+            <div className="text-xs text-muted">Open Tasks</div>
+            {overdueTasksCount > 0 && <span className="text-[10px] px-1 py-0.5 rounded bg-red-100 text-red-700">Overdue</span>}
+          </div>
+          <div className="text-xl font-semibold">{openTasksCount}</div>
+        </div>
+        <div className="rounded-2xl border bg-card shadow-sm p-3" data-testid="kpi-next-due">
+          <div className="text-xs text-muted">Next Due</div>
+          <div className="text-xl font-semibold">{nextDue ? prettyDue(nextDue, today) : "—"}</div>
+        </div>
+        <div className="rounded-2xl border bg-card shadow-sm p-3" data-testid="kpi-spend-ytd">
+          <div className="text-xs text-muted">Spend YTD</div>
+          <div className="text-xl font-semibold">{formatCurrency(spendYTD)}</div>
+        </div>
+        <div className="rounded-2xl border bg-card shadow-sm p-3" data-testid="kpi-miles-ytd">
+          <div className="text-xs text-muted">Miles YTD</div>
+          <div className="text-xl font-semibold">{milesYTD > 0 ? Math.round(milesYTD) : "—"}</div>
+        </div>
+        <div className="rounded-2xl border bg-card shadow-sm p-3" data-testid="kpi-health">
+          <div className="text-xs text-muted">Health</div>
+          <div className="text-xl font-semibold">{health}</div>
+        </div>
         </section>
-        <section className="rounded-2xl border bg-card shadow-sm p-4" data-testid="dashboard-stat-open-tasks">
-          <div className="text-sm text-muted">Open tasks</div>
-          <div className="text-2xl font-semibold">{openTasksCount}</div>
-        </section>
-        <section className="rounded-2xl border bg-card shadow-sm p-4" data-testid="dashboard-stat-overdue">
-          <div className="text-sm text-muted">Overdue</div>
-          <div className="text-2xl font-semibold">{overdueTasksCount}</div>
-        </section>
+
+      {/* CTA row */}
+      <div className="flex items-center justify-end gap-2">
+        <Link href="/" className="text-xs px-3 py-1 rounded border" data-testid="cta-add-event">Add Event</Link>
+        <Link href="/" className="text-xs px-3 py-1 rounded border" data-testid="cta-add-task">Add Task</Link>
       </div>
-      <div className="grid md:grid-cols-3 gap-4">
-        <section className="rounded-2xl border bg-card shadow-sm p-4" data-testid="dashboard-garage">
-          <div className="text-sm font-semibold mb-3">My Garage</div>
-          {vehiclesArr.length === 0 ? (
-            <div className="text-sm text-muted">No vehicles yet.</div>
-          ) : (
-            <div className="grid grid-cols-2 gap-3">
-              {vehiclesArr.map((v) => (
-                <Link key={v.id} href={`/vehicles/${v.id}`} className="block border rounded overflow-hidden hover:shadow">
-                  {v.photo_url ? (
-                    <Image src={v.photo_url} alt={v.nickname ?? `${v.year ?? ''} ${v.make ?? ''} ${v.model ?? ''}`} width={320} height={180} className="w-full h-24 object-cover" />
+
+      {/* Vehicles at a Glance */}
+      <section className="space-y-3">
+        <div className="text-sm font-semibold">Vehicles at a Glance</div>
+        {topVehicles.length === 0 ? (
+          <div className="text-sm text-muted">No recent vehicle activity.</div>
+        ) : (
+          <div className="grid md:grid-cols-3 gap-3">
+            {await Promise.all(topVehicles.map(async (v) => {
+              const coverUrl = await getVehicleCoverUrl(supabase, v.id, v.photo_url);
+              const p = perVehicle[v.id] ?? { openTasks: 0, nextDue: null, spendYTD: 0, milesYTD: 0, defaultPlanName: null };
+              const name = v.nickname?.trim() || [v.year, v.make, v.model].filter(Boolean).join(" ");
+              return (
+                <article key={v.id} className="rounded-2xl border bg-card shadow-sm overflow-hidden" data-testid="vehicle-card">
+                  {coverUrl ? (
+                    <Image src={coverUrl} alt={name ? `${name} — cover` : "Vehicle cover"} width={640} height={300} className="w-full h-32 object-cover" />
                   ) : (
-                    <div className="w-full h-24 bg-bg text-muted flex items-center justify-center">No photo</div>
+                    <div className="w-full h-32 bg-bg text-muted flex items-center justify-center">No photo</div>
                   )}
-                  <div className="p-2 text-xs font-medium">{v.nickname ?? `${v.year ?? ''} ${v.make ?? ''} ${v.model ?? ''}`}</div>
-                </Link>
-              ))}
+                  <div className="p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="font-medium">{name || "Vehicle"}</div>
+                      <PrivacyBadge value={v.privacy} />
+                    </div>
+                    <div className="text-xs text-muted" data-testid="vehicle-last-event">{v.last_event_at ? timeAgo(v.last_event_at) : "No events yet"}</div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs px-2 py-0.5 rounded border bg-white" data-testid="vehicle-open-tasks">Open: <strong>{p.openTasks}</strong></span>
+                      <span className="text-xs px-2 py-0.5 rounded border bg-white" data-testid="vehicle-next-due">Next due: <strong>{p.nextDue ? prettyDue(p.nextDue, today) : "—"}</strong></span>
+                      <span className="text-xs px-2 py-0.5 rounded border bg-white" data-testid="vehicle-spend-ytd">Spend YTD: <strong>{formatCurrency(p.spendYTD)}</strong></span>
+                      <span className="text-xs px-2 py-0.5 rounded border bg-white" data-testid="vehicle-miles-ytd">Miles YTD: <strong>{p.milesYTD > 0 ? Math.round(p.milesYTD) : "—"}</strong></span>
+                      {p.defaultPlanName && (
+                        <span className="text-xs px-2 py-0.5 rounded border bg-white" data-testid="vehicle-plan-pill">Plan: <strong>{p.defaultPlanName}</strong></span>
+                      )}
+                    </div>
+                    <div className="flex items-center justify-end gap-2">
+                      <Link href={`/vehicles/${v.id}/timeline`} className="text-xs px-2 py-1 rounded border">+Event</Link>
+                      <Link href={`/vehicles/${v.id}/tasks`} className="text-xs px-2 py-1 rounded border">+Task</Link>
+                      <Link href={`/vehicles/${v.id}`} className="text-xs px-2 py-1 rounded border">View</Link>
+                    </div>
+                  </div>
+                </article>
+              );
+            }))}
             </div>
           )}
         </section>
-        <section className="rounded-2xl border bg-card shadow-sm p-4" data-testid="dashboard-upcoming-tasks">
-          <div className="text-sm font-semibold mb-3">Upcoming Tasks</div>
-          {upcomingArr.length === 0 ? (
-            <div className="text-sm text-muted">No upcoming tasks.</div>
-          ) : (
-            <ul className="space-y-1">
-              {upcomingArr.map((t) => (
-                <li key={t.id} className="text-sm flex items-center justify-between">
-                  <Link href={`/vehicles/${t.vehicle_id}/tasks`} className="hover:underline">{t.title}</Link>
-                  <span className="text-xs text-muted">{t.due ? new Date(t.due).toLocaleDateString() : ""}</span>
-                </li>
-              ))}
-            </ul>
-          )}
+
+      {/* Upcoming (7-day horizon) */}
+      <section className="rounded-2xl border bg-card shadow-sm p-4">
+        <div className="flex items-center justify-between mb-3">
+          <div className="text-sm font-semibold">Upcoming</div>
+          <div className="flex items-center gap-2">
+            <Link href={"/api/me/calendar.ics"} className="text-xs px-2 py-1 rounded border">Export ICS</Link>
+            <CopyToClipboard text={`${process.env.NEXT_PUBLIC_APP_URL ?? ""}/api/me/calendar.ics`} label="Copy link" dataTestId="btn-copy-ics" />
+          </div>
+        </div>
+        <UpcomingListClient items={upcomingArr} />
+      </section>
+
+      {/* Recent Activity */}
+      <section className="rounded-2xl border bg-card shadow-sm p-4">
+        <div className="text-sm font-semibold mb-3">Recent Activity</div>
+        <ActivityFeedClient items={recentArr} />
         </section>
-        <section className="rounded-2xl border bg-card shadow-sm p-4" data-testid="dashboard-recent-events">
-          <div className="text-sm font-semibold mb-3">Recent Events</div>
-          {recentArr.length === 0 ? (
-            <div className="text-sm text-muted">No events.</div>
-          ) : (
-            <ul className="space-y-1">
-              {recentArr.map((e) => (
-                <li key={e.id} className="text-sm flex items-center justify-between">
-                  <Link href={`/vehicles/${e.vehicle_id}/timeline`} className="hover:underline">{e.notes ?? e.type}</Link>
-                  <span className="text-xs text-muted">{new Date(e.created_at).toLocaleString()}</span>
-                </li>
-              ))}
-            </ul>
-          )}
+
+      {/* Spend & Utilization */}
+      <section className="grid md:grid-cols-3 gap-3">
+        <div className="rounded-2xl border bg-card shadow-sm p-4">
+          <div className="text-sm font-semibold mb-3">Spend breakdown (YTD)</div>
+          <SpendBreakdownChart data={{ service: spendBreakdown.service, mods: spendBreakdown.mods }} />
+        </div>
+        <div className="rounded-2xl border bg-card shadow-sm p-4 md:col-span-2">
+          <div className="text-sm font-semibold mb-3">Miles trend (12mo)</div>
+          <MilesTrendChart points={milesTrend} />
+        </div>
+        <div className="rounded-2xl border bg-card shadow-sm p-4">
+          <div className="text-sm font-semibold mb-1">Cost per Mile (90d)</div>
+          <div className="text-xl" data-testid="metric-cpm">{typeof cpm90 === "number" ? formatCurrency(cpm90) + "/mi" : "—"}</div>
+        </div>
+        <div className="rounded-2xl border bg-card shadow-sm p-4">
+          <div className="text-sm font-semibold mb-1">Avg. days between services</div>
+          <div className="text-xl" data-testid="metric-days-between-service">{avgDaysBetween ?? "—"}</div>
+        </div>
         </section>
+
+      {/* Alerts & Compliance */}
+      <section className="rounded-2xl border bg-card shadow-sm p-4">
+        <div className="text-sm font-semibold mb-3">Alerts & Compliance</div>
+        <div className="space-y-2">
+          {overdueArr.length > 0 && (
+            <div data-testid="alerts-overdue" className="flex items-center justify-between border rounded p-2 bg-white">
+              <div className="text-sm">{overdueArr.length} overdue tasks</div>
+              <Link href="/tasks" className="text-xs px-2 py-1 rounded border">Review</Link>
       </div>
-      <div className="grid md:grid-cols-3 gap-4">
-        <section className="rounded-2xl border bg-card shadow-sm p-4" data-testid="dashboard-overdue-tasks">
-          <div className="text-sm font-semibold mb-3">Overdue Tasks</div>
-          {overdueArr.length === 0 ? (
-            <div className="text-sm text-muted">No overdue tasks. Nice!</div>
-          ) : (
-            <ul className="space-y-1">
-              {overdueArr.map((t) => (
-                <li key={t.id} className="text-sm flex items-center justify-between">
-                  <Link href={`/vehicles/${t.vehicle_id}/tasks`} className="hover:underline">{t.title}</Link>
-                  <span className="text-xs text-muted">{t.due ? new Date(t.due).toLocaleDateString() : ""}</span>
-                </li>
-              ))}
-            </ul>
           )}
-        </section>
-        <section className="rounded-2xl border bg-card shadow-sm p-4 col-span-2" data-testid="dashboard-recent-vehicles">
-          <div className="text-sm font-semibold mb-3">Recently Active Vehicles</div>
-          {recentVehicles.length === 0 ? (
-            <div className="text-sm text-muted">No recent activity.</div>
-          ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              {recentVehicles.map((v) => (
-                <Link key={v.id} href={`/vehicles/${v.id}`} className="block border rounded overflow-hidden hover:shadow">
-                  {v.photo_url ? (
-                    <Image src={v.photo_url} alt={v.nickname ?? `${v.year ?? ''} ${v.make ?? ''} ${v.model ?? ''}`} width={320} height={180} className="w-full h-24 object-cover" />
-                  ) : (
-                    <div className="w-full h-24 bg-bg text-muted flex items-center justify-center">No photo</div>
-                  )}
-                  <div className="p-2 text-xs font-medium">{v.nickname ?? `${v.year ?? ''} ${v.make ?? ''} ${v.model ?? ''}`}</div>
-                </Link>
-              ))}
+          {/* Data quality: vehicles missing cover */}
+          {topVehicles.filter(v => !v.photo_url).length > 0 && (
+            <div data-testid="alerts-data-quality" className="flex items-center justify-between border rounded p-2 bg-white">
+              <div className="text-sm">Some vehicles are missing cover photos</div>
+              <Link href="/vehicles" className="text-xs px-2 py-1 rounded border">Add cover</Link>
             </div>
           )}
-        </section>
-      </div>
-      <section className="rounded-2xl border bg-card shadow-sm p-4" data-testid="dashboard-quick-actions">
-        <div className="text-sm font-semibold mb-3">Quick actions</div>
-        <div className="flex items-center gap-3">
-          <Link href="/vehicles" className="text-xs px-3 py-1 border rounded bg-bg">New Vehicle</Link>
-          <Link href="/timeline" className="text-xs px-3 py-1 border rounded bg-bg">New Event</Link>
-          <Link href="/tasks" className="text-xs px-3 py-1 border rounded bg-bg">New Task</Link>
         </div>
       </section>
+
+      {/* Build Plan Activity */}
+      <section className="rounded-2xl border bg-card shadow-sm p-4">
+        <div className="text-sm font-semibold mb-3">Build Plan Activity</div>
+        <PlanActivity supabaseUrl={process.env.NEXT_PUBLIC_SUPABASE_URL ?? ""} />
+      </section>
+
+      {/* Share & Privacy */}
+      <SharePrivacySection />
+    </div>
+  );
+}
+
+function prettyDue(iso: string, todayStr: string): string {
+  try {
+    const d = new Date(iso);
+    const today = new Date(todayStr);
+    const diff = Math.floor((d.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    if (diff === 0) return "Today";
+    if (diff === 1) return "Tomorrow";
+    if (diff > 1) return `In ${diff}d`;
+    if (diff === -1) return "Yesterday";
+    return `${Math.abs(diff)}d overdue`;
+  } catch { return "—"; }
+}
+
+function timeAgo(iso: string): string {
+  const s = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+  if (s < 60) return `${s}s ago`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  const d = Math.floor(h / 24);
+  return `${d}d ago`;
+}
+
+function formatCurrency(n: number): string {
+  try { return new Intl.NumberFormat(undefined, { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n); } catch { return `$${Math.round(n)}`; }
+}
+
+async function SharePrivacySection() {
+  const supabase = await getServerSupabase();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+  // List PUBLIC vehicles the user can access (owned or member)
+  const { data } = await supabase
+    .from("vehicle")
+    .select("id, nickname, year, make, model, privacy, photo_url, last_event_at, created_at")
+    .eq("privacy", "PUBLIC")
+    .order("last_event_at", { ascending: false })
+    .order("created_at", { ascending: false })
+    .limit(10);
+  const arr = Array.isArray(data) ? (data as Array<{ id: string; nickname: string | null; year: number | null; make: string | null; model: string | null; photo_url: string | null }>) : [];
+  if (arr.length === 0) return null;
+  return (
+    <section className="rounded-2xl border bg-card shadow-sm p-4">
+      <div className="text-sm font-semibold mb-3">Share & Privacy</div>
+      <div className="space-y-2" data-testid="public-vehicles">
+        {arr.map(v => {
+          const name = v.nickname?.trim() || [v.year, v.make, v.model].filter(Boolean).join(" ");
+          const href = `/v/${v.id}`;
+          return (
+            <div key={v.id} className="flex items-center justify-between border rounded p-2 bg-white">
+              <Link href={href} className="text-sm hover:underline">{name || v.id}</Link>
+              <div className="flex items-center gap-2">
+                <CopyToClipboard text={`${process.env.NEXT_PUBLIC_APP_URL ?? ""}${href}`} label="Copy link" dataTestId="public-copy-link" />
+                <Link href={href} className="text-xs px-2 py-1 rounded border">Open</Link>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+async function PlanActivity({ supabaseUrl }: { supabaseUrl: string }) {
+  const supabase = await getServerSupabase();
+  const { data } = await supabase
+    .from("build_plans")
+    .select("id, vehicle_id, name, status, is_default, updated_at")
+    .order("updated_at", { ascending: false })
+    .limit(5);
+  const arr = Array.isArray(data) ? (data as Array<{ id: string; vehicle_id: string; name: string; status: string; is_default: boolean; updated_at: string }>) : [];
+  return (
+    <div className="space-y-2" data-testid="plan-activity">
+      {arr.length === 0 ? (
+        <div className="text-sm text-muted">No recent plan activity.</div>
+      ) : (
+        arr.map(p => (
+          <div key={p.id} className="flex items-center justify-between border rounded p-2 bg-white">
+            <div className="text-sm">{p.name} — {p.status}{p.is_default ? " (default)" : ""}</div>
+            <Link href={`/vehicles/${p.vehicle_id}/plans`} className="text-xs px-2 py-1 rounded border">View plan</Link>
+          </div>
+        ))
+      )}
     </div>
   );
 }
