@@ -25,6 +25,11 @@ auth('Signed-in: widgets render @dashboard', async ({ page }) => {
   await expect(page.getByTestId('dashboard-garage')).toBeVisible();
   await expect(page.getByTestId('dashboard-upcoming-tasks')).toBeVisible();
   await expect(page.getByTestId('dashboard-recent-events')).toBeVisible();
+  await expect(page.getByTestId('dashboard-overdue-tasks')).toBeVisible();
+  await expect(page.getByTestId('dashboard-recent-vehicles')).toBeVisible();
+  await expect(page.getByTestId('dashboard-stat-vehicles')).toBeVisible();
+  await expect(page.getByTestId('dashboard-stat-open-tasks')).toBeVisible();
+  await expect(page.getByTestId('dashboard-stat-overdue')).toBeVisible();
   await expect(page.getByTestId('dashboard-quick-actions')).toBeVisible();
 });
 
