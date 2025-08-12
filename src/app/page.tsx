@@ -138,15 +138,22 @@ export default async function Home() {
   const openTasksCount = openTasksCountRes.count ?? 0;
   const overdueTasksCount = overdueTasksCountRes.count ?? 0;
 
+  // Row types for dashboard lists
+  type VehicleRow = { id: string; nickname: string | null; year: number | null; make: string | null; model: string | null; photo_url: string | null };
+  type TaskRow = { id: string; title: string; due: string | null; vehicle_id: string };
+  type EventRow = { id: string; notes: string | null; created_at: string; vehicle_id: string; type: string };
+  type TaskScopedRow = TaskRow & { vehicle?: { garage_id: string } };
+  type EventScopedRow = EventRow & { vehicle?: { garage_id: string } };
+
   // Normalize lists to arrays to satisfy type checks
-  const vehiclesArr = (vehicles as unknown as Array<any> | null) ?? [];
-  const upcomingArr = (upcoming as unknown as Array<any> | null) ?? [];
-  const recentArr = (recent as unknown as Array<any> | null) ?? [];
-  const overdueArr = (overdue as unknown as Array<any> | null) ?? [];
+  const vehiclesArr: VehicleRow[] = Array.isArray(vehicles) ? (vehicles as VehicleRow[]) : [];
+  const upcomingArr: TaskScopedRow[] = Array.isArray(upcoming) ? (upcoming as TaskScopedRow[]) : [];
+  const recentArr: EventScopedRow[] = Array.isArray(recent) ? (recent as EventScopedRow[]) : [];
+  const overdueArr: TaskScopedRow[] = Array.isArray(overdue) ? (overdue as TaskScopedRow[]) : [];
 
   // Derive recently active vehicles by deduping vehicle_ids from recent events
   const recentVehicleIds: string[] = Array.from(
-    new Set((recentArr as Array<{ vehicle_id: string }>).map((e) => e.vehicle_id))
+    new Set(recentArr.map((e) => e.vehicle_id))
   ).slice(0, 6);
   let recentVehicles: Array<{ id: string; nickname: string | null; year: number | null; make: string | null; model: string | null; photo_url: string | null }> = [];
   if (recentVehicleIds.length > 0) {
