@@ -138,9 +138,15 @@ export default async function Home() {
   const openTasksCount = openTasksCountRes.count ?? 0;
   const overdueTasksCount = overdueTasksCountRes.count ?? 0;
 
+  // Normalize lists to arrays to satisfy type checks
+  const vehiclesArr = (vehicles as unknown as Array<any> | null) ?? [];
+  const upcomingArr = (upcoming as unknown as Array<any> | null) ?? [];
+  const recentArr = (recent as unknown as Array<any> | null) ?? [];
+  const overdueArr = (overdue as unknown as Array<any> | null) ?? [];
+
   // Derive recently active vehicles by deduping vehicle_ids from recent events
   const recentVehicleIds: string[] = Array.from(
-    new Set(((recent ?? []) as Array<{ vehicle_id: string }>).map((e) => e.vehicle_id))
+    new Set((recentArr as Array<{ vehicle_id: string }>).map((e) => e.vehicle_id))
   ).slice(0, 6);
   let recentVehicles: Array<{ id: string; nickname: string | null; year: number | null; make: string | null; model: string | null; photo_url: string | null }> = [];
   if (recentVehicleIds.length > 0) {
@@ -175,11 +181,11 @@ export default async function Home() {
       <div className="grid md:grid-cols-3 gap-4">
         <section className="rounded-2xl border bg-card shadow-sm p-4" data-testid="dashboard-garage">
           <div className="text-sm font-semibold mb-3">My Garage</div>
-          {(!vehicles || vehicles.length === 0) ? (
+          {vehiclesArr.length === 0 ? (
             <div className="text-sm text-muted">No vehicles yet.</div>
           ) : (
             <div className="grid grid-cols-2 gap-3">
-              {(vehicles ?? []).map((v) => (
+              {vehiclesArr.map((v) => (
                 <Link key={v.id} href={`/vehicles/${v.id}`} className="block border rounded overflow-hidden hover:shadow">
                   {v.photo_url ? (
                     <Image src={v.photo_url} alt={v.nickname ?? `${v.year ?? ''} ${v.make ?? ''} ${v.model ?? ''}`} width={320} height={180} className="w-full h-24 object-cover" />
@@ -194,11 +200,11 @@ export default async function Home() {
         </section>
         <section className="rounded-2xl border bg-card shadow-sm p-4" data-testid="dashboard-upcoming-tasks">
           <div className="text-sm font-semibold mb-3">Upcoming Tasks</div>
-          {(!upcoming || upcoming.length === 0) ? (
+          {upcomingArr.length === 0 ? (
             <div className="text-sm text-muted">No upcoming tasks.</div>
           ) : (
             <ul className="space-y-1">
-              {(upcoming ?? []).map((t) => (
+              {upcomingArr.map((t) => (
                 <li key={t.id} className="text-sm flex items-center justify-between">
                   <Link href={`/vehicles/${t.vehicle_id}/tasks`} className="hover:underline">{t.title}</Link>
                   <span className="text-xs text-muted">{t.due ? new Date(t.due).toLocaleDateString() : ""}</span>
@@ -209,11 +215,11 @@ export default async function Home() {
         </section>
         <section className="rounded-2xl border bg-card shadow-sm p-4" data-testid="dashboard-recent-events">
           <div className="text-sm font-semibold mb-3">Recent Events</div>
-          {(!recent || recent.length === 0) ? (
+          {recentArr.length === 0 ? (
             <div className="text-sm text-muted">No events.</div>
           ) : (
             <ul className="space-y-1">
-              {(recent ?? []).map((e) => (
+              {recentArr.map((e) => (
                 <li key={e.id} className="text-sm flex items-center justify-between">
                   <Link href={`/vehicles/${e.vehicle_id}/timeline`} className="hover:underline">{e.notes ?? e.type}</Link>
                   <span className="text-xs text-muted">{new Date(e.created_at).toLocaleString()}</span>
@@ -226,11 +232,11 @@ export default async function Home() {
       <div className="grid md:grid-cols-3 gap-4">
         <section className="rounded-2xl border bg-card shadow-sm p-4" data-testid="dashboard-overdue-tasks">
           <div className="text-sm font-semibold mb-3">Overdue Tasks</div>
-          {(!overdue || overdue.length === 0) ? (
+          {overdueArr.length === 0 ? (
             <div className="text-sm text-muted">No overdue tasks. Nice!</div>
           ) : (
             <ul className="space-y-1">
-              {(overdue ?? []).map((t) => (
+              {overdueArr.map((t) => (
                 <li key={t.id} className="text-sm flex items-center justify-between">
                   <Link href={`/vehicles/${t.vehicle_id}/tasks`} className="hover:underline">{t.title}</Link>
                   <span className="text-xs text-muted">{t.due ? new Date(t.due).toLocaleDateString() : ""}</span>
