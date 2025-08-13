@@ -124,7 +124,7 @@ export default function VehicleOverviewCarousel({ vehicle, quickStats, tasks, ev
         )}
         {slide === "PARTS" && (
           <div className="grid md:grid-cols-3 gap-4">
-            <PartsManagerCard vehicleId={vehicle.id} />
+            <PartsManagerCard />
             <div className="rounded-2xl border bg-white shadow-sm p-5 flex flex-col justify-between">
               <div>
                 <div className="text-base font-semibold mb-2">Why track parts?</div>
