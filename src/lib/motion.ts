@@ -12,23 +12,31 @@ export const motionDurations = {
 
 export function usePrefersReducedMotion(): boolean {
 	const [reduced, setReduced] = useState(false);
+
+	function addChangeListener(m: MediaQueryList, handler: () => void): () => void {
+		if (typeof m.addEventListener === "function") {
+			m.addEventListener("change", handler);
+			return () => m.removeEventListener("change", handler);
+		}
+		// Fallback for older browsers: addListener/removeListener
+		const legacy = m as unknown as {
+			addListener?: (cb: (e: MediaQueryListEvent) => void) => void;
+			removeListener?: (cb: (e: MediaQueryListEvent) => void) => void;
+		};
+		if (typeof legacy.addListener === "function") {
+			const cb = () => handler();
+			legacy.addListener(cb);
+			return () => legacy.removeListener?.(cb);
+		}
+		return () => {};
+	}
+
 	useEffect(() => {
 		if (typeof window === "undefined" || !window.matchMedia) return;
 			const m = window.matchMedia("(prefers-reduced-motion: reduce)");
 		setReduced(m.matches);
-		const onChange = () => setReduced(m.matches);
-			if ("addEventListener" in m) {
-				m.addEventListener("change", onChange);
-			} else if ("addListener" in m) {
-				m.addListener(onChange);
-			}
-		return () => {
-				if ("removeEventListener" in m) {
-					m.removeEventListener("change", onChange);
-				} else if ("removeListener" in m) {
-					m.removeListener(onChange);
-				}
-		};
+		const cleanup = addChangeListener(m, () => setReduced(m.matches));
+		return cleanup;
 	}, []);
 	return reduced;
 }
