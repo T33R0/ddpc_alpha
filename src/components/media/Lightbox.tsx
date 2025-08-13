@@ -2,6 +2,7 @@
 import { useEffect, useRef } from "react";
 import Image from "next/image";
 import { AnimatePresence, motion } from "framer-motion";
+import { cubicEasing, motionDurations, usePrefersReducedMotion } from "@/lib/motion";
 
 type LightboxProps = {
 	open: boolean;
@@ -15,6 +16,7 @@ type LightboxProps = {
 export default function Lightbox({ open, index, items, onClose, onPrev, onNext }: LightboxProps) {
 	const overlayRef = useRef<HTMLDivElement>(null);
 	const current = items[index];
+  const reduced = usePrefersReducedMotion();
 
 	// Keyboard controls
 	useEffect(() => {
@@ -47,10 +49,10 @@ export default function Lightbox({ open, index, items, onClose, onPrev, onNext }
 					<div className="absolute inset-0 flex items-center justify-center p-4">
 						<motion.div
 							key={current.id}
-							initial={{ opacity: 0, x: 24 }}
+							initial={{ opacity: 0, x: reduced ? 0 : 24 }}
 							animate={{ opacity: 1, x: 0 }}
-							exit={{ opacity: 0, x: -24 }}
-							transition={{ duration: 0.28 }}
+							exit={{ opacity: 0, x: reduced ? 0 : -24 }}
+							transition={{ duration: motionDurations.page, ease: cubicEasing }}
 							className="relative max-w-6xl w-full aspect-[16/9]"
 						>
 							<Image

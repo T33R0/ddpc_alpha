@@ -135,7 +135,7 @@ export default async function VehicleOverviewPage({ params }: { params: Promise<
             <h2 className="text-base font-semibold">Media</h2>
             <Link href={`/vehicles/${vehicleId}/timeline`} className="text-sm text-blue-600 hover:underline">View all</Link>
           </div>
-          <MediaSection media={mediaItems} />
+          <MediaSection media={mediaItems} vehicleId={vehicleId} />
         </div>
       )}
 

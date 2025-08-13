@@ -2,6 +2,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import { motion } from "framer-motion";
+import { motionDurations } from "@/lib/motion";
 
 type MediaItem = {
 	id: string;
@@ -39,7 +40,7 @@ export default function BespokeGallery({
 					onMouseLeave={() => setHoverId(null)}
 					className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-neutral-900 ring-1 ring-neutral-800 focus:outline-none focus:ring-2 focus:ring-teal-500"
 					whileHover={{ y: -2 }}
-					transition={{ duration: 0.15 }}
+					transition={{ duration: motionDurations.micro }}
 					aria-label={m.alt ?? "Open image"}
 				>
 					<Image
@@ -77,6 +78,16 @@ export default function BespokeGallery({
 								className="rounded-lg bg-black/60 px-2 py-1 text-xs text-white hover:bg-black/80"
 							>
 								Tag part
+							</button>
+							<button
+								type="button"
+								onClick={(e) => {
+									e.stopPropagation();
+									onQuickAction?.(m.id, "delete");
+								}}
+								className="rounded-lg bg-red-600/70 px-2 py-1 text-xs text-white hover:bg-red-700/80"
+							>
+								Delete
 							</button>
 						</div>
 					)}
