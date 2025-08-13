@@ -5,6 +5,7 @@ import VehicleHeader from "@/components/vehicle/VehicleHeader";
 import VehicleOverviewCarousel from "@/components/vehicle/VehicleOverviewCarousel";
 import { getVehicleCoverUrl } from "@/lib/getVehicleCoverUrl";
 import DeleteVehicleButtonClient from "./DeleteVehicleButtonClient";
+import MediaSection from "./media-section";
 // Editing UI is no longer shown on the details landing; users can access it from a dedicated page later
 
 export const dynamic = "force-dynamic";
@@ -78,6 +79,22 @@ export default async function VehicleOverviewPage({ params }: { params: Promise<
 
   const coverUrl = await getVehicleCoverUrl(supabase, vehicleId, (vehicle as { photo_url?: string | null } | null)?.photo_url ?? null);
 
+  // Media list from Supabase Storage (public URLs)
+  let mediaItems: { id: string; src: string; fullSrc: string; alt?: string }[] = [];
+  try {
+    const prefix = `${vehicleId}/`;
+    const { data: list } = await supabase.storage.from("vehicle-media").list(prefix, { limit: 200 });
+    const files = (list ?? []) as Array<{ name: string }>;
+    mediaItems = files
+      .filter(f => /\.(jpg|jpeg|png|webp|gif|avif)$/i.test(f.name))
+      .map(f => {
+        const path = `${prefix}${f.name}`;
+        const { data } = supabase.storage.from("vehicle-media").getPublicUrl(path);
+        const url = data.publicUrl;
+        return { id: path, src: url, fullSrc: url, alt: f.name };
+      });
+  } catch {}
+
   return (
     <div className="space-y-6">
       <VehicleHeader vehicle={{ id: vehicle.id as string, nickname: vehicle.nickname, year: vehicle.year, make: vehicle.make, model: vehicle.model, privacy: vehicle.privacy }} coverUrl={coverUrl} showPublicLink={true} />
@@ -111,6 +128,16 @@ export default async function VehicleOverviewPage({ params }: { params: Promise<
         tasks={tasksPeek}
         events={eventsPeek}
       />
+
+      {mediaItems.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-base font-semibold">Media</h2>
+            <Link href={`/vehicles/${vehicleId}/timeline`} className="text-sm text-blue-600 hover:underline">View all</Link>
+          </div>
+          <MediaSection media={mediaItems} />
+        </div>
+      )}
 
       <div className="flex items-center justify-between">
         <div />
