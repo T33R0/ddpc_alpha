@@ -1,13 +1,11 @@
 import Link from "next/link";
 import { getServerSupabase } from "@/lib/supabase";
 import VehicleHeader from "@/components/vehicle/VehicleHeader";
-import VehicleQuickStats from "@/components/vehicle/VehicleQuickStats";
-import VehicleTasksPeek from "@/components/vehicle/VehicleTasksPeek";
-import VehicleTimelinePeek from "@/components/vehicle/VehicleTimelinePeek";
+// Slides are rendered inside a local carousel component
+import VehicleOverviewCarousel from "@/components/vehicle/VehicleOverviewCarousel";
 import { getVehicleCoverUrl } from "@/lib/getVehicleCoverUrl";
 import DeleteVehicleButtonClient from "./DeleteVehicleButtonClient";
-import VehicleEditClient from "./VehicleEditClient";
-import VehicleSpecSheet from "@/components/vehicle/VehicleSpecSheet";
+// Editing UI is no longer shown on the details landing; users can access it from a dedicated page later
 
 export const dynamic = "force-dynamic";
 
@@ -67,8 +65,13 @@ export default async function VehicleOverviewPage({ params }: { params: Promise<
     <div className="space-y-6">
       <VehicleHeader vehicle={{ id: vehicle.id as string, nickname: vehicle.nickname, year: vehicle.year, make: vehicle.make, model: vehicle.model, privacy: vehicle.privacy }} coverUrl={coverUrl} showPublicLink={true} />
 
-      {/* Spec‑sheet inspired section */}
-      <VehicleSpecSheet vehicle={{ id: vehicle.id as string, nickname: vehicle.nickname, year: vehicle.year, make: vehicle.make, model: vehicle.model }} />
+      {/* Carousel: Overview and Official performance */}
+      <VehicleOverviewCarousel
+        vehicle={{ id: vehicle.id as string, nickname: vehicle.nickname, year: vehicle.year, make: vehicle.make, model: vehicle.model }}
+        quickStats={{ lastActivityISO, openTaskCount: openCount, doneTaskCount: doneCount, eventCount: recentEventsRes.count ?? 0 }}
+        tasks={tasksPeek}
+        events={eventsPeek}
+      />
 
       <div className="flex items-center justify-between">
         <div />
@@ -76,25 +79,6 @@ export default async function VehicleOverviewPage({ params }: { params: Promise<
           <Link href={`/vehicles/${vehicleId}/plans`} className="text-sm px-3 py-1 rounded border" data-testid="nav-build-plans">Build Plans</Link>
           <DeleteVehicleButtonClient vehicleId={vehicleId} />
         </div>
-      </div>
-
-      <div className="grid md:grid-cols-3 gap-4">
-        <div className="space-y-4">
-          <VehicleQuickStats lastActivityISO={lastActivityISO} openTaskCount={openCount} doneTaskCount={doneCount} eventCount={eventCount} />
-          <VehicleEditClient
-            vehicleId={vehicleId}
-            initial={{
-              nickname: vehicle.nickname,
-              year: vehicle.year,
-              make: vehicle.make,
-              model: vehicle.model,
-              trim: vehicle.trim,
-              privacy: vehicle.privacy as string,
-            }}
-          />
-        </div>
-        <VehicleTasksPeek vehicleId={vehicleId} tasks={tasksPeek} />
-        <VehicleTimelinePeek vehicleId={vehicleId} events={eventsPeek} />
       </div>
     </div>
   );
