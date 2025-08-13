@@ -3,6 +3,7 @@ import { getServerSupabase } from "@/lib/supabase";
 import VehicleHeader from "@/components/vehicle/VehicleHeader";
 // Slides are rendered inside a local carousel component
 import VehicleOverviewCarousel from "@/components/vehicle/VehicleOverviewCarousel";
+import VehicleTabs from "@/components/vehicle/VehicleTabs";
 import { getVehicleCoverUrl } from "@/lib/getVehicleCoverUrl";
 import DeleteVehicleButtonClient from "./DeleteVehicleButtonClient";
 import MediaSection from "./media-section";
@@ -97,6 +98,7 @@ export default async function VehicleOverviewPage({ params }: { params: Promise<
 
   return (
     <div className="space-y-6">
+      <VehicleTabs vehicleId={vehicleId} />
       <VehicleHeader vehicle={{ id: vehicle.id as string, nickname: vehicle.nickname, year: vehicle.year, make: vehicle.make, model: vehicle.model, privacy: vehicle.privacy }} coverUrl={coverUrl} showPublicLink={true} />
 
       {/* Inject prev/next links into arrows */}
@@ -121,7 +123,7 @@ export default async function VehicleOverviewPage({ params }: { params: Promise<
         }}
       />
 
-      {/* Carousel: Overview and Official performance */}
+      {/* Dashboard-like overview panels */}
       <VehicleOverviewCarousel
         vehicle={{ id: vehicle.id as string, nickname: vehicle.nickname, year: vehicle.year, make: vehicle.make, model: vehicle.model }}
         quickStats={{ lastActivityISO, openTaskCount: openCount, doneTaskCount: doneCount, eventCount }}
