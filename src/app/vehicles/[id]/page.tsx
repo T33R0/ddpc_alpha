@@ -7,6 +7,7 @@ import VehicleTimelinePeek from "@/components/vehicle/VehicleTimelinePeek";
 import { getVehicleCoverUrl } from "@/lib/getVehicleCoverUrl";
 import DeleteVehicleButtonClient from "./DeleteVehicleButtonClient";
 import VehicleEditClient from "./VehicleEditClient";
+import VehicleSpecSheet from "@/components/vehicle/VehicleSpecSheet";
 
 export const dynamic = "force-dynamic";
 
@@ -65,6 +66,9 @@ export default async function VehicleOverviewPage({ params }: { params: Promise<
   return (
     <div className="space-y-6">
       <VehicleHeader vehicle={{ id: vehicle.id as string, nickname: vehicle.nickname, year: vehicle.year, make: vehicle.make, model: vehicle.model, privacy: vehicle.privacy }} coverUrl={coverUrl} showPublicLink={true} />
+
+      {/* Spec‑sheet inspired section */}
+      <VehicleSpecSheet vehicle={{ id: vehicle.id as string, nickname: vehicle.nickname, year: vehicle.year, make: vehicle.make, model: vehicle.model }} />
 
       <div className="flex items-center justify-between">
         <div />
