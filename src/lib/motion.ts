@@ -14,14 +14,20 @@ export function usePrefersReducedMotion(): boolean {
 	const [reduced, setReduced] = useState(false);
 	useEffect(() => {
 		if (typeof window === "undefined" || !window.matchMedia) return;
-		const m = window.matchMedia("(prefers-reduced-motion: reduce)");
+			const m = window.matchMedia("(prefers-reduced-motion: reduce)");
 		setReduced(m.matches);
 		const onChange = () => setReduced(m.matches);
-		if (typeof m.addEventListener === "function") m.addEventListener("change", onChange);
-		else (m as any).addListener?.(onChange);
+			if ("addEventListener" in m) {
+				m.addEventListener("change", onChange);
+			} else if ("addListener" in m) {
+				m.addListener(onChange);
+			}
 		return () => {
-			if (typeof m.removeEventListener === "function") m.removeEventListener("change", onChange);
-			else (m as any).removeListener?.(onChange);
+				if ("removeEventListener" in m) {
+					m.removeEventListener("change", onChange);
+				} else if ("removeListener" in m) {
+					m.removeListener(onChange);
+				}
 		};
 	}, []);
 	return reduced;

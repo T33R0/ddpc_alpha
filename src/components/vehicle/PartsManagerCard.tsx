@@ -46,7 +46,7 @@ const DEFAULT_PART_TYPES: string[] = [
   "Wheels",
 ];
 
-export default function PartsManagerCard({ vehicleId }: { vehicleId: string }) {
+export default function PartsManagerCard(_: { vehicleId: string }) {
   const [rows, setRows] = useState<PartRow[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [selected, setSelected] = useState<string[]>([]);

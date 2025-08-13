@@ -124,7 +124,7 @@ export default async function VehicleOverviewPage({ params }: { params: Promise<
       {/* Carousel: Overview and Official performance */}
       <VehicleOverviewCarousel
         vehicle={{ id: vehicle.id as string, nickname: vehicle.nickname, year: vehicle.year, make: vehicle.make, model: vehicle.model }}
-        quickStats={{ lastActivityISO, openTaskCount: openCount, doneTaskCount: doneCount, eventCount: recentEventsRes.count ?? 0 }}
+        quickStats={{ lastActivityISO, openTaskCount: openCount, doneTaskCount: doneCount, eventCount }}
         tasks={tasksPeek}
         events={eventsPeek}
       />
