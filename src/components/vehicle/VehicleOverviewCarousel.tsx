@@ -6,6 +6,7 @@ import VehicleSpecSheet from "@/components/vehicle/VehicleSpecSheet";
 import VehicleQuickStats from "@/components/vehicle/VehicleQuickStats";
 import VehicleTasksPeek from "@/components/vehicle/VehicleTasksPeek";
 import VehicleTimelinePeek from "@/components/vehicle/VehicleTimelinePeek";
+import PartsManagerCard from "@/components/vehicle/PartsManagerCard";
 
 type VehicleIdentity = {
   id: string;
@@ -126,30 +127,14 @@ export default function VehicleOverviewCarousel({ vehicle, quickStats, tasks, ev
         )}
         {slide === "PARTS" && (
           <div className="grid md:grid-cols-3 gap-4">
-            <div className="rounded-2xl border bg-white shadow-sm p-5 md:col-span-2">
-              <div className="text-base font-semibold mb-3">Parts on hand</div>
-              <ul className="divide-y">
-                {[{ n: "Carbon intake kit", v: "AeroWorks", p: "$1,249", s: "In box" }, { n: "Coilover set", v: "KW V3", p: "$2,090", s: "Installed" }, { n: "Performance pads", v: "Ferodo DS2500", p: "$289", s: "Awaiting rotors" }].map((row) => (
-                  <li key={row.n} className="py-2 flex items-center justify-between text-sm">
-                    <div>
-                      <div className="font-medium">{row.n}</div>
-                      <div className="text-gray-600">{row.v}</div>
-                    </div>
-                    <div className="text-right">
-                      <div className="font-medium">{row.p}</div>
-                      <div className="text-gray-600">{row.s}</div>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
+            <PartsManagerCard vehicleId={vehicle.id} />
             <div className="rounded-2xl border bg-white shadow-sm p-5 flex flex-col justify-between">
               <div>
-                <div className="text-base font-semibold mb-2">Manage parts</div>
-                <p className="text-sm text-gray-600">Track cost, vendor links, and install status from a dedicated page.</p>
+                <div className="text-base font-semibold mb-2">Why track parts?</div>
+                <p className="text-sm text-gray-600">Keep a history of what’s installed, when, and for how much. It helps with troubleshooting and resale.</p>
               </div>
               <div className="mt-4">
-                <Link href={`/vehicles/${vehicle.id}/plans`} className="inline-flex items-center px-3 py-2 text-sm rounded-md bg-gray-900 text-white hover:bg-black">Start with build plans</Link>
+                <Link href={`/vehicles/${vehicle.id}/plans`} className="inline-flex items-center px-3 py-2 text-sm rounded-md bg-gray-900 text-white hover:bg-black">Organize with build plans</Link>
               </div>
             </div>
           </div>
