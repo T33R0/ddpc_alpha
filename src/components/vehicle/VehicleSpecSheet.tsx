@@ -58,7 +58,7 @@ export default function VehicleSpecSheet({ vehicle }: Props) {
         <div className="lg:col-span-2 p-6 border-b lg:border-b-0 lg:border-r">
           <div className="flex items-baseline justify-between gap-3">
             <div>
-              <div className="uppercase tracking-wider text-xs text-gray-500">Official performance card</div>
+              <div className="uppercase tracking-wider text-xs text-gray-500">Specs</div>
               <h2 className="mt-1 text-xl font-semibold">{title || "Vehicle"}</h2>
               <div className="text-sm text-gray-600">Spec sheet inspired overview</div>
             </div>

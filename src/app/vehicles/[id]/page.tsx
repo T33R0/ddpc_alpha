@@ -19,6 +19,23 @@ export default async function VehicleOverviewPage({ params }: { params: Promise<
     .eq("id", vehicleId)
     .maybeSingle();
 
+  // Fetch prev/next vehicles in same garage by created_at order
+  let prevId: string | null = null;
+  let nextId: string | null = null;
+  if (vehicle?.garage_id) {
+    const { data: siblings } = await supabase
+      .from("vehicle")
+      .select("id")
+      .eq("garage_id", vehicle.garage_id as string)
+      .order("created_at", { ascending: false });
+    const ids = (siblings ?? []).map((r: { id: string }) => r.id);
+    const idx = ids.indexOf(vehicleId);
+    if (idx !== -1) {
+      prevId = ids[idx + 1] ?? null;
+      nextId = ids[idx - 1] ?? null;
+    }
+  }
+
   if (!vehicle) {
     return (
       <div className="space-y-6">
@@ -64,6 +81,28 @@ export default async function VehicleOverviewPage({ params }: { params: Promise<
   return (
     <div className="space-y-6">
       <VehicleHeader vehicle={{ id: vehicle.id as string, nickname: vehicle.nickname, year: vehicle.year, make: vehicle.make, model: vehicle.model, privacy: vehicle.privacy }} coverUrl={coverUrl} showPublicLink={true} />
+
+      {/* Inject prev/next links into arrows */}
+      <script
+        dangerouslySetInnerHTML={{
+          __html: `(() => {
+            const prev = ${JSON.stringify(prevId)};
+            const next = ${JSON.stringify(nextId)};
+            const root = document.currentScript?.parentElement;
+            if (!root) return;
+            const prevA = root.querySelector('a[data-testid="veh-prev"]');
+            const nextA = root.querySelector('a[data-testid="veh-next"]');
+            if (prevA) {
+              if (prev) { prevA.setAttribute('href', '/vehicles/' + prev); prevA.removeAttribute('aria-disabled'); }
+              else { prevA.setAttribute('aria-disabled', 'true'); prevA.classList.add('opacity-40','cursor-not-allowed'); }
+            }
+            if (nextA) {
+              if (next) { nextA.setAttribute('href', '/vehicles/' + next); nextA.removeAttribute('aria-disabled'); }
+              else { nextA.setAttribute('aria-disabled', 'true'); nextA.classList.add('opacity-40','cursor-not-allowed'); }
+            }
+          })();`,
+        }}
+      />
 
       {/* Carousel: Overview and Official performance */}
       <VehicleOverviewCarousel

@@ -33,31 +33,28 @@ export default function VehicleOverviewCarousel({ vehicle, quickStats, tasks, ev
 
   const slides: Array<{ key: SlideKey; label: string }> = [
     { key: "OVERVIEW", label: "Overview" },
-    { key: "SPEC", label: "Official performance" },
     { key: "TIMELINE", label: "Timeline" },
     { key: "TASKS", label: "Tasks" },
     { key: "BUILD", label: "Build" },
     { key: "PARTS", label: "Parts" },
+    { key: "SPEC", label: "Specs" },
   ];
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <div className="text-sm text-gray-600">{slides.find((s) => s.key === slide)?.label}</div>
-        <div className="flex flex-wrap gap-1">
-          <div className="inline-flex rounded-lg border bg-white overflow-hidden">
-            {slides.map((s) => (
-              <button
-                key={s.key}
-                type="button"
-                className={`px-3 py-1.5 text-sm ${slide === s.key ? "bg-gray-900 text-white" : "text-gray-700 hover:bg-gray-50"}`}
-                onClick={() => setSlide(s.key)}
-                aria-pressed={slide === s.key}
-              >
-                {s.label}
-              </button>
-            ))}
-          </div>
+      <div className="flex items-center justify-center">
+        <div className="inline-flex rounded-lg border bg-white overflow-hidden">
+          {slides.map((s) => (
+            <button
+              key={s.key}
+              type="button"
+              className={`px-3 py-1.5 text-sm ${slide === s.key ? "bg-gray-900 text-white" : "text-gray-700 hover:bg-gray-50"}`}
+              onClick={() => setSlide(s.key)}
+              aria-pressed={slide === s.key}
+            >
+              {s.label}
+            </button>
+          ))}
         </div>
       </div>
 
