@@ -326,165 +326,78 @@ export default async function Home() {
   const recentArr: EventRow[] = Array.isArray(recent) ? (recent as EventRow[]) : [];
   const overdueArr: TaskRow[] = Array.isArray(overdue) ? (overdue as TaskRow[]) : [];
 
+  const heroCoverUrl = topVehicles[0] ? await getVehicleCoverUrl(supabase, topVehicles[0].id, topVehicles[0].photo_url) : null;
+
   return (
     <div className="min-h-screen p-6 space-y-6">
-      <header className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Fleet Dashboard</h1>
-        <div className="flex items-center gap-2">
-          <Link href="/vehicles?new=1" className="text-xs px-3 py-1 rounded border" data-testid="cta-add-vehicle">Add Vehicle</Link>
-          <Link href="/" className="text-xs px-3 py-1 rounded border" data-testid="cta-import">Import</Link>
-        </div>
-      </header>
+      <h1 className="text-3xl font-semibold">My Garage</h1>
 
-      {/* KPI strip */}
-      <section className="grid grid-cols-2 md:grid-cols-6 gap-3">
-        <div className="rounded-2xl border bg-card shadow-sm p-3" data-testid="kpi-vehicles">
-          <div className="text-xs text-muted">Vehicles</div>
-          <div className="text-xl font-semibold">{vehiclesCount}</div>
-        </div>
-        <div className="rounded-2xl border bg-card shadow-sm p-3" data-testid="kpi-open-tasks">
-          <div className="flex items-center justify-between">
-            <div className="text-xs text-muted">Open Tasks</div>
-            {overdueTasksCount > 0 && <span className="text-[10px] px-1 py-0.5 rounded bg-red-100 text-red-700">Overdue</span>}
-          </div>
-          <div className="text-xl font-semibold">{openTasksCount}</div>
-        </div>
-        <div className="rounded-2xl border bg-card shadow-sm p-3" data-testid="kpi-next-due">
-          <div className="text-xs text-muted">Next Due</div>
-          <div className="text-xl font-semibold">{nextDue ? prettyDue(nextDue, today) : "—"}</div>
-        </div>
-        <div className="rounded-2xl border bg-card shadow-sm p-3" data-testid="kpi-spend-ytd">
-          <div className="text-xs text-muted">Spend YTD</div>
-          <div className="text-xl font-semibold">{formatCurrency(spendYTD)}</div>
-        </div>
-        <div className="rounded-2xl border bg-card shadow-sm p-3" data-testid="kpi-miles-ytd">
-          <div className="text-xs text-muted">Miles YTD</div>
-          <div className="text-xl font-semibold">{milesYTD > 0 ? Math.round(milesYTD) : "—"}</div>
-        </div>
-        <div className="rounded-2xl border bg-card shadow-sm p-3" data-testid="kpi-health">
-          <div className="text-xs text-muted">Health</div>
-          <div className="text-xl font-semibold">{health}</div>
-        </div>
-        </section>
-
-      {/* CTA row */}
-      <div className="flex items-center justify-end gap-2">
-        <Link href="/" className="text-xs px-3 py-1 rounded border" data-testid="cta-add-event">Add Event</Link>
-        <Link href="/" className="text-xs px-3 py-1 rounded border" data-testid="cta-add-task">Add Task</Link>
-      </div>
-
-      {/* Vehicles at a Glance */}
-      <section className="space-y-3">
-        <div className="text-sm font-semibold">Vehicles at a Glance</div>
-        {topVehicles.length === 0 ? (
-          <div className="text-sm text-muted">No recent vehicle activity.</div>
-        ) : (
-          <div className="grid md:grid-cols-3 gap-3">
-            {await Promise.all(topVehicles.map(async (v) => {
-              const coverUrl = await getVehicleCoverUrl(supabase, v.id, v.photo_url);
-              const p = perVehicle[v.id] ?? { openTasks: 0, nextDue: null, spendYTD: 0, milesYTD: 0, defaultPlanName: null };
-              const name = v.nickname?.trim() || [v.year, v.make, v.model].filter(Boolean).join(" ");
-              return (
-                <article key={v.id} className="rounded-2xl border bg-card shadow-sm overflow-hidden" data-testid="vehicle-card">
-                  {coverUrl ? (
-                    <Image src={coverUrl} alt={name ? `${name} — cover` : "Vehicle cover"} width={640} height={300} className="w-full h-32 object-cover" />
-                  ) : (
-                    <div className="w-full h-32 bg-bg text-muted flex items-center justify-center">No photo</div>
-                  )}
-                  <div className="p-3 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="font-medium">{name || "Vehicle"}</div>
-                      <PrivacyBadge value={v.privacy} />
-                    </div>
-                    <div className="text-xs text-muted" data-testid="vehicle-last-event">{v.last_event_at ? timeAgo(v.last_event_at) : "No events yet"}</div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-xs px-2 py-0.5 rounded border bg-white" data-testid="vehicle-open-tasks">Open: <strong>{p.openTasks}</strong></span>
-                      <span className="text-xs px-2 py-0.5 rounded border bg-white" data-testid="vehicle-next-due">Next due: <strong>{p.nextDue ? prettyDue(p.nextDue, today) : "—"}</strong></span>
-                      <span className="text-xs px-2 py-0.5 rounded border bg-white" data-testid="vehicle-spend-ytd">Spend YTD: <strong>{formatCurrency(p.spendYTD)}</strong></span>
-                      <span className="text-xs px-2 py-0.5 rounded border bg-white" data-testid="vehicle-miles-ytd">Miles YTD: <strong>{p.milesYTD > 0 ? Math.round(p.milesYTD) : "—"}</strong></span>
-                      {p.defaultPlanName && (
-                        <span className="text-xs px-2 py-0.5 rounded border bg-white" data-testid="vehicle-plan-pill">Plan: <strong>{p.defaultPlanName}</strong></span>
-                      )}
-                    </div>
-                    <div className="flex items-center justify-end gap-2">
-                      <Link href={`/vehicles/${v.id}/timeline`} className="text-xs px-2 py-1 rounded border">+Event</Link>
-                      <Link href={`/vehicles/${v.id}/tasks`} className="text-xs px-2 py-1 rounded border">+Task</Link>
-                      <Link href={`/vehicles/${v.id}`} className="text-xs px-2 py-1 rounded border">View</Link>
-                    </div>
-                  </div>
-                </article>
-              );
-            }))}
+      <div className="grid md:grid-cols-3 gap-5">
+        {/* Left column */}
+        <div className="md:col-span-2 space-y-5">
+          {/* Hero card */}
+          <section className="rounded-2xl border border-neutral-800 bg-[#111318] overflow-hidden">
+            {heroCoverUrl ? (
+              <Image src={heroCoverUrl} alt="Garage" width={1200} height={600} className="w-full h-60 object-cover" />
+            ) : (
+              <div className="w-full h-60 bg-bg/40" />
+            )}
+            <div className="p-4">
+              <Link href="/vehicles?new=1" className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm">+ Add Vehicle</Link>
             </div>
-          )}
-        </section>
+          </section>
 
-      {/* Upcoming (7-day horizon) */}
-      <section className="rounded-2xl border bg-card shadow-sm p-4">
-        <div className="flex items-center justify-between mb-3">
-          <div className="text-sm font-semibold">Upcoming</div>
-          <div className="flex items-center gap-2">
-            <Link href={"/api/me/calendar.ics"} className="text-xs px-2 py-1 rounded border">Export ICS</Link>
-            <CopyToClipboard text={`${process.env.NEXT_PUBLIC_APP_URL ?? ""}/api/me/calendar.ics`} label="Copy link" dataTestId="btn-copy-ics" />
-          </div>
-        </div>
-        <UpcomingListClient items={upcomingArr} />
-      </section>
+          {/* Recent Activity */}
+          <section className="rounded-2xl border bg-card shadow-sm p-4">
+            <div className="text-sm font-semibold mb-3">Recent Activity</div>
+            <ActivityFeedClient items={recentArr} />
+          </section>
 
-      {/* Recent Activity */}
-      <section className="rounded-2xl border bg-card shadow-sm p-4">
-        <div className="text-sm font-semibold mb-3">Recent Activity</div>
-        <ActivityFeedClient items={recentArr} />
-        </section>
+          {/* Upcoming Tasks */}
+          <section className="rounded-2xl border bg-card shadow-sm p-4">
+            <div className="text-sm font-semibold mb-3">Upcoming Tasks</div>
+            <UpcomingListClient items={upcomingArr} />
+          </section>
+        </div>
 
-      {/* Spend & Utilization */}
-      <section className="grid md:grid-cols-3 gap-3">
-        <div className="rounded-2xl border bg-card shadow-sm p-4">
-          <div className="text-sm font-semibold mb-3">Spend breakdown (YTD)</div>
-          <SpendBreakdownChart data={{ service: spendBreakdown.service, mods: spendBreakdown.mods }} />
-        </div>
-        <div className="rounded-2xl border bg-card shadow-sm p-4 md:col-span-2">
-          <div className="text-sm font-semibold mb-3">Miles trend (12mo)</div>
-          <MilesTrendChart points={milesTrend} />
-        </div>
-        <div className="rounded-2xl border bg-card shadow-sm p-4">
-          <div className="text-sm font-semibold mb-1">Cost per Mile (90d)</div>
-          <div className="text-xl" data-testid="metric-cpm">{typeof cpm90 === "number" ? formatCurrency(cpm90) + "/mi" : "—"}</div>
-        </div>
-        <div className="rounded-2xl border bg-card shadow-sm p-4">
-          <div className="text-sm font-semibold mb-1">Avg. days between services</div>
-          <div className="text-xl" data-testid="metric-days-between-service">{avgDaysBetween ?? "—"}</div>
-        </div>
-        </section>
-
-      {/* Alerts & Compliance */}
-      <section className="rounded-2xl border bg-card shadow-sm p-4">
-        <div className="text-sm font-semibold mb-3">Alerts & Compliance</div>
-        <div className="space-y-2">
-          {overdueArr.length > 0 && (
-            <div data-testid="alerts-overdue" className="flex items-center justify-between border rounded p-2 bg-white">
-              <div className="text-sm">{overdueArr.length} overdue tasks</div>
-              <Link href="/tasks" className="text-xs px-2 py-1 rounded border">Review</Link>
-      </div>
-          )}
-          {/* Data quality: vehicles missing cover */}
-          {topVehicles.filter(v => !v.photo_url).length > 0 && (
-            <div data-testid="alerts-data-quality" className="flex items-center justify-between border rounded p-2 bg-white">
-              <div className="text-sm">Some vehicles are missing cover photos</div>
-              <Link href="/vehicles" className="text-xs px-2 py-1 rounded border">Add cover</Link>
+        {/* Right column */}
+        <div className="space-y-5">
+          {/* Overview KPIs */}
+          <section className="rounded-2xl border bg-card shadow-sm p-4">
+            <div className="text-sm font-semibold mb-2">Overview</div>
+            <div className="grid grid-cols-3 gap-3 text-center">
+              <div>
+                <div className="text-xs text-muted">Vehicle</div>
+                <div className="text-xl font-semibold">{vehiclesCount}</div>
+              </div>
+              <div>
+                <div className="text-xs text-muted">Active Tasks</div>
+                <div className="text-xl font-semibold">{openTasksCount}</div>
+              </div>
+              <div>
+                <div className="text-xs text-muted">Miles Driven</div>
+                <div className="text-xl font-semibold">{milesYTD > 0 ? Math.round(milesYTD) : "—"}<span className="text-xs align-top"> mi</span></div>
+              </div>
             </div>
-          )}
+          </section>
+
+          {/* Performance */}
+          <section className="rounded-2xl border bg-card shadow-sm p-4">
+            <div className="text-sm font-semibold mb-3">Performance</div>
+            <MilesTrendChart points={milesTrend} />
+          </section>
+
+          {/* Tagged/Alerts minimal */}
+          <section className="rounded-2xl border bg-card shadow-sm p-4">
+            <div className="text-sm font-semibold mb-2">Tagged</div>
+            {overdueArr.length === 0 ? (
+              <div className="text-sm text-muted">No tags yet</div>
+            ) : (
+              <div className="text-sm">{overdueArr[0].title} — {overdueArr[0].due ? prettyDue(overdueArr[0].due, today) : "—"}</div>
+            )}
+          </section>
         </div>
-      </section>
-
-      {/* Build Plan Activity */}
-      <section className="rounded-2xl border bg-card shadow-sm p-4">
-        <div className="text-sm font-semibold mb-3">Build Plan Activity</div>
-        <PlanActivity />
-      </section>
-
-      {/* Share & Privacy */}
-      <SharePrivacySection />
+      </div>
     </div>
   );
 }
