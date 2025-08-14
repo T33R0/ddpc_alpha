@@ -8,10 +8,7 @@ type Metrics = { upcoming: number; lastService: string | null; daysSince: number
 export default function VehicleCard({ v, m }: { v: Vehicle; m: Metrics }) {
   const title = v.nickname && v.nickname.trim().length > 0 ? v.nickname : `${v.year ?? ''} ${v.make ?? ''} ${v.model ?? ''}`;
   const alt = `${title} — cover photo`;
-  const sinceStr = (() => {
-    if (typeof m.daysSince === "number") return `${m.daysSince} days ago`;
-    return v.updated_at ? `${Math.max(0, Math.round((Date.now() - Date.parse(v.updated_at)) / (24 * 60 * 60 * 1000)))} days ago` : "—";
-  })();
+  const sinceStr = typeof m.daysSince === "number" ? `${m.daysSince} days ago` : "—";
   const due = (m.upcoming ?? 0) > 0;
   const meta = [v.year, v.make, v.model, v.trim].filter(Boolean).join(" ");
   return (
