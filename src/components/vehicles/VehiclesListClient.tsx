@@ -29,7 +29,8 @@ export default function VehiclesListClient({
   vehicles: VehicleRow[];
   metrics: Record<string, Metrics>;
 }) {
-  const [loading, setLoading] = useState<boolean>(true);
+  // Only show loading state if we don't have vehicles data yet
+  const [, setLoadingCovers] = useState<boolean>(true);
   const [covers, setCovers] = useState<Record<string, string | null>>({});
   const [q, setQ] = useState<string>("");
   const [sortKey, setSortKey] = useState<"updated" | "name" | "year">("updated");
@@ -37,11 +38,22 @@ export default function VehiclesListClient({
   useEffect(() => {
     let cancelled = false;
     async function run() {
-      setLoading(true);
+      setLoadingCovers(true);
+      // Initialize covers with existing photo_urls immediately
+      const initialCovers: Record<string, string | null> = {};
+      vehicles.forEach(v => {
+        if (v.photo_url && v.photo_url.trim().length > 0) {
+          initialCovers[v.id] = v.photo_url;
+        } else {
+          initialCovers[v.id] = null;
+        }
+      });
+      setCovers(initialCovers);
+      
       const entries = await Promise.all(
         vehicles.map(async (v) => {
           try {
-            // Prefer existing DB column on client if present
+            // If we already have a photo_url from DB, use it
             if (v.photo_url && v.photo_url.trim().length > 0) {
               return [v.id, v.photo_url] as const;
             }
@@ -58,7 +70,7 @@ export default function VehiclesListClient({
         const map: Record<string, string | null> = {};
         for (const [id, url] of entries) map[id] = url;
         setCovers(map);
-        setLoading(false);
+        setLoadingCovers(false);
       }
     }
     run();
@@ -115,7 +127,8 @@ export default function VehiclesListClient({
         </div>
       </div>
 
-      {loading ? (
+      {/* Only show skeletons if we have no vehicles data at all */}
+      {vehicles.length === 0 ? (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {Array.from({ length: 6 }).map((_, i) => (
             <VehicleCardSkeleton key={i} />
