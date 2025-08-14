@@ -436,7 +436,7 @@ export default function TasksBoardClient({
                                     const res = await fetch(`/api/work-items/${it.id}/plan`, {
                                       method: "PATCH",
                                       headers: { "Content-Type": "application/json" },
-                                      body: JSON.stringify({ build_plan_id: planId }),
+                                      body: JSON.stringify({ plan_id: planId }),
                                     });
                                     if (!res.ok) throw new Error("Failed to update plan");
                                     success("Plan updated");

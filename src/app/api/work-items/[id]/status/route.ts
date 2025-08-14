@@ -22,20 +22,25 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
         entityType: "work_item",
         entityId: id,
         action: "update",
-        diff: { before: { status: before.status }, after: { status } },
+        diff: { before: { status: (before as { status: string }).status }, after: { status } },
       });
     }
 
     // Optional: also log event when completing
-    if (ENABLE_LINK && (body?.logEvent === true || body?.logEvent === "1") && status === "DONE") {
+    if (ENABLE_LINK && (body?.logEvent === true || body?.logEvent === "1") && status === "DONE" && before) {
       try {
+        const date: string | undefined = body?.eventPayload?.date;
+        const notes: string | undefined = body?.eventPayload?.notes;
+        const title: string = (body?.eventPayload?.title || (before as { title?: string }).title || "Task completed").toString();
         const eventBody: Record<string, unknown> = {
           vehicle_id: (before as { vehicle_id: string }).vehicle_id,
-          title: (before as { title?: string }).title ?? "Task completed",
-          task_id: id,
+          title,
+          notes,
+          type: "NOTE",
         };
-        if (body?.eventPayload?.date) eventBody.date = body.eventPayload.date;
-        await fetch(`${process.env.NEXT_PUBLIC_APP_URL ?? ""}/api/events`, {
+        if (date) eventBody.occurred_at = date;
+        const url = new URL("/api/events", req.url);
+        await fetch(url, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(eventBody),

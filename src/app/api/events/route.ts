@@ -3,6 +3,8 @@ import { getServerSupabase } from "@/lib/supabase";
 import { serverLog } from "@/lib/serverLog";
 import { validateCreateEventPayload } from "@/lib/validators/events";
 
+const ENABLE_LINK = process.env.ENABLE_TASK_EVENT_LINK === "true";
+
 export async function POST(req: NextRequest) {
   const requestId = Math.random().toString(36).slice(2, 10);
   try {
@@ -13,7 +15,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json().catch(() => ({}));
     const v = validateCreateEventPayload(body);
     if (!v.ok) return NextResponse.json({ error: v.error, code: 400 }, { status: 400 });
-    const { vehicle_id, occurred_at, title, notes, type } = v.data;
+    const { vehicle_id, occurred_at, title, notes, type, task_id } = v.data;
 
     // AuthZ: OWNER or MANAGER of vehicle's garage
     const { data: veh } = await supabase
@@ -42,12 +44,14 @@ export async function POST(req: NextRequest) {
       type: string;
       notes: string;
       created_at: string;
+      task_id?: string | null;
     } = {
       vehicle_id,
       type,
       notes: title + (notes ? ` — ${notes}` : ""),
       created_at,
     };
+    if (ENABLE_LINK && task_id) insertPayload.task_id = task_id;
 
     const { data: created, error: insErr } = await supabase
       .from("event")

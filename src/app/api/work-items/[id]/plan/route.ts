@@ -46,7 +46,7 @@ export async function PATCH(req: NextRequest, context: unknown) {
 
     // Validate plan belongs to same vehicle
     const { data: plan } = await supabase
-      .from("build_plan")
+      .from("build_plans")
       .select("id, vehicle_id")
       .eq("id", v.data.plan_id)
       .maybeSingle();
@@ -57,7 +57,7 @@ export async function PATCH(req: NextRequest, context: unknown) {
 
     const { error: updErr } = await supabase
       .from("work_item")
-      .update({ plan_id: v.data.plan_id })
+      .update({ build_plan_id: v.data.plan_id })
       .eq("id", id);
     if (updErr) return NextResponse.json({ error: "Update failed", code: 400 }, { status: 400 });
 

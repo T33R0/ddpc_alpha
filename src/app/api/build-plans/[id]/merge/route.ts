@@ -37,7 +37,7 @@ export async function POST(_req: NextRequest, context: RouteContext) {
     const notes = JSON.stringify({ planId: id, mergedTaskIds });
     const { data: event, error: evtErr } = await supabase
       .from("event")
-      .insert({ vehicle_id: plan.vehicle_id, type: "MERGE_PLAN", notes })
+      .insert({ vehicle_id: plan.vehicle_id, type: "MERGE", notes })
       .select("id, created_at")
       .single();
     if (evtErr) return NextResponse.json({ error: evtErr.message }, { status: 400 });

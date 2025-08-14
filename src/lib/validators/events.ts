@@ -32,6 +32,7 @@ export type CreateEventPayload = {
   notes?: string;
   tags?: string[];
   type: EventType;
+  task_id?: string;
 };
 
 export function validateCreateEventPayload(body: unknown): { ok: true; data: CreateEventPayload } | { ok: false; error: string } {
@@ -49,5 +50,6 @@ export function validateCreateEventPayload(body: unknown): { ok: true; data: Cre
   if (b.occurred_at != null) payload.occurred_at = String(b.occurred_at);
   if (b.notes != null) payload.notes = String(b.notes);
   if (Array.isArray(b.tags)) payload.tags = (b.tags as unknown[]).map(String);
+  if (typeof b.task_id === 'string' && b.task_id.trim().length > 0) payload.task_id = b.task_id.trim();
   return { ok: true, data: payload };
 }

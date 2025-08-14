@@ -44,7 +44,7 @@ create table if not exists work_item (
 create table if not exists event (
   id uuid primary key default gen_random_uuid(),
   vehicle_id uuid not null references vehicle(id) on delete cascade,
-  type text check (type in ('SERVICE','INSTALL','INSPECT','TUNE')) not null,
+  type text check (type in ('SERVICE','INSTALL','INSPECT','TUNE','MOD','DYNO','NOTE','MERGE')) not null,
   odometer int,
   notes text,
   cost numeric(10,2),
@@ -293,3 +293,56 @@ create policy vehicle_media_delete on storage.objects
 for delete to authenticated using (
   bucket_id = 'vehicle-media' and owner = auth.uid()
 );
+
+-- Build Plans: table, RLS, and linkage from work_item
+create table if not exists build_plans (
+  id uuid primary key default gen_random_uuid(),
+  vehicle_id uuid not null references vehicle(id) on delete cascade,
+  name text not null,
+  description text,
+  status text check (status in ('draft','active','archived','merged')) not null default 'draft',
+  is_default boolean not null default false,
+  created_by uuid references auth.users(id),
+  updated_at timestamptz not null default now(),
+  created_at timestamptz not null default now()
+);
+
+alter table build_plans enable row level security;
+
+drop policy if exists build_plans_select on build_plans;
+create policy build_plans_select on build_plans
+for select using (
+  vehicle_id in (
+    select id from vehicle v where
+      v.garage_id in (select garage_id from garage_member where user_id = auth.uid())
+      or exists (select 1 from garage g where g.id = v.garage_id and g.owner_id = auth.uid())
+  )
+);
+
+drop policy if exists build_plans_crud on build_plans;
+create policy build_plans_crud on build_plans
+for all using (
+  vehicle_id in (
+    select id from vehicle v where
+      v.garage_id in (select garage_id from garage_member where user_id = auth.uid())
+      or exists (select 1 from garage g where g.id = v.garage_id and g.owner_id = auth.uid())
+  )
+) with check (
+  vehicle_id in (
+    select id from vehicle v where
+      v.garage_id in (select garage_id from garage_member where user_id = auth.uid())
+      or exists (select 1 from garage g where g.id = v.garage_id and g.owner_id = auth.uid())
+  )
+);
+
+-- Link tasks to plans
+alter table work_item add column if not exists build_plan_id uuid references build_plans(id);
+create index if not exists idx_work_item_build_plan_id on work_item(build_plan_id);
+
+-- Event improvements: optional link to task and expanded type set
+-- Best-effort: drop prior type check if present, then add a new one
+alter table event drop constraint if exists event_type_check;
+alter table event add constraint event_type_check check (type in ('SERVICE','INSTALL','INSPECT','TUNE','MOD','DYNO','NOTE','MERGE'));
+
+alter table event add column if not exists task_id uuid references work_item(id);
+create index if not exists idx_event_task_id on event(task_id);
