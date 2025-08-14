@@ -203,17 +203,21 @@ export default async function VehiclesPage(
   // Filters already derived above: joined, currentFilter, query, sortBy
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <VehiclesJoinedToastClient />
       {joined && (
         <div role="status" aria-live="polite" className="sr-only">Joined garage.</div>
       )}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold" data-testid="h1-my-garage">My Garage</h1>
+        <h1 className="text-2xl font-semibold" data-testid="h1-my-garage">Garage</h1>
         <AddVehicleModalClient />
       </div>
 
-      <VehiclesFiltersClient />
+      <div className="sticky top-0 z-10 -mx-3 px-3 bg-bg/80 backdrop-blur border-b">
+        <div className="py-3">
+          <VehiclesFiltersClient />
+        </div>
+      </div>
 
       {user ? (
         <div className="text-sm text-gray-600">Use the New Vehicle button to add a vehicle.</div>
