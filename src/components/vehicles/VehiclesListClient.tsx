@@ -2,7 +2,6 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import VehicleCard from "@/components/vehicle/VehicleCard";
-import VehicleCardSkeleton from "@/components/vehicles/VehicleCardSkeleton";
 
 export type VehicleRow = {
   id: string;
@@ -29,19 +28,21 @@ export default function VehiclesListClient({
   vehicles: VehicleRow[];
   metrics: Record<string, Metrics>;
 }) {
-  const [loading, setLoading] = useState<boolean>(true);
-  const [covers, setCovers] = useState<Record<string, string | null>>({});
+  const [covers, setCovers] = useState<Record<string, string | null>>(() => {
+    const initial: Record<string, string | null> = {};
+    for (const v of vehicles) initial[v.id] = v.photo_url ?? null;
+    return initial;
+  });
   const [q, setQ] = useState<string>("");
   const [sortKey, setSortKey] = useState<"updated" | "name" | "year">("updated");
 
   useEffect(() => {
     let cancelled = false;
     async function run() {
-      setLoading(true);
       const entries = await Promise.all(
         vehicles.map(async (v) => {
           try {
-            // Prefer existing DB column on client if present
+            // If we already have a cover URL (from DB or prior fetch), keep it
             if (v.photo_url && v.photo_url.trim().length > 0) {
               return [v.id, v.photo_url] as const;
             }
@@ -55,10 +56,11 @@ export default function VehiclesListClient({
         })
       );
       if (!cancelled) {
-        const map: Record<string, string | null> = {};
-        for (const [id, url] of entries) map[id] = url;
-        setCovers(map);
-        setLoading(false);
+        setCovers((prev) => {
+          const next = { ...prev };
+          for (const [id, url] of entries) next[id] = url;
+          return next;
+        });
       }
     }
     run();
@@ -115,13 +117,7 @@ export default function VehiclesListClient({
         </div>
       </div>
 
-      {loading ? (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <VehicleCardSkeleton key={i} />
-          ))}
-        </div>
-      ) : filtered.length === 0 ? (
+      {filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center text-center border rounded p-12 bg-card text-muted" data-testid="vehicles-empty">
           <div className="text-lg font-medium text-fg mb-1">No vehicles match your search</div>
           <div className="text-sm mb-3">Try adjusting your search or add a new vehicle.</div>
@@ -131,7 +127,7 @@ export default function VehiclesListClient({
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map((v) => {
             const m = metrics[v.id] ?? { upcoming: 0, lastService: null, daysSince: null, avgBetween: null };
-            const coverUrl = covers[v.id] ?? null;
+            const coverUrl = (covers[v.id] !== undefined ? covers[v.id] : v.photo_url) ?? null;
             return (
               <article key={v.id} aria-labelledby={`veh-${v.id}-title`}>
                 <VehicleCard
