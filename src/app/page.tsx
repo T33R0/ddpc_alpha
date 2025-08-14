@@ -330,7 +330,7 @@ export default async function Home() {
 
   return (
     <div className="min-h-screen p-6 space-y-6">
-      <h1 className="text-3xl font-semibold">My Garage</h1>
+      <h1 className="text-3xl font-semibold">Dashboard</h1>
 
       <div className="grid md:grid-cols-3 gap-5">
         {/* Left column */}
