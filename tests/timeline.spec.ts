@@ -31,17 +31,16 @@ auth('Owner edits <24h → success', async ({ page }) => {
   await expect(row.getByText(newText)).toBeVisible();
 });
 
-auth('Owner edits >24h → blocked', async ({ page }) => {
+auth('Owner can edit any time (no immutability window)', async ({ page }) => {
   await goto(page, `/vehicles/${OWNER_VEHICLE_ID}/timeline`);
   const row = page.locator(`[data-id="${OWNER_EVENT_GT24}"]`).first();
   const edit = row.getByRole('button', { name: /edit/i }).first();
   await edit.click();
   const input = page.getByPlaceholder('Notes');
-  await input.fill('Blocked');
+  const newText = `Changed ${Date.now()}`;
+  await input.fill(newText);
   await page.getByRole('button', { name: /save/i }).click();
-  // Error toast appears
-  // We use a generic text assertion due to app toast skin
-  await expect(page.getByText(/immutable/i)).toBeVisible();
+  await expect(row.getByText(newText)).toBeVisible();
 });
 
 auth('Viewer edit/delete gated', async ({ page }) => {

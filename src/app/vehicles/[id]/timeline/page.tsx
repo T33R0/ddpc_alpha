@@ -37,7 +37,7 @@ export default async function TimelinePage({ params }: { params: Promise<{ id: s
   }
   const { data: events } = await supabase
     .from("event")
-    .select("id, type, odometer, cost, notes, created_at")
+    .select("id, type, odometer, cost, notes, created_at, updated_at")
     .eq("vehicle_id", vehicleId)
     .order("created_at", { ascending: false });
 
@@ -62,20 +62,13 @@ export default async function TimelinePage({ params }: { params: Promise<{ id: s
     type: mapType(e.type),
     notes: e.notes,
     occurred_at: e.created_at,
+    created_at: e.created_at,
+    updated_at: (e as { updated_at?: string | null }).updated_at ?? null,
   }));
 
   // Determine role for UI gating (VIEWER => read-only; CONTRIBUTOR+ => write)
-  let canWrite = false;
-  if (user && vehicle?.garage_id) {
-    const { data: m } = await supabase
-      .from("garage_member")
-      .select("role")
-      .eq("garage_id", vehicle.garage_id as string)
-      .eq("user_id", user.id)
-      .maybeSingle();
-    const role = (m?.role as string) ?? null;
-    canWrite = role === "OWNER" || role === "MANAGER" || role === "CONTRIBUTOR";
-  }
+  // For this stage: assume everyone is an owner; allow editing/adding
+  const canWrite = true;
 
   // no vehicle switcher here
 
@@ -101,9 +94,7 @@ export default async function TimelinePage({ params }: { params: Promise<{ id: s
 
       {/* Vehicle switcher removed on timeline page */}
 
-      <p className="text-sm text-gray-700 border rounded p-3 bg-white" data-test="timeline-helper-copy">
-        Events are immutable after 24h. Events with a ‘from task’ badge were logged at task completion.
-      </p>
+      {/* Helper copy removed per new editing policy */}
 
       <ErrorBoundary message="Failed to load timeline.">
         <TimelineClient events={timelineEvents} vehicleId={vehicleId} canWrite={canWrite} />

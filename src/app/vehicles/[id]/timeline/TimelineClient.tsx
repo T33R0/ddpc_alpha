@@ -17,6 +17,8 @@ export type TimelineEvent = {
   occurred_at: string; // ISO
   task_id?: string; // optional link to originating task
   optimistic?: boolean;
+  created_at?: string | null;
+  updated_at?: string | null;
 };
 
 type MergeDetail = {
@@ -60,6 +62,7 @@ export default function TimelineClient({ events, vehicleId, canWrite = true }: {
   const [savingId, setSavingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null);
+  const [newOpen, setNewOpen] = useState<boolean>(false);
 
   // Listen for merge-plan optimistic signal
   useEffect(() => {
@@ -82,6 +85,19 @@ export default function TimelineClient({ events, vehicleId, canWrite = true }: {
   useEffect(() => {
     const t = setTimeout(() => setInitialLoading(false), 200);
     return () => clearTimeout(t);
+  }, []);
+
+  // Open modal if URL contains ?new=event, then clean the URL
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("new") === "event") {
+        setNewOpen(true);
+        params.delete("new");
+        const url = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ""}`;
+        window.history.replaceState({}, "", url);
+      }
+    } catch {}
   }, []);
 
   // Note: type checkbox filters removed; keep function stub minimal (unused)
@@ -196,10 +212,7 @@ export default function TimelineClient({ events, vehicleId, canWrite = true }: {
     }
   };
 
-  const isEditable = (e: TimelineEvent) => {
-    const created = new Date(e.occurred_at).getTime();
-    return Date.now() - created <= 24 * 60 * 60 * 1000;
-  };
+  const isEditable = (_e: TimelineEvent) => true;
 
   const startEdit = (e: TimelineEvent) => {
     setEditingId(e.id);
@@ -215,11 +228,6 @@ export default function TimelineClient({ events, vehicleId, canWrite = true }: {
   const saveEdit = async (id: string) => {
     const target = data.find(x => x.id === id);
     if (!target) return;
-    if (!isEditable(target)) {
-      error("Event can no longer be edited (24h window)");
-      cancelEdit();
-      return;
-    }
     setSavingId(id);
     const prev = data;
     const nextEvent: TimelineEvent = { ...target, notes: editNotes, type: editType } as TimelineEvent;
@@ -253,8 +261,20 @@ export default function TimelineClient({ events, vehicleId, canWrite = true }: {
     <div className="space-y-4">
       {/* Aria live region for screen readers */}
       <div aria-live="polite" className="sr-only">{liveMessage}</div>
-      {/* Quick add */}
-      <form onSubmit={handleQuickAdd} className="grid grid-cols-1 md:grid-cols-6 gap-3 border rounded p-4 bg-card" data-testid="timeline-quick-add-form">
+      {/* New Event trigger */}
+      <div className="flex justify-end">
+        <button type="button" onClick={() => setNewOpen(true)} className="bg-brand text-white rounded px-3 py-1">New Event</button>
+      </div>
+
+      {/* Modal: Quick add */}
+      {newOpen && (
+        <div role="dialog" aria-modal="true" className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setNewOpen(false)}>
+          <div className="w-full max-w-3xl rounded bg-white p-4" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-lg font-semibold">New Event</h2>
+              <button type="button" onClick={() => setNewOpen(false)} className="text-sm text-gray-600">Close</button>
+            </div>
+            <form onSubmit={async (e) => { await handleQuickAdd(e); setNewOpen(false); }} className="grid grid-cols-1 md:grid-cols-6 gap-3" data-testid="timeline-quick-add-form">
         <input
           name="title"
           placeholder="Title (required)"
@@ -344,8 +364,12 @@ export default function TimelineClient({ events, vehicleId, canWrite = true }: {
           <button disabled={!canWrite || adding || !title.trim()} type="submit" className="bg-brand text-white rounded px-3 py-1 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]" title={!canWrite ? "Insufficient permissions" : undefined} data-testid="timeline-quick-add-save">
             {adding ? "Adding…" : "Save"}
           </button>
+          <button type="button" onClick={() => setNewOpen(false)} className="ml-2 border rounded px-3 py-1">Cancel</button>
         </div>
-      </form>
+            </form>
+          </div>
+        </div>
+      )}
       {/* Filters */}
       <div className="rounded border p-3 bg-card">
         <div className="flex flex-wrap items-center gap-3">
@@ -373,12 +397,12 @@ export default function TimelineClient({ events, vehicleId, canWrite = true }: {
         data.length === 0 ? (
           <div className="flex flex-col items-center justify-center text-center border rounded p-12 bg-white text-gray-600">
             <div className="text-lg font-medium text-gray-800 mb-1">No events yet</div>
-            <div className="text-sm mb-3">Use the quick-add form to add your first event.</div>
+            <div className="text-sm mb-3">Click New Event to add your first event.</div>
             <button
               type="button"
               className="text-xs px-3 py-1 border rounded bg-gray-50"
-              onClick={() => titleRef.current?.focus()}
-            >Add an event</button>
+              onClick={() => setNewOpen(true)}
+            >New Event</button>
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center text-center border rounded p-12 bg-card text-muted">
@@ -397,7 +421,7 @@ export default function TimelineClient({ events, vehicleId, canWrite = true }: {
           <div key={label} className="space-y-3">
             <div className="sticky top-0 z-10 bg-white/80 backdrop-blur px-1 py-1 text-xs font-semibold text-gray-700">{label}</div>
             {items.map((e) => (
-              <div key={e.id} className="border rounded p-3 flex items-start gap-4 bg-white" data-testid={e.id.startsWith("merge-") ? "timeline-merge-optimistic" : undefined}>
+              <div key={e.id} className="border rounded p-3 flex items-start gap-4 bg-white" data-id={e.id} data-testid={e.id.startsWith("merge-") ? "timeline-merge-optimistic" : undefined}>
                 <div className="text-xs px-2 py-0.5 rounded border bg-gray-50">{editingId === e.id ? (
                   <select
                     value={editType}
@@ -421,11 +445,14 @@ export default function TimelineClient({ events, vehicleId, canWrite = true }: {
                     <div className="text-sm text-gray-900">{e.notes ?? "—"}</div>
                   )}
                    <div className="text-xs text-gray-600 flex items-center gap-2">
-                    {new Date(e.occurred_at).toLocaleString()}
+                    <span title="Created at">{new Date(e.created_at ?? e.occurred_at).toLocaleString()}</span>
+                    {e.updated_at && (new Date(e.updated_at).getTime() > new Date(e.created_at ?? e.occurred_at).getTime()) && (
+                      <span className="inline-flex items-center text-[10px] px-1.5 py-0.5 rounded border bg-gray-50" title={new Date(e.updated_at).toLocaleString()}>edited</span>
+                    )}
                     {!!e.task_id && (
                       <span title="Created from task completion" className="inline-flex items-center text-[10px] px-1.5 py-0.5 rounded border bg-gray-50">from task</span>
                     )}
-                  </div>
+                   </div>
                 </div>
                 <div className="flex items-center gap-2">
                   {editingId === e.id ? (

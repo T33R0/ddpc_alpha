@@ -60,7 +60,7 @@ export default function CommandPalette() {
         if (inVehicleScoped && currentVehicleId) router.push(`/vehicles/${currentVehicleId}/tasks`); else router.push("/vehicles");
       } },
       { id: "new-event", label: "New Event", action: () => {
-        if (inVehicleScoped && currentVehicleId) router.push(`/vehicles/${currentVehicleId}/timeline`); else router.push("/vehicles");
+        if (inVehicleScoped && currentVehicleId) router.push(`/vehicles/${currentVehicleId}/timeline?new=event`); else router.push("/vehicles");
       } },
     ];
     const vehEntries = vehicles.map(v => ({ id: `veh-${v.id}`, label: `Switch Vehicle: ${v.name}`, action: () => {

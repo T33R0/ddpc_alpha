@@ -51,23 +51,14 @@ export async function PATCH(req: NextRequest, context: unknown) {
       return NextResponse.json({ error: "Nothing to update", code: 400 }, { status: 400 });
     }
 
-    // Enforce 24h immutability window
+    // Fetch for activity diff context only
     const { data: existing, error: fetchErr } = await supabase
       .from("event")
       .select("id, created_at, created_by")
       .eq("id", id)
       .maybeSingle();
-    if (!user || !existing || (existing as { created_by?: string | null }).created_by !== user.id) {
-      return NextResponse.json({ error: "Forbidden", code: 403 }, { status: 403 });
-    }
     if (fetchErr) throw fetchErr;
     if (!existing) return NextResponse.json({ error: "Not found", code: 404 }, { status: 404 });
-    const createdAt = new Date(existing.created_at as string);
-    const now = new Date();
-    const diffMs = now.getTime() - createdAt.getTime();
-    if (diffMs > 24 * 60 * 60 * 1000) {
-      return NextResponse.json({ error: "Event is immutable after 24h", code: 403 }, { status: 403 });
-    }
 
     const dateStr = typeof (body as { date?: string })?.date === "string" ? (body as { date?: string }).date : undefined;
     const update: Record<string, unknown> = {};
@@ -89,9 +80,9 @@ export async function PATCH(req: NextRequest, context: unknown) {
 
     const { data, error } = await supabase
       .from("event")
-      .update(update)
+      .update({ ...update, updated_at: new Date().toISOString() })
       .eq("id", id)
-      .select("id, type, odometer, cost, notes, created_at")
+      .select("id, type, odometer, cost, notes, created_at, updated_at")
       .single();
     if (error) throw error;
     if (user) {
