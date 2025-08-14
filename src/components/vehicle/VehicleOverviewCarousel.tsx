@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import VehicleSpecSheet from "@/components/vehicle/VehicleSpecSheet";
 import VehicleQuickStats from "@/components/vehicle/VehicleQuickStats";
@@ -31,32 +31,20 @@ type SlideKey = "OVERVIEW" | "SPEC" | "TIMELINE" | "TASKS" | "BUILD" | "PARTS";
 export default function VehicleOverviewCarousel({ vehicle, quickStats, tasks, events }: Props) {
   const [slide, setSlide] = useState<SlideKey>("OVERVIEW");
 
-  const slides: Array<{ key: SlideKey; label: string }> = [
-    { key: "OVERVIEW", label: "Overview" },
-    { key: "TIMELINE", label: "Timeline" },
-    { key: "TASKS", label: "Tasks" },
-    { key: "BUILD", label: "Build" },
-    { key: "PARTS", label: "Parts" },
-    { key: "SPEC", label: "Specs" },
-  ];
+  // Expose a global setter so the top navigation can control which
+  // overview slide is visible without rendering a second tab control.
+  useEffect(() => {
+    (window as unknown as { __vehSetSlide?: (key: SlideKey) => void; __vehGetSlide?: () => SlideKey }).__vehSetSlide = (key: SlideKey) => setSlide(key);
+    (window as unknown as { __vehSetSlide?: (key: SlideKey) => void; __vehGetSlide?: () => SlideKey }).__vehGetSlide = () => slide;
+    return () => {
+      delete (window as unknown as { __vehSetSlide?: unknown; __vehGetSlide?: unknown }).__vehSetSlide;
+      delete (window as unknown as { __vehSetSlide?: unknown; __vehGetSlide?: unknown }).__vehGetSlide;
+    };
+  }, [slide]);
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-center">
-        <div className="inline-flex rounded-lg border bg-white overflow-hidden">
-          {slides.map((s) => (
-            <button
-              key={s.key}
-              type="button"
-              className={`px-3 py-1.5 text-sm ${slide === s.key ? "bg-gray-900 text-white" : "text-gray-700 hover:bg-gray-50"}`}
-              onClick={() => setSlide(s.key)}
-              aria-pressed={slide === s.key}
-            >
-              {s.label}
-            </button>
-          ))}
-        </div>
-      </div>
+      {/* Internal submenu removed; slide is now controlled by the pink menu */}
 
       <div className="relative">
         {slide === "OVERVIEW" && (

@@ -15,6 +15,7 @@ export default function MediaSection({ media, vehicleId }: { media: MediaThumb[]
   const { success, error } = useToast();
   const idToItem = useMemo(() => new Map(media.map(m => [m.id, m])), [media]);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const canAddMore = media.length < 10;
 
 	return (
 		<>
@@ -38,6 +39,39 @@ export default function MediaSection({ media, vehicleId }: { media: MediaThumb[]
 						setConfirmDeleteId(id);
 					}
 				}}
+				extraTile={
+					<div className="aspect-[4/3] rounded-2xl border border-dashed border-neutral-700 flex items-center justify-center bg-neutral-900/50">
+						<button
+							type="button"
+							className="text-sm px-3 py-2 rounded-md border disabled:opacity-50"
+							disabled={!canAddMore}
+							onClick={async () => {
+								if (!canAddMore) return;
+								try {
+									const input = document.createElement('input');
+									input.type = 'file';
+									input.accept = 'image/*';
+									input.onchange = async () => {
+										const file = input.files?.[0];
+										if (!file) return;
+										const supabase = getBrowserSupabase();
+										const path = `${vehicleId}/${Date.now()}_${file.name}`;
+										const { error: upErr } = await supabase.storage.from('vehicle-media').upload(path, file, { upsert: true });
+										if (upErr) throw new Error(upErr.message);
+										success('Uploaded');
+										location.reload();
+									};
+								input.click();
+							} catch (e) {
+								error(e instanceof Error ? e.message : 'Upload failed');
+							}
+						}}
+						aria-label={canAddMore ? 'Add image' : 'Maximum images reached'}
+						>
+							<span className="opacity-70">+ Add Image</span>
+						</button>
+					</div>
+				}
 			/>
 			<Lightbox
 				open={lbOpen}

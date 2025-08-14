@@ -96,6 +96,8 @@ export default async function VehicleOverviewPage({ params }: { params: Promise<
         return { id: path, src: url, fullSrc: url, alt: f.name };
       });
   } catch {}
+  // Cap gallery at 10 for now
+  mediaItems = mediaItems.slice(0, 10);
 
   return (
     <div className="space-y-6">
@@ -155,10 +157,29 @@ export default async function VehicleOverviewPage({ params }: { params: Promise<
               overview: document.getElementById('veh-content-overview'),
               media: document.getElementById('veh-content-media')
             };
+            function setActive(targetName) {
+              document.querySelectorAll('a[data-veh-nav]').forEach((a) => {
+                const t = a.getAttribute('data-target');
+                const active = (t === targetName);
+                const bar = a.querySelector('span');
+                if (bar) bar.className = 'block h-[2px] mt-2 rounded-full transition-all duration-200 ' + (active ? 'bg-fg w-full' : 'bg-transparent w-0');
+                const base = 'text-sm pb-3 transition-colors ';
+                a.className = base + (active ? 'text-fg' : 'text-muted hover:text-fg');
+              });
+            }
             function show(section) {
               Object.keys(sections).forEach((key) => {
                 const el = sections[key]; if (!el) return; el.style.display = key === section ? '' : 'none';
               });
+              // Update active based on section + current slide
+              if (section === 'media') { setActive('gallery'); return; }
+              // Default to overview; try to reflect current slide if available
+              try {
+                // @ts-ignore
+                const slide = window.__vehGetSlide ? window.__vehGetSlide() : 'OVERVIEW';
+                const map = { OVERVIEW: 'overview', TIMELINE: 'timeline', TASKS: 'tasks', BUILD: 'build-plans', PARTS: 'parts', SPEC: 'specs' };
+                setActive(map[slide] || 'overview');
+              } catch { setActive('overview'); }
             }
             // Default to overview unless URL includes /media
             if (location.pathname.endsWith('/media')) {
@@ -172,8 +193,14 @@ export default async function VehicleOverviewPage({ params }: { params: Promise<
               if (!a) return;
               const target = a.getAttribute('data-target');
               if (!target) return;
-              if (target === 'overview') { e.preventDefault(); show('overview'); }
-              if (target === 'media') { e.preventDefault(); show('media'); }
+              // Map top-level items to internal slides/sections
+              if (target === 'overview') { e.preventDefault(); show('overview'); setActive('overview'); }
+              if (target === 'timeline') { e.preventDefault(); show('overview'); window.__vehSetSlide && window.__vehSetSlide('TIMELINE'); setActive('timeline'); }
+              if (target === 'tasks') { e.preventDefault(); show('overview'); window.__vehSetSlide && window.__vehSetSlide('TASKS'); setActive('tasks'); }
+              if (target === 'build-plans') { e.preventDefault(); show('overview'); window.__vehSetSlide && window.__vehSetSlide('BUILD'); setActive('build-plans'); }
+              if (target === 'parts') { e.preventDefault(); show('overview'); window.__vehSetSlide && window.__vehSetSlide('PARTS'); setActive('parts'); }
+              if (target === 'specs') { e.preventDefault(); show('overview'); window.__vehSetSlide && window.__vehSetSlide('SPEC'); setActive('specs'); }
+              if (target === 'gallery') { e.preventDefault(); show('media'); setActive('gallery'); }
             }, true);
           })();`
         }}
@@ -182,7 +209,6 @@ export default async function VehicleOverviewPage({ params }: { params: Promise<
       <div className="flex items-center justify-between">
         <div />
         <div className="flex items-center gap-3">
-          <Link href={`/vehicles/${vehicleId}/plans`} className="text-sm px-3 py-1 rounded border" data-testid="nav-build-plans">Build Plans</Link>
           <DeleteVehicleButtonClient vehicleId={vehicleId} />
         </div>
       </div>

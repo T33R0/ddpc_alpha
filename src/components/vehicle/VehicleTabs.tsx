@@ -1,7 +1,5 @@
 "use client";
-import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect } from "react";
 
 export default function VehicleTabs({ vehicleId }: { vehicleId: string }) {
   const pathname = usePathname();
@@ -10,7 +8,7 @@ export default function VehicleTabs({ vehicleId }: { vehicleId: string }) {
     { href: `/vehicles/${vehicleId}/timeline`, label: "Timeline" },
     { href: `/vehicles/${vehicleId}/tasks`, label: "Tasks" },
     { href: `/vehicles/${vehicleId}/plans`, label: "Build Plans" },
-    { href: `/vehicles/${vehicleId}/media`, label: "Media" },
+    { href: `/vehicles/${vehicleId}/media`, label: "Gallery" },
     // Parts stub can map to plans or future parts route if added
     { href: `/vehicles/${vehicleId}/plans`, label: "Parts" },
     { href: `/v/${vehicleId}`, label: "Display Page" },

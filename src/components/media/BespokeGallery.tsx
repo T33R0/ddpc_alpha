@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import Image from "next/image";
 import { motion } from "framer-motion";
 import { motionDurations } from "@/lib/motion";
@@ -17,10 +17,12 @@ export default function BespokeGallery({
 	items,
 	onOpenLightbox,
 	onQuickAction,
+	extraTile,
 }: {
 	items: MediaItem[];
 	onOpenLightbox: (index: number) => void;
 	onQuickAction?: (id: string, action: "setHero" | "tagPart" | "delete") => void;
+	extraTile?: ReactNode;
 }) {
 	const [hoverId, setHoverId] = useState<string | null>(null);
 
@@ -93,6 +95,7 @@ export default function BespokeGallery({
 					)}
 				</motion.button>
 			))}
+			{extraTile}
 		</div>
 	);
 }

@@ -29,9 +29,8 @@ async function openFirstVehicle(page) {
 // 1) Plans list reachable and can create plan
 test('can create build plan from plans list', async ({ page }) => {
   const vehicleId = await openFirstVehicle(page);
-  // From overview, use Build Plans link
-  await expect(page.getByTestId('nav-build-plans')).toHaveCount(1);
-  await page.getByTestId('nav-build-plans').click();
+  // Navigate directly to plans list (overview no longer has a button)
+  await goto(page, `/vehicles/${vehicleId}/plans`);
   await expect(page).toHaveURL(new RegExp(`/vehicles/${vehicleId}/plans$`));
 
   // Create new plan
