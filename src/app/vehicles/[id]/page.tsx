@@ -181,13 +181,16 @@ export default async function VehicleOverviewPage({ params }: { params: Promise<
                 setActive(map[slide] || 'overview');
               } catch { setActive('overview'); }
             }
-            // Default to overview unless URL includes /media
-            if (location.pathname.endsWith('/media')) {
+            // Default to overview unless URL includes /media or hash #gallery
+            if (location.pathname.endsWith('/media') || location.hash === '#gallery') {
               history.replaceState({}, '', '/vehicles/${vehicleId}');
               show('media');
             } else {
               show('overview');
             }
+            window.addEventListener('hashchange', () => {
+              if (location.hash === '#gallery') show('media');
+            });
             document.addEventListener('click', (e) => {
               const a = e.target.closest('a[data-veh-nav]');
               if (!a) return;
