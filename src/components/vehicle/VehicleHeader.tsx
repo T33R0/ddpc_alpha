@@ -78,8 +78,8 @@ export default function VehicleHeader({ vehicle, coverUrl, backHref = "/vehicles
             />
             {/* Prev/Next arrows (disabled until page provides links) */}
             <div className="pointer-events-none absolute inset-y-0 left-0 right-0 flex items-center justify-between px-2">
-              <a href="#" aria-disabled className="pointer-events-auto inline-flex items-center justify-center w-9 h-9 rounded-full bg-black/50 text-white hover:bg-black/60" data-testid="veh-prev" title="Previous vehicle">‹</a>
-              <a href="#" aria-disabled className="pointer-events-auto inline-flex items-center justify-center w-9 h-9 rounded-full bg-black/50 text-white hover:bg-black/60" data-testid="veh-next" title="Next vehicle">›</a>
+              <a href="#" className="pointer-events-auto inline-flex items-center justify-center w-9 h-9 rounded-full bg-black/50 text-white hover:bg-black/60" data-testid="veh-prev" title="Previous vehicle">‹</a>
+              <a href="#" className="pointer-events-auto inline-flex items-center justify-center w-9 h-9 rounded-full bg-black/50 text-white hover:bg-black/60" data-testid="veh-next" title="Next vehicle">›</a>
             </div>
           </>
         ) : (

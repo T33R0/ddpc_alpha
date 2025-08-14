@@ -98,8 +98,8 @@ export default async function VehicleOverviewPage({ params }: { params: Promise<
 
   return (
     <div className="space-y-6">
-      <VehicleTabs vehicleId={vehicleId} />
       <VehicleHeader vehicle={{ id: vehicle.id as string, nickname: vehicle.nickname, year: vehicle.year, make: vehicle.make, model: vehicle.model, privacy: vehicle.privacy }} coverUrl={coverUrl} showPublicLink={true} />
+      <VehicleTabs vehicleId={vehicleId} />
 
       {/* Inject prev/next links into arrows */}
       <script
@@ -119,6 +119,15 @@ export default async function VehicleOverviewPage({ params }: { params: Promise<
               if (next) { nextA.setAttribute('href', '/vehicles/' + next); nextA.removeAttribute('aria-disabled'); }
               else { nextA.setAttribute('aria-disabled', 'true'); nextA.classList.add('opacity-40','cursor-not-allowed'); }
             }
+            // Keyboard support
+            document.addEventListener('keydown', (e) => {
+              if (e.key === 'ArrowLeft' && prev && prevA && !prevA.hasAttribute('aria-disabled')) {
+                e.preventDefault(); location.assign('/vehicles/' + prev);
+              }
+              if (e.key === 'ArrowRight' && next && nextA && !nextA.hasAttribute('aria-disabled')) {
+                e.preventDefault(); location.assign('/vehicles/' + next);
+              }
+            });
           })();`,
         }}
       />
@@ -131,15 +140,7 @@ export default async function VehicleOverviewPage({ params }: { params: Promise<
         events={eventsPeek}
       />
 
-      {mediaItems.length > 0 && (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h2 className="text-base font-semibold">Media</h2>
-            <Link href={`/vehicles/${vehicleId}/timeline`} className="text-sm text-blue-600 hover:underline">View all</Link>
-          </div>
-          <MediaSection media={mediaItems} vehicleId={vehicleId} />
-        </div>
-      )}
+      {/* Media grid moved to dedicated Media tab route */}
 
       <div className="flex items-center justify-between">
         <div />

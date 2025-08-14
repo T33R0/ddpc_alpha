@@ -9,13 +9,14 @@ export default function VehicleTabs({ vehicleId }: { vehicleId: string }) {
     { href: `/vehicles/${vehicleId}/timeline`, label: "Timeline" },
     { href: `/vehicles/${vehicleId}/tasks`, label: "Tasks" },
     { href: `/vehicles/${vehicleId}/plans`, label: "Build Plans" },
-    // Parts and Display Page can be separate sections later
+    { href: `/vehicles/${vehicleId}/media`, label: "Media" },
+    // Parts stub can map to plans or future parts route if added
     { href: `/vehicles/${vehicleId}/plans`, label: "Parts" },
     { href: `/v/${vehicleId}`, label: "Display Page" },
   ];
 
   return (
-    <nav className="sticky top-0 z-10 -mx-3 px-3 bg-bg/80 backdrop-blur border-b">
+    <nav className="-mx-3 px-3 bg-bg/80 backdrop-blur border-b">
       <ul className="flex gap-6 h-12 items-end">
         {items.map((it) => {
           const active = pathname === it.href;
