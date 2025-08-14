@@ -22,11 +22,8 @@ export default async function VehicleMediaPage({ params }: { params: Promise<{ i
       });
   } catch {}
 
-  return (
-    <div className="space-y-4">
-      <MediaSection media={mediaItems} vehicleId={vehicleId} />
-    </div>
-  );
+  // Soft-redirect to canonical details page but preserve in-body Media view via script in details page
+  return null;
 }
 
 

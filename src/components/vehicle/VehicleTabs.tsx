@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect } from "react";
 
 export default function VehicleTabs({ vehicleId }: { vehicleId: string }) {
   const pathname = usePathname();
@@ -22,16 +23,18 @@ export default function VehicleTabs({ vehicleId }: { vehicleId: string }) {
           const active = pathname === it.href;
           return (
             <li key={it.href} className="h-full flex items-end">
-              <Link
+              <a
                 href={it.href}
                 className={`text-sm pb-3 transition-colors ${active ? "text-fg" : "text-muted hover:text-fg"}`}
+                data-veh-nav
+                data-target={it.label.toLowerCase().replace(/\s+/g, "-")}
               >
                 {it.label}
                 <span
                   className={`block h-[2px] mt-2 rounded-full transition-all duration-200 ${active ? "bg-fg w-full" : "bg-transparent w-0"}`}
                   aria-hidden
                 />
-              </Link>
+              </a>
             </li>
           );
         })}

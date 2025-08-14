@@ -11,7 +11,7 @@ type Props = {
   showPublicLink?: boolean;
 };
 
-export default function VehicleHeader({ vehicle, coverUrl, backHref = "/vehicles", showPublicLink = false }: Props) {
+export default function VehicleHeader({ vehicle, coverUrl, backHref = "/vehicles" }: Props) {
   const title = vehicle.nickname ?? `${vehicle.year ?? ""} ${vehicle.make ?? ""} ${vehicle.model ?? ""}`.trim();
   const meta = [vehicle.year, vehicle.make, vehicle.model].filter(Boolean).join(" ");
   const [imgLoaded, setImgLoaded] = useState(false);
@@ -39,11 +39,6 @@ export default function VehicleHeader({ vehicle, coverUrl, backHref = "/vehicles
           <PrivacyBadge value={vehicle.privacy} />
         </div>
         <div className="flex items-center gap-3 text-sm">
-          {showPublicLink && ((vehicle.privacy || "").toUpperCase() === "PUBLIC" ? (
-            <Link href={`/v/${vehicle.id}`} className="px-2 py-1 rounded border bg-white hover:bg-gray-50" data-testid="view-public-page">View Public Page</Link>
-          ) : (
-            <button className="px-2 py-1 rounded border bg-white text-gray-400 cursor-not-allowed" title="This vehicle isn't public yet" disabled data-testid="view-public-page">View Public Page</button>
-          ))}
           {backHref ? (
             <Link href={backHref} className="text-gray-600 hover:underline" data-testid="back-to-vehicles">← Back to Vehicles</Link>
           ) : null}
@@ -52,9 +47,7 @@ export default function VehicleHeader({ vehicle, coverUrl, backHref = "/vehicles
       <div className="text-sm text-gray-600 flex items-center gap-2">
         <span>{meta}</span>
       </div>
-      <div className="text-sm text-gray-700" data-testid="vehicle-helper-copy">
-        <strong>Tasks</strong> = planned work. <strong>Timeline</strong> = what actually happened.
-      </div>
+      
       <div className="relative rounded-2xl overflow-hidden border bg-white" data-testid="vehicle-cover">
         {currentSrc ? (
           <>

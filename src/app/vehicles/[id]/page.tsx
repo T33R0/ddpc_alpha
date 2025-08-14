@@ -33,8 +33,9 @@ export default async function VehicleOverviewPage({ params }: { params: Promise<
     const ids = (siblings ?? []).map((r: { id: string }) => r.id);
     const idx = ids.indexOf(vehicleId);
     if (idx !== -1) {
-      prevId = ids[idx + 1] ?? null;
-      nextId = ids[idx - 1] ?? null;
+      // Wrap-around prev/next
+      prevId = ids[(idx + 1) % ids.length] ?? null;
+      nextId = ids[(idx - 1 + ids.length) % ids.length] ?? null;
     }
   }
 
@@ -98,7 +99,7 @@ export default async function VehicleOverviewPage({ params }: { params: Promise<
 
   return (
     <div className="space-y-6">
-      <VehicleHeader vehicle={{ id: vehicle.id as string, nickname: vehicle.nickname, year: vehicle.year, make: vehicle.make, model: vehicle.model, privacy: vehicle.privacy }} coverUrl={coverUrl} showPublicLink={true} />
+      <VehicleHeader vehicle={{ id: vehicle.id as string, nickname: vehicle.nickname, year: vehicle.year, make: vehicle.make, model: vehicle.model, privacy: vehicle.privacy }} coverUrl={coverUrl} />
       <VehicleTabs vehicleId={vehicleId} />
 
       {/* Inject prev/next links into arrows */}
@@ -132,15 +133,51 @@ export default async function VehicleOverviewPage({ params }: { params: Promise<
         }}
       />
 
-      {/* Dashboard-like overview panels */}
-      <VehicleOverviewCarousel
-        vehicle={{ id: vehicle.id as string, nickname: vehicle.nickname, year: vehicle.year, make: vehicle.make, model: vehicle.model }}
-        quickStats={{ lastActivityISO, openTaskCount: openCount, doneTaskCount: doneCount, eventCount }}
-        tasks={tasksPeek}
-        events={eventsPeek}
-      />
+      {/* Dashboard-like overview panels below: content is toggled by nav links rather than tabs */}
+      <div id="veh-content-overview" data-section="overview">
+        <VehicleOverviewCarousel
+          vehicle={{ id: vehicle.id as string, nickname: vehicle.nickname, year: vehicle.year, make: vehicle.make, model: vehicle.model }}
+          quickStats={{ lastActivityISO, openTaskCount: openCount, doneTaskCount: doneCount, eventCount }}
+          tasks={tasksPeek}
+          events={eventsPeek}
+        />
+      </div>
 
-      {/* Media grid moved to dedicated Media tab route */}
+      <div id="veh-content-media" data-section="media" style={{ display: 'none' }}>
+        <MediaSection media={mediaItems} vehicleId={vehicleId} />
+      </div>
+
+      {/* Client-side content router for sub-navigation */}
+      <script
+        dangerouslySetInnerHTML={{
+          __html: `(() => {
+            const sections = {
+              overview: document.getElementById('veh-content-overview'),
+              media: document.getElementById('veh-content-media')
+            };
+            function show(section) {
+              Object.keys(sections).forEach((key) => {
+                const el = sections[key]; if (!el) return; el.style.display = key === section ? '' : 'none';
+              });
+            }
+            // Default to overview unless URL includes /media
+            if (location.pathname.endsWith('/media')) {
+              history.replaceState({}, '', '/vehicles/${vehicleId}');
+              show('media');
+            } else {
+              show('overview');
+            }
+            document.addEventListener('click', (e) => {
+              const a = e.target.closest('a[data-veh-nav]');
+              if (!a) return;
+              const target = a.getAttribute('data-target');
+              if (!target) return;
+              if (target === 'overview') { e.preventDefault(); show('overview'); }
+              if (target === 'media') { e.preventDefault(); show('media'); }
+            }, true);
+          })();`
+        }}
+      />
 
       <div className="flex items-center justify-between">
         <div />
