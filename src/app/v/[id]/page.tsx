@@ -3,8 +3,7 @@ import Link from "next/link";
 import { sanitizeVehicleForPublic } from "@/lib/public/sanitize";
 import type { Metadata } from "next";
 import VehicleHeader from "@/components/vehicle/VehicleHeader";
-import VehicleQuickStats from "@/components/vehicle/VehicleQuickStats";
-import VehicleTimelinePeek from "@/components/vehicle/VehicleTimelinePeek";
+import VehicleSpecSheet from "@/components/vehicle/VehicleSpecSheet";
 import { getVehicleCoverUrl } from "@/lib/getVehicleCoverUrl";
 
 export const dynamic = "force-dynamic";
@@ -108,24 +107,10 @@ export default async function PublicVehiclePage({ params }: { params: Promise<{ 
   const safe = sanitizeVehicleForPublic(vehicle, eventsForSanitize);
   const coverUrl = await getVehicleCoverUrl(supabase, id, vehicle.photo_url ?? null);
 
-  // Quick stats for public: show event count; task information is not exposed on public page.
-  const { count: eventCount } = await supabase.from("public_events").select("id", { head: true, count: "exact" }).eq("vehicle_id", id);
-
   return (
     <div className="space-y-6">
       <VehicleHeader vehicle={{ id: id, nickname: safe.display_name, year: safe.year ?? null, make: safe.make ?? null, model: safe.model ?? null, privacy: "PUBLIC" }} coverUrl={coverUrl} backHref="/vehicles" />
-      <div className="grid md:grid-cols-3 gap-4">
-        <VehicleQuickStats lastActivityISO={null} openTaskCount={0} doneTaskCount={0} eventCount={eventCount ?? 0} />
-        {/* Public page: replace tasks peek with a minimal note */}
-        <div className="rounded-2xl border bg-white shadow-sm p-5 flex flex-col">
-          <div className="text-base font-semibold mb-3">Tasks (private)</div>
-          <div className="text-sm text-gray-600">Task details are private. Sign in to view.</div>
-        </div>
-        <VehicleTimelinePeek
-          vehicleId={id}
-          events={(safe.events ?? []).map((e, i) => ({ id: `public-${i}`, created_at: e.occurred_at, type: e.type ?? "SERVICE", notes: e.title }))}
-        />
-      </div>
+      <VehicleSpecSheet vehicle={{ id, nickname: safe.display_name, year: safe.year ?? null, make: safe.make ?? null, model: safe.model ?? null }} />
     </div>
   );
 }

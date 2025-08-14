@@ -43,7 +43,10 @@ export default function AddVehicleModalClient() {
               <h2 id="add-vehicle-title" className="text-lg font-semibold">Add Vehicle</h2>
               <button type="button" className="text-sm text-muted hover:underline" onClick={onClose}>Close</button>
             </div>
-            <form action={createVehicle} className="grid grid-cols-1 md:grid-cols-6 gap-3">
+            <form action={async (fd) => {
+              await createVehicle(fd);
+              setOpen(false);
+            }} className="grid grid-cols-1 md:grid-cols-6 gap-3">
               <input name="vin" placeholder="VIN" className="border rounded px-2 py-1 md:col-span-2 bg-bg text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]" />
               <input name="year" placeholder="Year" type="number" className="border rounded px-2 py-1 bg-bg text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]" />
               <input name="make" placeholder="Make" className="border rounded px-2 py-1 bg-bg text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]" required />
