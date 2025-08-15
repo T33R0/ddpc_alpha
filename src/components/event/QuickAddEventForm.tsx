@@ -12,6 +12,8 @@ type Props = {
   vehicleId: string;
   eventTypes: EventType[];
   defaultDate?: string; // ISO date
+  onSuccess?: () => void;
+  onCreated?: (event: { id: string; vehicle_id: string; type: string; title?: string | null; occurred_at: string }) => void;
 };
 
 function Textarea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
@@ -19,7 +21,7 @@ function Textarea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
   return <textarea className={`block w-full rounded-md border bg-bg text-fg px-3 py-2 text-sm placeholder:text-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)] ${className}`} {...rest} />;
 }
 
-export function QuickAddEventForm({ vehicleId, eventTypes, defaultDate }: Props) {
+export function QuickAddEventForm({ vehicleId, eventTypes, defaultDate, onSuccess, onCreated }: Props) {
   const [eventTypeKey, setEventTypeKey] = React.useState<string>('');
   const [title, setTitle] = React.useState('');
   const [notes, setNotes] = React.useState('');
@@ -46,8 +48,11 @@ export function QuickAddEventForm({ vehicleId, eventTypes, defaultDate }: Props)
         toast.error(`Failed to add event: ${msg}`);
         return;
       }
+      const json = await res.json().catch(() => null);
       toast.success('Event added');
       setTitle(''); setNotes('');
+      if (json && json.event) onCreated?.(json.event);
+      onSuccess?.();
     });
   };
 

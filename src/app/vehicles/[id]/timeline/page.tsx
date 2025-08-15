@@ -4,7 +4,6 @@ import TimelineClient, { type TimelineEvent } from "./TimelineClient";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import Link from "next/link";
 import { getEventTypes } from "@/lib/eventTypes";
-import { QuickAddEventForm } from "@/components/event/QuickAddEventForm";
 // Removed vehicle filter on timeline per UX update
 
 export const dynamic = "force-dynamic";
@@ -74,7 +73,7 @@ export default async function TimelinePage({ params }: { params: Promise<{ id: s
 
   // no vehicle switcher here
 
-  // fetch event types for quick-add
+  // fetch event types for client modal form
   const eventTypes = await getEventTypes();
 
   return (
@@ -102,10 +101,7 @@ export default async function TimelinePage({ params }: { params: Promise<{ id: s
       {/* Helper copy removed per new editing policy */}
 
       <ErrorBoundary message="Failed to load timeline.">
-        {/* Quick add manual event */}
-        {process.env.NODE_ENV !== 'production' ? null : null}
-        <QuickAddEventForm vehicleId={vehicleId} eventTypes={eventTypes} />
-        <TimelineClient events={timelineEvents} vehicleId={vehicleId} canWrite={canWrite} />
+        <TimelineClient events={timelineEvents} vehicleId={vehicleId} canWrite={canWrite} eventTypes={eventTypes} />
       </ErrorBoundary>
     </div>
   );
