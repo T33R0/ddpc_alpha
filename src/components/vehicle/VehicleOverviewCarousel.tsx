@@ -65,13 +65,13 @@ export default function VehicleOverviewCarousel({ vehicle, quickStats, tasks, ev
             <div className="md:col-span-2">
               <VehicleTimelinePeek vehicleId={vehicle.id} events={events} />
             </div>
-            <div className="rounded-2xl border bg-white shadow-sm p-5 flex flex-col justify-between">
+            <div className="rounded-2xl border bg-card text-fg shadow-sm p-5 flex flex-col justify-between">
               <div>
                 <div className="text-base font-semibold mb-2">Open full timeline</div>
-                <p className="text-sm text-gray-600">See all events, filters, and quick add on the timeline page.</p>
+                <p className="text-sm text-muted">See all events, filters, and quick add on the timeline page.</p>
               </div>
               <div className="mt-4">
-                <Link href={`/vehicles/${vehicle.id}/timeline`} className="inline-flex items-center px-3 py-2 text-sm rounded-md bg-gray-900 text-white hover:bg-black">Go to timeline</Link>
+                <Link href={`/vehicles/${vehicle.id}/timeline`} className="inline-flex items-center px-3 py-2 text-sm rounded-md border">Go to timeline</Link>
               </div>
             </div>
           </div>
@@ -81,29 +81,29 @@ export default function VehicleOverviewCarousel({ vehicle, quickStats, tasks, ev
             <div className="md:col-span-2">
               <VehicleTasksPeek vehicleId={vehicle.id} tasks={tasks} />
             </div>
-            <div className="rounded-2xl border bg-white shadow-sm p-5 flex flex-col justify-between">
+            <div className="rounded-2xl border bg-card text-fg shadow-sm p-5 flex flex-col justify-between">
               <div>
                 <div className="text-base font-semibold mb-2">Open tasks board</div>
-                <p className="text-sm text-gray-600">Plan work, track progress, and organize by tags and due dates.</p>
+                <p className="text-sm text-muted">Plan work, track progress, and organize by tags and due dates.</p>
               </div>
               <div className="mt-4">
-                <Link href={`/vehicles/${vehicle.id}/tasks`} className="inline-flex items-center px-3 py-2 text-sm rounded-md bg-gray-900 text-white hover:bg-black">Go to tasks</Link>
+                <Link href={`/vehicles/${vehicle.id}/tasks`} className="inline-flex items-center px-3 py-2 text-sm rounded-md border">Go to tasks</Link>
               </div>
             </div>
           </div>
         )}
         {slide === "BUILD" && (
           <div className="grid md:grid-cols-3 gap-4">
-            <div className="rounded-2xl border bg-white shadow-sm p-5 md:col-span-2">
+            <div className="rounded-2xl border bg-card text-fg shadow-sm p-5 md:col-span-2">
               <div className="text-base font-semibold mb-3">Build plans</div>
-              <p className="text-sm text-gray-700">Group tasks into phases, road‑map upgrades, and merge plans when ideas come together.</p>
+              <p className="text-sm text-muted">Group tasks into phases, road‑map upgrades, and merge plans when ideas come together.</p>
               <div className="mt-4">
-                <Link href={`/vehicles/${vehicle.id}/plans`} className="inline-flex items-center px-3 py-2 text-sm rounded-md bg-gray-900 text-white hover:bg-black">Open build plans</Link>
+                <Link href={`/vehicles/${vehicle.id}/plans`} className="inline-flex items-center px-3 py-2 text-sm rounded-md border">Open build plans</Link>
               </div>
             </div>
-            <div className="rounded-2xl border bg-white shadow-sm p-5">
+            <div className="rounded-2xl border bg-card text-fg shadow-sm p-5">
               <div className="text-sm font-semibold mb-2">Tips</div>
-              <ul className="text-sm list-disc pl-5 space-y-1 text-gray-700">
+              <ul className="text-sm list-disc pl-5 space-y-1 text-muted">
                 <li>Create a “baseline service” plan for maintenance.</li>
                 <li>Keep performance, cosmetic, and reliability as separate plans.</li>
               </ul>
@@ -113,13 +113,13 @@ export default function VehicleOverviewCarousel({ vehicle, quickStats, tasks, ev
         {slide === "PARTS" && (
           <div className="grid md:grid-cols-3 gap-4">
             <PartsManagerCard />
-            <div className="rounded-2xl border bg-white shadow-sm p-5 flex flex-col justify-between">
+            <div className="rounded-2xl border bg-card text-fg shadow-sm p-5 flex flex-col justify-between">
               <div>
                 <div className="text-base font-semibold mb-2">Why track parts?</div>
-                <p className="text-sm text-gray-600">Keep a history of what’s installed, when, and for how much. It helps with troubleshooting and resale.</p>
+                <p className="text-sm text-muted">Keep a history of what’s installed, when, and for how much. It helps with troubleshooting and resale.</p>
               </div>
               <div className="mt-4">
-                <Link href={`/vehicles/${vehicle.id}/plans`} className="inline-flex items-center px-3 py-2 text-sm rounded-md bg-gray-900 text-white hover:bg-black">Organize with build plans</Link>
+                <Link href={`/vehicles/${vehicle.id}/plans`} className="inline-flex items-center px-3 py-2 text-sm rounded-md border">Organize with build plans</Link>
               </div>
             </div>
           </div>

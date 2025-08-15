@@ -53,18 +53,18 @@ export default function VehicleSpecSheet({ vehicle }: Props) {
   ];
 
   return (
-    <section className="rounded-2xl border bg-white shadow-sm overflow-hidden">
+    <section className="rounded-2xl border bg-card text-fg shadow-sm overflow-hidden">
       <div className="grid grid-cols-1 lg:grid-cols-3">
         <div className="lg:col-span-2 p-6 border-b lg:border-b-0 lg:border-r">
           <div className="flex items-baseline justify-between gap-3">
             <div>
-              <div className="uppercase tracking-wider text-xs text-gray-500">Specs</div>
+              <div className="uppercase tracking-wider text-xs text-muted">Specs</div>
               <h2 className="mt-1 text-xl font-semibold">{title || "Vehicle"}</h2>
-              <div className="text-sm text-gray-600">Spec sheet inspired overview</div>
+              <div className="text-sm text-muted">Spec sheet inspired overview</div>
             </div>
             <div className="text-right">
               <div className="text-4xl font-bold text-red-600">{tests.zeroToSixty}</div>
-              <div className="text-xs text-gray-600">0–60 mph, seconds</div>
+              <div className="text-xs text-muted">0–60 mph, seconds</div>
             </div>
           </div>
 
@@ -95,12 +95,12 @@ export default function VehicleSpecSheet({ vehicle }: Props) {
               "City/Highway": specs.cityHwy,
             }} />
 
-            <div className="rounded-xl bg-gray-50 p-4">
+            <div className="rounded-xl border p-4">
               <div className="text-sm font-semibold mb-2">Acceleration</div>
               <ul className="text-sm divide-y">
                 {accelTable.map((row) => (
                   <li key={row.label} className="flex items-center justify-between py-1.5">
-                    <span className="text-gray-600">{row.label}</span>
+                    <span className="text-muted">{row.label}</span>
                     <span className="font-medium">{row.value}</span>
                   </li>
                 ))}
@@ -112,19 +112,19 @@ export default function VehicleSpecSheet({ vehicle }: Props) {
         <div className="p-6 space-y-6">
           <div className="rounded-xl border p-4">
             <div className="text-3xl font-bold text-red-600">{tests.topSpeed}</div>
-            <div className="text-xs text-gray-600">Top speed, mph (manufacturer)</div>
+            <div className="text-xs text-muted">Top speed, mph (manufacturer)</div>
           </div>
           <div className="rounded-xl border p-4">
-            <div className="text-3xl font-bold text-slate-900">{tests.skidpad}<span className="text-lg align-top">g</span></div>
-            <div className="text-xs text-gray-600">Roadholding, 300‑ft skidpad</div>
+            <div className="text-3xl font-bold">{tests.skidpad}<span className="text-lg align-top">g</span></div>
+            <div className="text-xs text-muted">Roadholding, 300‑ft skidpad</div>
           </div>
           <div className="rounded-xl border p-4">
-            <div className="text-3xl font-bold text-slate-900">{tests.braking.sixtyToZero}<span className="text-lg align-top"> ft</span></div>
-            <div className="text-xs text-gray-600">Braking, 60–0 mph</div>
+            <div className="text-3xl font-bold">{tests.braking.sixtyToZero}<span className="text-lg align-top"> ft</span></div>
+            <div className="text-xs text-muted">Braking, 60–0 mph</div>
           </div>
-          <div className="rounded-xl bg-gray-50 p-4">
+          <div className="rounded-xl border p-4">
             <div className="text-sm font-semibold mb-2">Notes</div>
-            <p className="text-sm text-gray-700">Figures shown are illustrative and not instrument‑tested. This layout is inspired by print spec cards while keeping our own visual language.</p>
+            <p className="text-sm text-muted">Figures shown are illustrative and not instrument‑tested. This layout is inspired by print spec cards while keeping our own visual language.</p>
           </div>
         </div>
       </div>
@@ -139,7 +139,7 @@ function SpecGroup({ title, items }: { title: string; items: Record<string, stri
       <dl className="text-sm grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2">
         {Object.entries(items).map(([k, v]) => (
           <div key={k} className="flex items-baseline justify-between gap-4">
-            <dt className="text-gray-600">{k}</dt>
+            <dt className="text-muted">{k}</dt>
             <dd className="font-medium text-right">{v}</dd>
           </div>
         ))}

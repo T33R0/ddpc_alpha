@@ -177,7 +177,7 @@ export default async function VehicleOverviewPage({ params }: { params: Promise<
               try {
                 // @ts-ignore
                 const slide = window.__vehGetSlide ? window.__vehGetSlide() : 'OVERVIEW';
-                const map = { OVERVIEW: 'overview', TIMELINE: 'timeline', TASKS: 'tasks', BUILD: 'build-plans', PARTS: 'parts', SPEC: 'specs' };
+                const map = { OVERVIEW: 'overview', TIMELINE: 'timeline', TASKS: 'tasks', BUILD: 'build-plans', PARTS: 'parts', SPEC: 'display-page' };
                 setActive(map[slide] || 'overview');
               } catch { setActive('overview'); }
             }
@@ -197,12 +197,12 @@ export default async function VehicleOverviewPage({ params }: { params: Promise<
               const target = a.getAttribute('data-target');
               if (!target) return;
               // Map top-level items to internal slides/sections
-              if (target === 'overview') { e.preventDefault(); show('overview'); setActive('overview'); }
+              if (target === 'overview') { e.preventDefault(); show('overview'); window.__vehSetSlide && window.__vehSetSlide('OVERVIEW'); setActive('overview'); }
               if (target === 'timeline') { e.preventDefault(); show('overview'); window.__vehSetSlide && window.__vehSetSlide('TIMELINE'); setActive('timeline'); }
               if (target === 'tasks') { e.preventDefault(); show('overview'); window.__vehSetSlide && window.__vehSetSlide('TASKS'); setActive('tasks'); }
               if (target === 'build-plans') { e.preventDefault(); show('overview'); window.__vehSetSlide && window.__vehSetSlide('BUILD'); setActive('build-plans'); }
               if (target === 'parts') { e.preventDefault(); show('overview'); window.__vehSetSlide && window.__vehSetSlide('PARTS'); setActive('parts'); }
-              if (target === 'specs') { e.preventDefault(); show('overview'); window.__vehSetSlide && window.__vehSetSlide('SPEC'); setActive('specs'); }
+              if (target === 'display-page') { e.preventDefault(); show('overview'); window.__vehSetSlide && window.__vehSetSlide('SPEC'); setActive('display-page'); }
               if (target === 'gallery') { e.preventDefault(); show('media'); setActive('gallery'); }
             }, true);
           })();`

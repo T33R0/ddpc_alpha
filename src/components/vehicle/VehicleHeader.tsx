@@ -48,12 +48,12 @@ export default function VehicleHeader({ vehicle, coverUrl, backHref = "/vehicles
         <span>{meta}</span>
       </div>
       
-      <div className="relative rounded-2xl overflow-hidden border bg-white" data-testid="vehicle-cover">
+      <div className="relative rounded-2xl overflow-hidden border bg-card" data-testid="vehicle-cover">
         {currentSrc ? (
           <>
             {!imgLoaded && (
               <div
-                className="absolute inset-0 animate-pulse bg-[linear-gradient(110deg,#f4f4f5,45%,#e5e7eb,55%,#f4f4f5)] bg-[length:200%_100%]"
+                className="absolute inset-0 animate-pulse bg-[linear-gradient(110deg,rgba(255,255,255,0.08),45%,rgba(255,255,255,0.16),55%,rgba(255,255,255,0.08))] bg-[length:200%_100%]"
                 aria-hidden
                 data-testid="vehicle-cover--loading"
               />

@@ -11,7 +11,7 @@
 [data-theme="dark"] {
   --bg: #0a0a0a;
   --fg: #ededed;
-  --card: #111827; /* gray-900 */
+  --card: #111318; /* match vehicle tile */
   --muted: #9ca3af; /* gray-400 */
   --brand: #60a5fa; /* blue-400 */
   --ring: #93c5fd; /* blue-300 */
