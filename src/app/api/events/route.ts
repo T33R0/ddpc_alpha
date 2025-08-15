@@ -3,6 +3,10 @@ import { getServerSupabase } from "@/lib/supabase";
 import { serverLog } from "@/lib/serverLog";
 import { validateCreateEventPayload } from "@/lib/validators/events";
 
+export async function GET(): Promise<Response> {
+  return NextResponse.json({ ok: true, route: "/api/events" }, { status: 200 });
+}
+
 export async function POST(req: NextRequest) {
   const requestId = Math.random().toString(36).slice(2, 10);
   try {

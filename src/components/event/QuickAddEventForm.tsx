@@ -65,10 +65,13 @@ export function QuickAddEventForm({ vehicleId, eventTypes, defaultDate, onSucces
         placeholder="Select a manual event type…"
       />
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <Input type="date" value={when} onChange={e => setWhen(e.target.value)} />
-        <Input placeholder="Optional short title (e.g., Entered storage)" value={title} onChange={e=>setTitle(e.target.value)} />
+        <Input id="when" name="when" type="date" value={when} onChange={e => setWhen(e.target.value)} />
+        <Input id="title" name="title" placeholder="Optional short title (e.g., Entered storage)" value={title} onChange={e=>setTitle(e.target.value)} />
       </div>
-      <Textarea placeholder="Notes (optional)" value={notes} onChange={e=>setNotes(e.target.value)} />
+      <div>
+        <label htmlFor="notes" className="sr-only">Notes</label>
+        <Textarea id="notes" name="notes" placeholder="Notes (optional)" value={notes} onChange={e=>setNotes(e.target.value)} />
+      </div>
       <div className="flex justify-end">
         <Button onClick={submit} disabled={isPending || !eventTypeKey}>Add to Timeline</Button>
       </div>
