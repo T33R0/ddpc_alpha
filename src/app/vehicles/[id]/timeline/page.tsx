@@ -3,6 +3,8 @@ import PrivacyBadge from "@/components/PrivacyBadge";
 import TimelineClient, { type TimelineEvent } from "./TimelineClient";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import Link from "next/link";
+import { getEventTypes } from "@/lib/eventTypes";
+import { QuickAddEventForm } from "@/components/event/QuickAddEventForm";
 // Removed vehicle filter on timeline per UX update
 
 export const dynamic = "force-dynamic";
@@ -97,6 +99,8 @@ export default async function TimelinePage({ params }: { params: Promise<{ id: s
       {/* Helper copy removed per new editing policy */}
 
       <ErrorBoundary message="Failed to load timeline.">
+        {/* Quick add manual event */}
+        <QuickAddEventForm vehicleId={vehicleId} eventTypes={await getEventTypes()} />
         <TimelineClient events={timelineEvents} vehicleId={vehicleId} canWrite={canWrite} />
       </ErrorBoundary>
     </div>
