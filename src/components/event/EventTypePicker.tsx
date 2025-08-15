@@ -33,7 +33,7 @@ function PopoverTrigger({ asChild, children }: { asChild?: boolean; children: Re
 
 function PopoverContent({ className = '', children }: { className?: string; children: React.ReactNode }) {
   return (
-    <div className={cn('absolute z-50 mt-1 rounded-md border bg-white shadow-lg', className)} onClick={(e) => e.stopPropagation()}>
+    <div className={cn('absolute z-50 mt-1 rounded-md border border-[color:var(--border)] bg-card text-fg shadow-lg', className)} onClick={(e) => e.stopPropagation()}>
       {children}
     </div>
   );
@@ -45,23 +45,23 @@ function CommandInput({ placeholder, onChange }: { placeholder?: string; onChang
     <input
       placeholder={placeholder}
       onChange={(e) => onChange?.(e.target.value)}
-      className="w-full border-b px-3 py-2 text-sm outline-none"
+      className="w-full border-b border-[color:var(--border)] bg-bg text-fg placeholder:text-muted px-3 py-2 text-sm outline-none"
     />
   );
 }
 function CommandList({ id, children }: { id?: string; children: React.ReactNode }) { return <div id={id} className="max-h-80 w-full overflow-auto">{children}</div>; }
-function CommandEmpty({ children }: { children: React.ReactNode }) { return <div className="p-3 text-sm text-gray-500">{children}</div>; }
+function CommandEmpty({ children }: { children: React.ReactNode }) { return <div className="p-3 text-sm text-muted">{children}</div>; }
 function CommandGroup({ heading, children }: { heading?: string; children: React.ReactNode }) {
   return (
     <div className="p-2">
-      {heading ? <div className="px-2 pb-1 text-xs font-medium text-gray-500">{heading}</div> : null}
+      {heading ? <div className="px-2 pb-1 text-xs font-medium text-muted">{heading}</div> : null}
       <div className="space-y-1">{children}</div>
     </div>
   );
 }
 function CommandItem({ value, onSelect, children }: { value?: string; onSelect?: (value: string) => void; children: React.ReactNode }) {
   return (
-    <button onClick={() => onSelect?.(value || '')} className="flex w-full items-center gap-2 px-2 py-1.5 text-left text-sm hover:bg-gray-50">
+    <button onClick={() => onSelect?.(value || '')} className="flex w-full items-center gap-2 px-2 py-1.5 text-left text-sm hover:bg-bg text-fg">
       {children}
     </button>
   );
@@ -131,7 +131,7 @@ export function EventTypePicker({ eventTypes, value, onChange, placeholder = "Se
           aria-expanded={open}
           aria-controls="event-type-cmd-list"
           onClick={() => setOpen((v) => !v)}
-          className={cn("w-full justify-between inline-flex items-center gap-2 rounded-md border bg-bg text-fg px-3 py-2 text-sm", className)}
+          className={cn("w-full justify-between inline-flex items-center gap-2 rounded-md border border-[color:var(--border)] bg-bg text-fg px-3 py-2 text-sm", className)}
         >
           <div className="flex items-center gap-2">
             {Icon ? <Icon className="h-4 w-4" /> : null}
