@@ -74,6 +74,9 @@ export default async function TimelinePage({ params }: { params: Promise<{ id: s
 
   // no vehicle switcher here
 
+  // fetch event types for quick-add
+  const eventTypes = await getEventTypes();
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -100,7 +103,8 @@ export default async function TimelinePage({ params }: { params: Promise<{ id: s
 
       <ErrorBoundary message="Failed to load timeline.">
         {/* Quick add manual event */}
-        <QuickAddEventForm vehicleId={vehicleId} eventTypes={await getEventTypes()} />
+        {process.env.NODE_ENV !== 'production' ? null : null}
+        <QuickAddEventForm vehicleId={vehicleId} eventTypes={eventTypes} />
         <TimelineClient events={timelineEvents} vehicleId={vehicleId} canWrite={canWrite} />
       </ErrorBoundary>
     </div>

@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import dynamic from 'next/dynamic';
+// no ssr-specific dynamic imports; we load the icon module once on open
 import type { EventType } from '@/types/event-types';
 
 type Props = {
@@ -20,7 +20,7 @@ function cn(...classes: Array<string | false | null | undefined>) {
 // Local popover + command primitives (simplified to match existing UI kit)
 function Popover({ open, onOpenChange, children }: { open: boolean; onOpenChange: (v: boolean) => void; children: React.ReactNode }) {
   return (
-    <div data-popover data-open={open} onClick={() => onOpenChange(!open)} className="relative">
+    <div data-popover data-open={open} className="relative">
       {children}
     </div>
   );
@@ -49,7 +49,7 @@ function CommandInput({ placeholder, onChange }: { placeholder?: string; onChang
     />
   );
 }
-function CommandList({ children }: { children: React.ReactNode }) { return <div className="max-h-80 w-full overflow-auto">{children}</div>; }
+function CommandList({ id, children }: { id?: string; children: React.ReactNode }) { return <div id={id} className="max-h-80 w-full overflow-auto">{children}</div>; }
 function CommandEmpty({ children }: { children: React.ReactNode }) { return <div className="p-3 text-sm text-gray-500">{children}</div>; }
 function CommandGroup({ heading, children }: { heading?: string; children: React.ReactNode }) {
   return (
@@ -68,15 +68,6 @@ function CommandItem({ value, onSelect, children }: { value?: string; onSelect?:
 }
 
 type IconProps = React.SVGProps<SVGSVGElement>;
-function LazyLucide(name: string): React.ComponentType<IconProps> {
-  return dynamic<IconProps>(async () => {
-    const m = await import('lucide-react');
-    const fallback = (m as unknown as Record<string, unknown>)["Tag"] as React.ComponentType<IconProps>;
-    const found = (m as unknown as Record<string, unknown>)[name];
-    const C: React.ComponentType<IconProps> = (typeof found === 'function' ? found : fallback) as React.ComponentType<IconProps>;
-    return C;
-  });
-}
 
 const categoryOrder: Record<EventType['category'], number> = {
   ownership: 1, location: 2, status: 3, legal: 4,
@@ -111,7 +102,19 @@ export function EventTypePicker({ eventTypes, value, onChange, placeholder = "Se
   }, [eventTypes]);
 
   const selected = eventTypes.find(et => et.key === value) || null;
-  const Icon = selected ? LazyLucide(selected.icon) : null;
+  const [icons, setIcons] = React.useState<Record<string, React.ComponentType<IconProps>> | null>(null);
+  React.useEffect(() => {
+    if (!open || icons) return;
+    let cancelled = false;
+    import('lucide-react').then((m) => {
+      if (cancelled) return;
+      setIcons(m as unknown as Record<string, React.ComponentType<IconProps>>);
+    }).catch(() => {
+      // ignore
+    });
+    return () => { cancelled = true; };
+  }, [open, icons]);
+  const Icon = selected && icons ? (icons[selected.icon] || icons['Tag']) : null;
 
   const filteredEntries = React.useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -127,6 +130,7 @@ export function EventTypePicker({ eventTypes, value, onChange, placeholder = "Se
           role="combobox"
           aria-expanded={open}
           aria-controls="event-type-cmd-list"
+          onClick={() => setOpen((v) => !v)}
           className={cn("w-full justify-between inline-flex items-center gap-2 rounded-md border bg-bg text-fg px-3 py-2 text-sm", className)}
         >
           <div className="flex items-center gap-2">
@@ -140,17 +144,17 @@ export function EventTypePicker({ eventTypes, value, onChange, placeholder = "Se
         <PopoverContent className="p-0 w-[28rem]">
           <Command>
             <CommandInput placeholder="Search event types…" onChange={setQuery} />
-            <CommandList>
+            <CommandList id="event-type-cmd-list">
               {filteredEntries.length === 0 ? (
                 <CommandEmpty>No event type found.</CommandEmpty>
               ) : (
                 filteredEntries.map(([category, items]) => (
                   <CommandGroup key={category} heading={categoryLabels[category as EventType['category']] }>
                     {items.map((et) => {
-                      const ItemIcon = LazyLucide(et.icon);
+                      const ItemIcon = icons ? (icons[et.icon] || icons['Tag']) : null;
                       return (
                         <CommandItem key={et.key} value={`${et.label} ${category}`} onSelect={() => { onChange(et.key); setOpen(false); }}>
-                          <ItemIcon className="mr-2 h-4 w-4" />
+                          {ItemIcon ? <ItemIcon className="mr-2 h-4 w-4" /> : null}
                           <span className="flex-1">{et.label}</span>
                           {value === et.key ? <span className="h-4 w-4">✓</span> : null}
                         </CommandItem>
