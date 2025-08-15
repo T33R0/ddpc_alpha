@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
 import { useToast } from "@/components/ui/ToastProvider";
 import { isEnabled } from "@/lib/featureFlags";
@@ -130,58 +130,7 @@ export default function TimelineClient({ events, vehicleId, canWrite = true, eve
     return Array.from(map.values());
   }, [filtered]);
 
-  const handleQuickAdd = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!canWrite) return;
-    const trimmed = title.trim();
-    if (!trimmed) {
-      error("Title is required");
-      return;
-    }
-    if (adding) return; // prevent duplicate submits
-    setAdding(true);
-    const occurred_at = (() => {
-      try {
-        return new Date(`${dateOnly}T00:00:00`).toISOString();
-      } catch {
-        return new Date().toISOString();
-      }
-    })();
-    const temp: TimelineEvent = {
-      id: `tmp-${Date.now()}`,
-      type: eventTypeForQuickAdd(trimmed),
-      notes: notes.trim() || trimmed,
-      occurred_at,
-      vehicle_id: vehicleId,
-    } as TimelineEvent;
-    setData((prev) => [temp, ...prev]);
-    try {
-      const res = await fetch("/api/events", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ vehicle_id: vehicleId, title: trimmed, occurred_at: `${dateOnly}T00:00:00`, type: selectedType, tags }),
-      });
-      if (!res.ok) {
-        throw new Error((await res.json()).error || "Failed to create");
-      }
-      const json = await res.json();
-      const created: TimelineEvent = json.event as TimelineEvent;
-      setData((prev) => [created as TimelineEvent, ...prev.filter((x) => x.id !== temp.id)]);
-      setTitle("");
-      setNotes("");
-      setTags([]);
-      success("Event added");
-      setLiveMessage("Event added");
-      setTimeout(() => setLiveMessage(""), 1000);
-      titleRef.current?.focus();
-    } catch (e) {
-      setData((prev) => prev.filter((x) => x.id !== temp.id));
-      const msg = e instanceof Error ? e.message : "Failed to create";
-      error(msg);
-    } finally {
-      setAdding(false);
-    }
-  };
+  // handleQuickAdd removed (replaced by QuickAddEventForm)
 
   const handleDelete = async (id: string) => {
     if (!canWrite) return;
@@ -246,8 +195,8 @@ export default function TimelineClient({ events, vehicleId, canWrite = true, eve
   return (
     <>
     <div className="space-y-4">
-      {/* Aria live region for screen readers */}
-      <div aria-live="polite" className="sr-only">{liveMessage}</div>
+      {/* Aria live region for screen readers (removed as we no longer set messages locally) */}
+      <div aria-live="polite" className="sr-only" />
       {/* New Event trigger */}
       <div className="flex justify-end">
         <button type="button" onClick={() => setNewOpen(true)} className="bg-brand text-white rounded px-3 py-1">New Event</button>

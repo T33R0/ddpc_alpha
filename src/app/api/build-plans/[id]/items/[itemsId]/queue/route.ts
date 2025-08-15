@@ -1,18 +1,25 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { getServerSupabase } from "@/lib/supabase";
 
 export async function POST(
   req: Request,
   { params }: { params: { id: string; itemId: string } }
 ) {
-  const supabase = createClient();
+  const supabase = await getServerSupabase();
   const { dueOn, tags } = await req.json().catch(() => ({}));
 
   const { data: item, error: itemErr } = await supabase
     .from("build_plan_items")
     .select("id, title, slot_code, part_variant_id, build_plan_id, build_plans!inner(vehicle_id)")
     .eq("id", params.itemId)
-    .single();
+    .single<{
+      id: string;
+      title: string;
+      slot_code: string | null;
+      part_variant_id: string | null;
+      build_plan_id: string;
+      build_plans: { vehicle_id: string };
+    }>();
   if (itemErr) return NextResponse.json({ error: itemErr.message }, { status: 400 });
 
   const insert = {

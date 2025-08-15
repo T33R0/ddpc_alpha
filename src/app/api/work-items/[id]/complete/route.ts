@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { getServerSupabase } from "@/lib/supabase";
 
 export async function PATCH(
   req: Request,
   { params }: { params: { id: string } }
 ) {
-  const supabase = createClient();
+  const supabase = await getServerSupabase();
   const { completedAt } = await req.json().catch(() => ({}));
   const patch = {
     status: "done",

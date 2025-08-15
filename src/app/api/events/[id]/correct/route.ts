@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { getServerSupabase } from "@/lib/supabase";
 
 export async function PATCH(
   req: Request,
   { params }: { params: { id: string } }
 ) {
-  const supabase = createClient();
+  const supabase = await getServerSupabase();
   const body = await req.json().catch(() => ({}));
   const { occurredOn, dateConfidence, approxYear, approxMonth } = body;
 
@@ -29,7 +29,7 @@ export async function PATCH(
     );
   }
 
-  const patch: any = {};
+  const patch: Partial<{ occurred_on: string | null; date_confidence: 'unknown' | 'approximate' | 'exact' | null; approx_year: number | null; approx_month: number | null; }> = {};
   if (occurredOn !== undefined) patch.occurred_on = occurredOn ? new Date(occurredOn).toISOString().slice(0,10) : null;
   if (dateConfidence !== undefined) patch.date_confidence = dateConfidence; // must be 'unknown' | 'approximate' | 'exact'
   if (approxYear !== undefined) patch.approx_year = approxYear;

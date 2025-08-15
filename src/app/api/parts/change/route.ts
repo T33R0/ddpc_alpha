@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server"; // your helper
+import { getServerSupabase } from "@/lib/supabase";
 
 export async function POST(req: Request) {
-  const supabase = createClient();
+  const supabase = await getServerSupabase();
   const body = await req.json().catch(() => ({}));
   const { vehicleId, slotCode, slotLabel, partVariantId, occurredOn, note } = body;
 
@@ -37,7 +37,7 @@ export async function POST(req: Request) {
   const insert = {
     vehicle_id: vehicleId,
     slot_code: slotCode,
-    slot_label: slotLabel ?? slotCode.replaceAll("_", " ").replace(/\b\w/g, s => s.toUpperCase()),
+    slot_label: slotLabel ?? slotCode.replaceAll("_", " ").replace(/\b\w/g, (s: string) => s.toUpperCase()),
     catalog_id: catalogId,
     variant_id: partVariantId ?? null,
     source: "manual",
