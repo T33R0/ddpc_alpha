@@ -2,6 +2,18 @@ import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { createServerClient } from '@supabase/ssr' // or your helper
 
+type JobPart = {
+  id: string
+  job_id: string
+  name: string
+  brand: string | null
+  part_number: string | null
+  affiliate_url: string | null
+  price: number | null
+  qty: number | null
+  created_at: string
+}
+
 async function createSb() {
   // If you already have a helper, replace with it.
   const cookieStore = await cookies()
@@ -31,7 +43,7 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
 
   // Parts for all jobs
   const jobIds = (jobs ?? []).map(j => j.id)
-  let partsByJob: Record<string, any[]> = {}
+  const partsByJob: Record<string, JobPart[]> = {}
   if (jobIds.length) {
     const { data: parts, error: partsErr } = await sb
       .from('job_part')
