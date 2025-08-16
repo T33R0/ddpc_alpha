@@ -181,29 +181,35 @@ export default async function VehicleOverviewPage({ params }: { params: Promise<
                 setActive(map[slide] || 'overview');
               } catch { setActive('overview'); }
             }
-            // Default to overview unless URL includes /media or hash #gallery
-            if (location.pathname.endsWith('/media') || location.hash === '#gallery') {
-              history.replaceState({}, '', '/vehicles/${vehicleId}');
-              show('media');
-            } else {
-              show('overview');
-            }
+            // Initialize from hash
+            const hash = location.hash.replace('#','');
+            if (hash === 'gallery') show('media');
+            else show('overview');
+            // React to hash changes
             window.addEventListener('hashchange', () => {
-              if (location.hash === '#gallery') show('media');
+              const h = location.hash.replace('#','');
+              if (h === 'gallery') show('media');
+              else show('overview');
             });
+            // Enhance in-page nav: set hash and prevent default full nav
             document.addEventListener('click', (e) => {
               const a = e.target.closest('a[data-veh-nav]');
               if (!a) return;
               const target = a.getAttribute('data-target');
               if (!target) return;
-              // Map top-level items to internal slides/sections
-              if (target === 'overview') { e.preventDefault(); show('overview'); window.__vehSetSlide && window.__vehSetSlide('OVERVIEW'); setActive('overview'); }
-              if (target === 'timeline') { e.preventDefault(); show('overview'); window.__vehSetSlide && window.__vehSetSlide('TIMELINE'); setActive('timeline'); }
-              if (target === 'tasks') { e.preventDefault(); show('overview'); window.__vehSetSlide && window.__vehSetSlide('TASKS'); setActive('tasks'); }
-              if (target === 'build-plans') { e.preventDefault(); show('overview'); window.__vehSetSlide && window.__vehSetSlide('BUILD'); setActive('build-plans'); }
-              if (target === 'parts') { e.preventDefault(); show('overview'); window.__vehSetSlide && window.__vehSetSlide('PARTS'); setActive('parts'); }
-              if (target === 'display-page') { e.preventDefault(); show('overview'); window.__vehSetSlide && window.__vehSetSlide('SPEC'); setActive('display-page'); }
-              if (target === 'gallery') { e.preventDefault(); show('media'); setActive('gallery'); }
+              e.preventDefault();
+              if (target === 'gallery') {
+                if (location.hash !== '#gallery') location.hash = '#gallery';
+                else show('media');
+                return;
+              }
+              // All other tabs are slides within overview
+              if (location.hash) history.replaceState({}, '', location.pathname);
+              show('overview');
+              const map = { overview: 'OVERVIEW', timeline: 'TIMELINE', tasks: 'TASKS', 'build-plans': 'BUILD', parts: 'PARTS', 'display-page': 'SPEC' };
+              // @ts-ignore
+              window.__vehSetSlide && window.__vehSetSlide(map[target] || 'OVERVIEW');
+              setActive(target);
             }, true);
           })();`
         }}
