@@ -55,24 +55,37 @@ export async function fetchVehicleEventsForCards(supabase: SupabaseClient, vehic
   }
 
   const out: EnrichedTimelineEvent[] = (events ?? []).map((e) => {
-    let manualKey = (e as { manual_type_key?: string | null }).manual_type_key ?? null;
+    const row = e as {
+      id: string;
+      vehicle_id: string;
+      type: string;
+      title?: string | null;
+      notes?: string | null;
+      occurred_at?: string | null;
+      occurred_on?: string | null;
+      date_confidence?: string | null;
+      created_at?: string | null;
+      updated_at?: string | null;
+      manual_type_key?: string | null;
+    };
+    let manualKey = row.manual_type_key ?? null;
     if (legacy && !manualKey) {
       try {
-        const m = ((e as { notes?: string | null }).notes || '').match(/::type=([a-z0-9_-]+)::/i);
+        const m = ((row.notes || '')).match(/::type=([a-z0-9_-]+)::/i);
         manualKey = m ? m[1] : null;
       } catch {}
     }
     const m = manualKey ? meta.get(manualKey) ?? null : null;
-    const occurred_at = (e as { occurred_at?: string | null }).occurred_at ?? (e as { created_at?: string | null }).created_at ?? null;
-    const occurred_on = (e as { occurred_on?: string | null }).occurred_on ?? (occurred_at ? occurred_at.slice(0,10) : null);
-    const dc = (e as { date_confidence?: string | null }).date_confidence;
+    const occurred_at = row.occurred_at ?? row.created_at ?? null;
+    const occurred_on = row.occurred_on ?? (occurred_at ? occurred_at.slice(0,10) : null);
+    const dc = row.date_confidence;
     const date_confidence: "exact" | "approximate" | "unknown" = (dc === 'approximate' || dc === 'unknown') ? dc : 'exact';
     return {
-      id: e.id as string,
-      vehicle_id: e.vehicle_id as string,
-      db_type: e.type as string,
-      title: (e as { title?: string | null }).title ?? null,
-      notes: (e as { notes?: string | null }).notes ?? null,
+      id: row.id,
+      vehicle_id: row.vehicle_id,
+      db_type: row.type,
+      title: row.title ?? null,
+      notes: row.notes ?? null,
       display_type: manualKey,
       display_label: m?.label ?? null,
       display_icon: m?.icon ?? null,
@@ -80,8 +93,8 @@ export async function fetchVehicleEventsForCards(supabase: SupabaseClient, vehic
       occurred_at,
       occurred_on,
       date_confidence,
-      created_at: (e as { created_at?: string | null }).created_at ?? null,
-      updated_at: (e as { updated_at?: string | null }).updated_at ?? null,
+      created_at: row.created_at ?? null,
+      updated_at: row.updated_at ?? null,
     };
   });
 
