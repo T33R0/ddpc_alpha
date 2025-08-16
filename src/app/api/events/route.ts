@@ -20,12 +20,13 @@ export async function POST(req: NextRequest) {
     const { vehicle_id, occurred_at, title, notes, type } = v.data;
 
     // AuthZ: OWNER or MANAGER of vehicle's garage
-    const { data: veh } = await supabase
+    const { data: veh, error: vehErr } = await supabase
       .from("vehicle")
       .select("id, owner_id, garage_id")
       .eq("id", vehicle_id)
       .maybeSingle();
-    if (!veh) return NextResponse.json({ error: "Not found", code: 404 }, { status: 404 });
+    if (vehErr) return NextResponse.json({ error: "vehicle_lookup_failed", detail: vehErr.message, code: 400 }, { status: 400 });
+    if (!veh) return NextResponse.json({ error: "vehicle_not_found_or_rls", vehicleId: vehicle_id, userId: user.id, code: 404 }, { status: 404 });
 
     let authorized = veh.owner_id === user.id;
     if (!authorized && veh.garage_id) {
