@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getServerSupabase } from "@/lib/supabase";
+import JobPanelClient from "./JobPanelClient";
 
 export const dynamic = "force-dynamic";
 
@@ -7,9 +8,16 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
   const { id: vehicleId, planId } = await params;
   const supabase = await getServerSupabase();
 
-  const [{ data: plan }, { data: tasks }] = await Promise.all([
+  const [
+    { data: plan },
+    { data: tasks },
+    { data: jobs },
+    { data: planTotal }
+  ] = await Promise.all([
     supabase.from("build_plans").select("id, name, description, status, is_default, updated_at").eq("id", planId).maybeSingle(),
     supabase.from("work_item").select("id, title, status, due, tags").eq("vehicle_id", vehicleId).eq("build_plan_id", planId).order("created_at", { ascending: true }),
+    supabase.from("job").select("id, title, description, status, created_at, updated_at").eq("build_plan_id", planId).order("created_at", { ascending: true }),
+    supabase.from("v_build_plan_costs").select("cost_total").eq("build_plan_id", planId).single(),
   ]);
 
   if (!plan) {
@@ -49,6 +57,21 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
     });
   }
 
+  const isOpen = plan.status === "active";
+
+  const groups: Record<string, { id: string; title: string; description: string | null; status: string }[]> = {
+    planning: [],
+    purchased: [],
+    active: [],
+    complete: [],
+    canceled: [],
+  };
+  for (const j of (jobs ?? [])) {
+    const key = (j.status ?? "planning").toLowerCase();
+    if (groups[key as keyof typeof groups]) groups[key as keyof typeof groups].push(j as any);
+    else (groups.planning).push(j as any);
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -57,10 +80,14 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
           <div className="text-sm text-gray-600 flex items-center gap-2">
             {plan.is_default ? <span className="px-2 py-0.5 rounded bg-blue-100 text-blue-800">Default</span> : null}
             <span className="px-2 py-0.5 rounded bg-gray-100 text-gray-800">{plan.status}</span>
+            <span className="px-2 py-0.5 rounded bg-green-100 text-green-800">Total: ${(planTotal?.cost_total ?? 0).toLocaleString()}</span>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <Link href={`/vehicles/${vehicleId}/plans`} className="text-sm text-blue-600 hover:underline">Back</Link>
+          <Link href={`/vehicles/${vehicleId}/plans/${planId}/budget`} className="text-sm px-3 py-1 rounded border" prefetch>
+            Export Budget
+          </Link>
           <form action={mergePlan}>
             <button type="submit" className="text-sm px-3 py-1 rounded border" disabled={plan.status === "merged"}>Merge</button>
           </form>
@@ -85,6 +112,26 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
             </form>
           </div>
         </form>
+      </div>
+
+      {/* Jobs grouped by status with a minimal job panel */}
+      <div className="rounded border">
+        <div className="p-3 text-sm font-medium bg-gray-50">Jobs</div>
+        <div className="p-3 grid md:grid-cols-2 gap-4">
+          {Object.entries(groups).map(([status, list]) => (
+            <div key={status} className="space-y-2">
+              <div className="text-xs uppercase text-gray-600">{status}</div>
+              {list.map(j => (
+                <div key={j.id} className="border rounded p-3 space-y-2">
+                  <div className="font-medium">{j.title}</div>
+                  <div className="text-xs text-gray-600">{j.status}</div>
+                  <JobPanelClient jobId={j.id} disabled={!isOpen} />
+                </div>
+              ))}
+              {list.length === 0 && <div className="text-xs text-gray-500">No jobs.</div>}
+            </div>
+          ))}
+        </div>
       </div>
 
       <div className="rounded border divide-y">

@@ -4,6 +4,68 @@ import { serverLog } from "@/lib/serverLog";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
+type JobPart = {
+  id: string;
+  job_id: string;
+  name: string;
+  brand: string | null;
+  part_number: string | null;
+  affiliate_url: string | null;
+  price: number | null;
+  qty: number | null;
+  created_at: string;
+};
+
+export async function GET(_req: NextRequest, context: RouteContext) {
+  const { id } = await context.params;
+  const sb = await getServerSupabase();
+
+  // Plan
+  const { data: plan, error: planErr } = await sb
+    .from('build_plans')
+    .select('id, vehicle_id, name, status, created_by, created_at, updated_at')
+    .eq('id', id)
+    .single();
+  if (planErr || !plan) return NextResponse.json({ error: 'Plan not found' }, { status: 404 });
+
+  // Jobs
+  const { data: jobs, error: jobsErr } = await sb
+    .from('job')
+    .select('id, title, description, status, created_at, updated_at')
+    .eq('build_plan_id', id)
+    .order('created_at', { ascending: true });
+  if (jobsErr) return NextResponse.json({ error: jobsErr.message }, { status: 500 });
+
+  // Parts for all jobs
+  const jobIds = (jobs ?? []).map(j => j.id);
+  const partsByJob: Record<string, JobPart[]> = {};
+  if (jobIds.length) {
+    const { data: parts, error: partsErr } = await sb
+      .from('job_part')
+      .select('id, job_id, name, brand, part_number, affiliate_url, price, qty, created_at')
+      .in('job_id', jobIds);
+    if (partsErr) return NextResponse.json({ error: partsErr.message }, { status: 500 });
+    for (const p of parts ?? []) {
+      (partsByJob[p.job_id] ||= []).push(p as JobPart);
+    }
+  }
+
+  // Totals
+  const { data: planTotal } = await sb
+    .from('v_build_plan_costs')
+    .select('cost_total')
+    .eq('build_plan_id', id)
+    .single();
+
+  return NextResponse.json({
+    plan: { ...plan, total_cost: planTotal?.cost_total ?? 0 },
+    jobs: (jobs ?? []).map(j => ({
+      ...j,
+      parts: partsByJob[j.id] ?? [],
+    })),
+  });
+}
+
 export async function PATCH(req: NextRequest, context: RouteContext) {
   try {
     const { id } = await context.params;
