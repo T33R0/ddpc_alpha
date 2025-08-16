@@ -6,7 +6,6 @@ import ErrorBoundary from "@/components/ErrorBoundary";
 
 // Compatible with Next 14/15; see searchParams handling below.
 import VehiclesJoinedToastClient from "./VehiclesJoinedToastClient";
-import VehiclesFiltersClient from "./VehiclesFiltersClient";
 import AddVehicleModalClient from "./AddVehicleModalClient";
 
 export const dynamic = "force-dynamic";
@@ -213,15 +212,7 @@ export default async function VehiclesPage(
         <AddVehicleModalClient />
       </div>
 
-      <div className="sticky top-0 z-10 -mx-3 px-3 bg-bg/80 backdrop-blur border-b">
-        <div className="py-3">
-          <VehiclesFiltersClient />
-        </div>
-      </div>
-
-      {user ? (
-        <div className="text-sm text-gray-600">Use the New Vehicle button to add a vehicle.</div>
-      ) : (
+      {!user && (
         <p className="text-sm text-gray-600">Sign in to add and manage vehicles.</p>
       )}
 

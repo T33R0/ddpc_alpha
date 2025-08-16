@@ -32,7 +32,7 @@ export default function AddVehicleModalClient() {
         onClick={() => setOpen(true)}
         data-testid="btn-new-vehicle"
       >
-        New Vehicle
+        Add Vehicle
       </button>
 
       {open && (
