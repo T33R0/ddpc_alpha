@@ -1,0 +1,70 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
+
+export type EnrichedTimelineEvent = {
+  id: string;
+  vehicle_id: string;
+  // Coarse DB type retained for filters/compat
+  db_type: string;
+  title: string | null;
+  notes: string | null;
+  display_type: string | null;   // manual key
+  display_label: string | null;
+  display_icon: string | null;
+  display_color: string | null;
+  occurred_at: string | null;
+  occurred_on: string | null;
+  date_confidence: "exact" | "approximate" | "unknown";
+  created_at: string | null;
+  updated_at: string | null;
+};
+
+export async function fetchVehicleEventsForCards(supabase: SupabaseClient, vehicleId: string, limit?: number): Promise<EnrichedTimelineEvent[]> {
+  // Fetch events with enriched columns
+  let q = supabase
+    .from("event")
+    .select("id, vehicle_id, type, title, notes, occurred_at, occurred_on, date_confidence, manual_type_key, created_at, updated_at")
+    .eq("vehicle_id", vehicleId)
+    .order("occurred_at", { ascending: false, nullsFirst: false })
+    .order("created_at", { ascending: false });
+  if (typeof limit === 'number') q = q.limit(Math.max(1, limit));
+  const { data: events } = await q;
+
+  // Fetch manual event types for metadata resolution
+  const { data: ets } = await supabase
+    .from('event_types')
+    .select('key, label, icon, color')
+    .eq('is_active', true);
+  const meta = new Map<string, { label: string; icon: string; color: string }>();
+  for (const t of (ets ?? []) as Array<{ key: string; label: string; icon: string; color: string }>) {
+    meta.set(t.key, { label: t.label, icon: t.icon, color: t.color });
+  }
+
+  const out: EnrichedTimelineEvent[] = (events ?? []).map((e) => {
+    const manualKey = (e as { manual_type_key?: string | null }).manual_type_key ?? null;
+    const m = manualKey ? meta.get(manualKey) ?? null : null;
+    const occurred_at = (e as { occurred_at?: string | null }).occurred_at ?? (e as { created_at?: string | null }).created_at ?? null;
+    const occurred_on = (e as { occurred_on?: string | null }).occurred_on ?? (occurred_at ? occurred_at.slice(0,10) : null);
+    const dc = (e as { date_confidence?: string | null }).date_confidence;
+    const date_confidence: "exact" | "approximate" | "unknown" = (dc === 'approximate' || dc === 'unknown') ? dc : 'exact';
+    return {
+      id: e.id as string,
+      vehicle_id: e.vehicle_id as string,
+      db_type: e.type as string,
+      title: (e as { title?: string | null }).title ?? null,
+      notes: (e as { notes?: string | null }).notes ?? null,
+      display_type: manualKey,
+      display_label: m?.label ?? null,
+      display_icon: m?.icon ?? null,
+      display_color: m?.color ?? null,
+      occurred_at,
+      occurred_on,
+      date_confidence,
+      created_at: (e as { created_at?: string | null }).created_at ?? null,
+      updated_at: (e as { updated_at?: string | null }).updated_at ?? null,
+    };
+  });
+
+  return out;
+}
+
+

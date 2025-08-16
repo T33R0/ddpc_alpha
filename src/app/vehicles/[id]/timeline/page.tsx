@@ -4,6 +4,7 @@ import TimelineClient, { type TimelineEvent } from "./TimelineClient";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import Link from "next/link";
 import { getEventTypes } from "@/lib/eventTypes";
+import { fetchVehicleEventsForCards } from "@/lib/timeline/enrichedEvents";
 // Removed vehicle filter on timeline per UX update
 
 export const dynamic = "force-dynamic";
@@ -36,12 +37,7 @@ export default async function TimelinePage({ params }: { params: Promise<{ id: s
       .maybeSingle();
     canExport = !!membership;
   }
-  const { data: events } = await supabase
-    .from("event")
-    .select("id, type, odometer, cost, title, notes, occurred_at, occurred_on, date_confidence, manual_type_key, created_at, updated_at")
-    .eq("vehicle_id", vehicleId)
-    .order("occurred_at", { ascending: false, nullsFirst: false })
-    .order("created_at", { ascending: false });
+  const enriched = await fetchVehicleEventsForCards(supabase, vehicleId);
 
   // Adapt legacy Event rows to TimelineEvent shape expected by TimelineClient
   const mapType = (t: EventType): TimelineEvent["type"] => {
@@ -58,30 +54,25 @@ export default async function TimelinePage({ params }: { params: Promise<{ id: s
         return "NOTE";
     }
   };
-  // fetch event types for client modal form (and to map labels/icons on existing rows)
+  // fetch event types for client modal form (for the picker in QuickAdd)
   const eventTypes = await getEventTypes();
-  const typeMeta = new Map<string, { label: string; icon: string; color: string }>();
-  for (const t of eventTypes) typeMeta.set(t.key, { label: t.label, icon: t.icon, color: t.color });
 
-  const timelineEvents: TimelineEvent[] = (events ?? []).map((e) => {
-    const manualKey = (e as { manual_type_key?: string | null }).manual_type_key ?? null;
-    const meta = manualKey ? typeMeta.get(manualKey) ?? null : null;
-    const cleanedNotes = (e as { notes?: string | null }).notes ?? null;
+  const timelineEvents: TimelineEvent[] = enriched.map((e) => {
     return {
       id: e.id,
       vehicle_id: vehicleId,
-      type: mapType(e.type),
-      title: (e as { title?: string | null }).title ?? null,
-      notes: cleanedNotes,
-      display_type: manualKey,
-      display_icon: meta?.icon ?? null,
-      display_color: meta?.color ?? null,
-      display_label: meta?.label ?? null,
-      occurred_at: (e as { occurred_at?: string | null }).occurred_at ?? e.created_at,
-      occurred_on: (e as { occurred_on?: string | null }).occurred_on ?? (e.created_at ? (e.created_at as string).slice(0, 10) : null),
-      date_confidence: (e as { date_confidence?: string | null }).date_confidence as "exact"|"approximate"|"unknown" ?? "exact",
+      type: mapType(e.db_type as EventType),
+      title: e.title,
+      notes: e.notes,
+      display_type: e.display_type,
+      display_icon: e.display_icon,
+      display_color: e.display_color,
+      display_label: e.display_label,
+      occurred_at: e.occurred_at ?? e.created_at,
+      occurred_on: e.occurred_on ?? (e.created_at ? e.created_at.slice(0,10) : null),
+      date_confidence: e.date_confidence,
       created_at: e.created_at,
-      updated_at: (e as { updated_at?: string | null }).updated_at ?? null,
+      updated_at: e.updated_at,
     } as TimelineEvent;
   });
 
