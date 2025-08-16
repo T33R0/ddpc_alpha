@@ -19,7 +19,7 @@ export type EnrichedTimelineEvent = {
 };
 
 export async function fetchVehicleEventsForCards(supabase: SupabaseClient, vehicleId: string, limit?: number): Promise<EnrichedTimelineEvent[]> {
-  // Fetch events with enriched columns
+  // Try enriched select first
   let q = supabase
     .from("event")
     .select("id, vehicle_id, type, title, notes, occurred_at, occurred_on, date_confidence, manual_type_key, created_at, updated_at")
@@ -27,7 +27,20 @@ export async function fetchVehicleEventsForCards(supabase: SupabaseClient, vehic
     .order("occurred_at", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false });
   if (typeof limit === 'number') q = q.limit(Math.max(1, limit));
-  const { data: events } = await q;
+  let { data: events, error } = await q as unknown as { data: unknown[] | null; error: unknown | null };
+
+  // Fallback for environments without new columns
+  let legacy = false;
+  if (error || !Array.isArray(events)) {
+    legacy = true;
+    const res = await supabase
+      .from("event")
+      .select("id, vehicle_id, type, notes, created_at, updated_at")
+      .eq("vehicle_id", vehicleId)
+      .order("created_at", { ascending: false })
+      .limit(typeof limit === 'number' ? Math.max(1, limit) : 1000) as unknown as { data: unknown[] | null };
+    events = Array.isArray(res.data) ? res.data : [];
+  }
 
   // Fetch manual event types for metadata resolution
   const { data: ets } = await supabase
@@ -40,7 +53,13 @@ export async function fetchVehicleEventsForCards(supabase: SupabaseClient, vehic
   }
 
   const out: EnrichedTimelineEvent[] = (events ?? []).map((e) => {
-    const manualKey = (e as { manual_type_key?: string | null }).manual_type_key ?? null;
+    let manualKey = (e as { manual_type_key?: string | null }).manual_type_key ?? null;
+    if (legacy && !manualKey) {
+      try {
+        const m = ((e as { notes?: string | null }).notes || '').match(/::type=([a-z0-9_-]+)::/i);
+        manualKey = m ? m[1] : null;
+      } catch {}
+    }
     const m = manualKey ? meta.get(manualKey) ?? null : null;
     const occurred_at = (e as { occurred_at?: string | null }).occurred_at ?? (e as { created_at?: string | null }).created_at ?? null;
     const occurred_on = (e as { occurred_on?: string | null }).occurred_on ?? (occurred_at ? occurred_at.slice(0,10) : null);
