@@ -18,6 +18,18 @@ type VehicleIdentity = {
 
 type Task = { id: string; title: string; due: string | null; tags: string[] | null };
 type Event = { id: string; created_at: string; type: string; notes: string | null };
+type PeekEvent = {
+  id: string;
+  type: string | null;
+  title: string | null;
+  description: string | null;
+  occurred_at: string | null;
+  occurred_on: string | null;
+  date_confidence?: "exact" | "approximate" | "unknown";
+  icon?: string | null;
+  color?: string | null;
+  label?: string | null;
+};
 
 type Props = {
   vehicle: VehicleIdentity;
@@ -56,14 +68,42 @@ export default function VehicleOverviewCarousel({ vehicle, quickStats, tasks, ev
               eventCount={quickStats.eventCount}
             />
             <VehicleTasksPeek vehicleId={vehicle.id} tasks={tasks} />
-            <VehicleTimelinePeek vehicleId={vehicle.id} events={events} />
+            <VehicleTimelinePeek
+              vehicleId={vehicle.id}
+              events={events.map((e) => ({
+                id: e.id,
+                type: null,
+                title: e.notes ?? null,
+                description: null,
+                occurred_at: e.created_at,
+                occurred_on: e.created_at ? e.created_at.slice(0, 10) : null,
+                date_confidence: "exact",
+                icon: null,
+                color: null,
+                label: null,
+              })) as PeekEvent[]}
+            />
           </div>
         )}
         {slide === "SPEC" && <VehicleSpecSheet vehicle={vehicle} />}
         {slide === "TIMELINE" && (
           <div className="grid md:grid-cols-3 gap-4">
             <div className="md:col-span-2">
-              <VehicleTimelinePeek vehicleId={vehicle.id} events={events} />
+              <VehicleTimelinePeek
+                vehicleId={vehicle.id}
+                events={events.map((e) => ({
+                  id: e.id,
+                  type: null,
+                  title: e.notes ?? null,
+                  description: null,
+                  occurred_at: e.created_at,
+                  occurred_on: e.created_at ? e.created_at.slice(0, 10) : null,
+                  date_confidence: "exact",
+                  icon: null,
+                  color: null,
+                  label: null,
+                })) as PeekEvent[]}
+              />
             </div>
             <div className="rounded-2xl border bg-card text-fg shadow-sm p-5 flex flex-col justify-between">
               <div>
