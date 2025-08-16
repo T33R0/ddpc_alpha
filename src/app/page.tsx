@@ -46,6 +46,7 @@ export default async function Home() {
     const { data: gm } = await supabase
       .from("garage_member")
       .select("garage_id")
+      .eq("user_id", user?.id as string)
       .order("created_at", { ascending: false })
       .limit(200);
     (gm as Array<{ garage_id: string }> | null)?.forEach((r) => garageIds.push(r.garage_id));
@@ -53,6 +54,7 @@ export default async function Home() {
     const { data: owned } = await supabase
       .from("garage")
       .select("id")
+      .eq("owner_id", user?.id as string)
       .order("created_at", { ascending: false })
       .limit(200);
     (owned as Array<{ id: string }> | null)?.forEach((g) => {
@@ -335,8 +337,16 @@ export default async function Home() {
     .limit(24);
   type GalleryVehicleRow = { id: string; photo_url: string | null };
   const galleryRows: GalleryVehicleRow[] = Array.isArray(galleryPool) ? (galleryPool as GalleryVehicleRow[]) : [];
+  const combinedForCovers: GalleryVehicleRow[] = (() => {
+    const byId: Record<string, GalleryVehicleRow> = {};
+    // prefer broader pool first
+    for (const v of galleryRows) byId[v.id] = v;
+    // ensure top vehicles are included as fallback
+    for (const v of topVehicles) byId[v.id] = { id: v.id, photo_url: v.photo_url } as GalleryVehicleRow;
+    return Object.values(byId).slice(0, 24);
+  })();
   const galleryCoverUrls: Array<string | null> = await Promise.all(
-    galleryRows.map((v) => getVehicleCoverUrl(supabase, v.id, v.photo_url))
+    combinedForCovers.map((v) => getVehicleCoverUrl(supabase, v.id, v.photo_url))
   );
 
   return (
