@@ -293,7 +293,7 @@ export default function TimelineClient({ events, vehicleId, canWrite = true, eve
                 ) : (
                   e.type
                 )}</div>
-                <div className="flex-1">
+                <div className="flex-1 min-w-0">
                   {editingId === e.id ? (
                     <input
                       value={editNotes}
@@ -302,10 +302,19 @@ export default function TimelineClient({ events, vehicleId, canWrite = true, eve
                       placeholder="Notes"
                     />
                   ) : (
-                    <div className="text-sm text-fg">{e.notes ?? "—"}</div>
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="inline-flex items-center text-[10px] px-1.5 py-0.5 rounded border bg-bg uppercase tracking-wide">{e.type}</span>
+                        <span className="text-xs text-muted">{new Date(e.occurred_at).toLocaleString()}</span>
+                      </div>
+                      {e.notes ? (
+                        <div className="text-sm text-fg truncate" title={e.notes}>{e.notes}</div>
+                      ) : (
+                        <div className="text-sm text-muted">No description</div>
+                      )}
+                    </div>
                   )}
                    <div className="text-xs text-muted flex items-center gap-2">
-                    <span title="Created at">{new Date(e.created_at ?? e.occurred_at).toLocaleString()}</span>
                     {e.updated_at && (new Date(e.updated_at).getTime() > new Date(e.created_at ?? e.occurred_at).getTime()) && (
                       <span className="inline-flex items-center text-[10px] px-1.5 py-0.5 rounded border bg-bg" title={new Date(e.updated_at).toLocaleString()}>edited</span>
                     )}

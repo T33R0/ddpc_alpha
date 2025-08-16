@@ -18,6 +18,8 @@ export async function POST(req: NextRequest) {
     const v = validateCreateEventPayload(body);
     if (!v.ok) return NextResponse.json({ error: v.error, code: 400 }, { status: 400 });
     const { vehicle_id, occurred_at, title, notes, type } = v.data;
+    const raw = await req.json().catch(() => ({}));
+    const manualTypeKey = typeof (raw as Record<string, unknown>).type_key === 'string' ? String((raw as Record<string, unknown>).type_key) : undefined;
     // Map app types -> DB types
     const typeToDb: Record<string, string> = {
       SERVICE: "SERVICE",
@@ -56,19 +58,16 @@ export async function POST(req: NextRequest) {
     }
     if (!authorized) return NextResponse.json({ error: "Forbidden", code: 403 }, { status: 403 });
 
-    // Prepare insert; map title -> notes for storage if schema lacks title
-    const created_at = occurred_at ? new Date(occurred_at).toISOString() : new Date().toISOString();
+    // Prepare insert; map title -> notes for storage if schema lacks title; let DB set created_at = now()
     const insertPayload: {
       vehicle_id: string;
       type: string;
       notes: string;
-      created_at: string;
       created_by?: string;
     } = {
       vehicle_id,
       type: dbType,
       notes: title + (notes ? ` — ${notes}` : ""),
-      created_at,
     };
     // include created_by when available to align with schemas that record authorship
     try { insertPayload.created_by = user.id; } catch { /* noop */ }
@@ -87,7 +86,7 @@ export async function POST(req: NextRequest) {
     // Map DB type -> app type in response
     const dbToApp: Record<string, string> = { SERVICE: "SERVICE", INSTALL: "MOD", INSPECT: "NOTE", TUNE: "DYNO" };
     const appType = dbToApp[created.type] ?? "NOTE";
-    const event = { id: created.id, vehicle_id: created.vehicle_id, type: appType, title, occurred_at: created.created_at };
+    const event = { id: created.id, vehicle_id: created.vehicle_id, type: appType, title, occurred_at: created.created_at, manualTypeKey } as const;
     return NextResponse.json({ event }, { status: 201 });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Unknown error";
