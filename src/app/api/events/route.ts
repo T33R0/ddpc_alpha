@@ -18,6 +18,14 @@ export async function POST(req: NextRequest) {
     const v = validateCreateEventPayload(body);
     if (!v.ok) return NextResponse.json({ error: v.error, code: 400 }, { status: 400 });
     const { vehicle_id, occurred_at, title, notes, type } = v.data;
+    // Map app types -> DB types
+    const typeToDb: Record<string, string> = {
+      SERVICE: "SERVICE",
+      MOD: "INSTALL",
+      NOTE: "INSPECT",
+      DYNO: "TUNE",
+    };
+    const dbType = typeToDb[type] ?? "INSPECT";
 
     // AuthZ: user must own the garage or be a member (role model can vary across envs)
     const { data: veh, error: vehErr } = await supabase
@@ -55,25 +63,31 @@ export async function POST(req: NextRequest) {
       type: string;
       notes: string;
       created_at: string;
+      created_by?: string;
     } = {
       vehicle_id,
-      type,
+      type: dbType,
       notes: title + (notes ? ` — ${notes}` : ""),
       created_at,
     };
+    // include created_by when available to align with schemas that record authorship
+    try { insertPayload.created_by = user.id; } catch { /* noop */ }
 
     const { data: created, error: insErr } = await supabase
       .from("event")
       .insert(insertPayload)
       .select("id, type, created_at, vehicle_id")
       .single();
-    if (insErr) return NextResponse.json({ error: "Create failed", code: 400 }, { status: 400 });
+    if (insErr) return NextResponse.json({ error: insErr.message, code: 400 }, { status: 400 });
 
     // Update vehicle.last_event_at
     await supabase.from("vehicle").update({ last_event_at: created.created_at }).eq("id", vehicle_id);
 
-    serverLog("event_create", { userId: user.id, vehicleId: vehicle_id, type, requestId });
-    const event = { id: created.id, vehicle_id: created.vehicle_id, type: created.type, title, occurred_at: created.created_at };
+    serverLog("event_create", { userId: user.id, vehicleId: vehicle_id, type: dbType, requestId });
+    // Map DB type -> app type in response
+    const dbToApp: Record<string, string> = { SERVICE: "SERVICE", INSTALL: "MOD", INSPECT: "NOTE", TUNE: "DYNO" };
+    const appType = dbToApp[created.type] ?? "NOTE";
+    const event = { id: created.id, vehicle_id: created.vehicle_id, type: appType, title, occurred_at: created.created_at };
     return NextResponse.json({ event }, { status: 201 });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Unknown error";
