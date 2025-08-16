@@ -46,10 +46,7 @@ function toArray(val: string | string[] | undefined): string[] {
 	return Array.isArray(val) ? val : [val];
 }
 
-export default async function DiscoverPage(props: { searchParams?: SearchParams | Promise<SearchParams> }) {
-	const maybe = props.searchParams;
-	const searchParams = (maybe && "then" in (maybe as object)) ? await (maybe as Promise<SearchParams>) : (maybe ?? {});
-
+export default async function DiscoverPage({ searchParams = {} }: { searchParams?: SearchParams }) {
 	const supabase = await getServerSupabase();
 
 	// Probe one row to infer available columns for resilient filtering
