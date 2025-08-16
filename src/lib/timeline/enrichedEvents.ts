@@ -27,7 +27,9 @@ export async function fetchVehicleEventsForCards(supabase: SupabaseClient, vehic
     .order("occurred_at", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false });
   if (typeof limit === 'number') q = q.limit(Math.max(1, limit));
-  let { data: events, error } = await q as unknown as { data: unknown[] | null; error: unknown | null };
+  const initial = await (q as unknown as Promise<{ data: unknown[] | null; error: unknown | null }>);
+  let events = initial.data;
+  const error = initial.error;
 
   // Fallback for environments without new columns
   let legacy = false;
