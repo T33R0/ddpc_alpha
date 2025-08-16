@@ -38,8 +38,9 @@ export default async function TimelinePage({ params }: { params: Promise<{ id: s
   }
   const { data: events } = await supabase
     .from("event")
-    .select("id, type, odometer, cost, notes, created_at, updated_at")
+    .select("id, type, odometer, cost, title, notes, occurred_at, occurred_on, date_confidence, manual_type_key, created_at, updated_at")
     .eq("vehicle_id", vehicleId)
+    .order("occurred_at", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false });
 
   // Adapt legacy Event rows to TimelineEvent shape expected by TimelineClient
@@ -58,22 +59,18 @@ export default async function TimelinePage({ params }: { params: Promise<{ id: s
     }
   };
   const timelineEvents: TimelineEvent[] = (events ?? []).map((e) => {
-    // Attempt to recover manual type metadata from encoded marker in notes (::type=key::)
-    let manualKey: string | null = null;
-    try {
-      const m = (e.notes || "").match(/::type=([a-z0-9_-]+)::/i);
-      manualKey = m ? m[1] : null;
-    } catch {}
-    const cleanedNotes = ((e.notes || "").replace(/::type=[^:]+::/g, "").trim() || null) as string | null;
+    const manualKey = (e as { manual_type_key?: string | null }).manual_type_key ?? null;
+    const cleanedNotes = (e as { notes?: string | null }).notes ?? null;
     return {
       id: e.id,
       vehicle_id: vehicleId,
       type: mapType(e.type),
+      title: (e as { title?: string | null }).title ?? null,
       notes: cleanedNotes,
       display_type: manualKey,
-      occurred_at: e.created_at,
-      occurred_on: e.created_at ? (e.created_at as string).slice(0, 10) : null,
-      date_confidence: "exact",
+      occurred_at: (e as { occurred_at?: string | null }).occurred_at ?? e.created_at,
+      occurred_on: (e as { occurred_on?: string | null }).occurred_on ?? (e.created_at ? (e.created_at as string).slice(0, 10) : null),
+      date_confidence: (e as { date_confidence?: string | null }).date_confidence as "exact"|"approximate"|"unknown" ?? "exact",
       created_at: e.created_at,
       updated_at: (e as { updated_at?: string | null }).updated_at ?? null,
     } as TimelineEvent;

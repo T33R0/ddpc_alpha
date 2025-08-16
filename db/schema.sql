@@ -46,7 +46,12 @@ create table if not exists event (
   vehicle_id uuid not null references vehicle(id) on delete cascade,
   type text check (type in ('SERVICE','INSTALL','INSPECT','TUNE')) not null,
   odometer int,
+  title text,
   notes text,
+  occurred_at timestamptz,
+  occurred_on date,
+  date_confidence text check (date_confidence in ('exact','approximate','unknown')),
+  manual_type_key text,
   cost numeric(10,2),
   created_by uuid references auth.users(id),
   created_at timestamptz not null default now()

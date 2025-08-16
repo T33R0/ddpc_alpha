@@ -64,12 +64,22 @@ export async function POST(req: NextRequest) {
     const insertPayload: {
       vehicle_id: string;
       type: string;
-      notes: string;
+      title?: string | null;
+      notes?: string | null;
+      occurred_at?: string | null;
+      occurred_on?: string | null;
+      date_confidence?: string | null;
+      manual_type_key?: string | null;
       created_by?: string;
     } = {
       vehicle_id,
       type: dbType,
-      notes: (title + (notes ? ` — ${notes}` : "")) + (manualTypeKey ? ` ::type=${manualTypeKey}::` : ""),
+      title: title || null,
+      notes: notes || null,
+      occurred_at: occurred_at || null,
+      occurred_on: occurred_on || null,
+      date_confidence: date_confidence || (occurred_at ? 'exact' : 'unknown'),
+      manual_type_key: manualTypeKey || null,
     };
     // include created_by when available to align with schemas that record authorship
     try { insertPayload.created_by = user.id; } catch { /* noop */ }
@@ -77,7 +87,7 @@ export async function POST(req: NextRequest) {
     const { data: created, error: insErr } = await supabase
       .from("event")
       .insert(insertPayload)
-      .select("id, type, created_at, vehicle_id")
+      .select("id, type, created_at, vehicle_id, title, notes, occurred_at, occurred_on, date_confidence, manual_type_key")
       .single();
     if (insErr) return NextResponse.json({ error: insErr.message, code: 400 }, { status: 400 });
 
@@ -90,12 +100,12 @@ export async function POST(req: NextRequest) {
     const appType = dbToApp[created.type] ?? "NOTE";
     // Try to enrich display metadata from event_types when manualTypeKey provided
     let display: { label?: string | null; icon?: string | null; color?: string | null } = {};
-    if (manualTypeKey) {
+    if (created.manual_type_key) {
       try {
         const { data: et } = await supabase
           .from('event_types')
           .select('label, icon, color')
-          .eq('key', manualTypeKey)
+          .eq('key', created.manual_type_key as string)
           .maybeSingle();
         if (et) display = { label: et.label as string, icon: et.icon as string, color: et.color as string };
       } catch {}
@@ -105,11 +115,12 @@ export async function POST(req: NextRequest) {
       id: created.id,
       vehicle_id: created.vehicle_id,
       type: appType,
-      title,
-      occurred_at: occurred_at ?? created.created_at,
-      occurred_on: occurred_on ?? (created.created_at ? created.created_at.slice(0,10) : null),
-      date_confidence: date_confidence === 'exact' ? 'exact' : 'unknown',
-      manualTypeKey,
+      title: created.title ?? title,
+      notes: created.notes ?? null,
+      occurred_at: created.occurred_at ?? created.created_at,
+      occurred_on: created.occurred_on ?? (created.created_at ? created.created_at.slice(0,10) : null),
+      date_confidence: (created.date_confidence as string | null) ?? (occurred_at ? 'exact' : 'unknown'),
+      manualTypeKey: created.manual_type_key ?? manualTypeKey,
       ...display,
     } as const;
     return NextResponse.json({ event }, { status: 201 });
