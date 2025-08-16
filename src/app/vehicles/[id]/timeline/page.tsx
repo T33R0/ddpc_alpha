@@ -58,8 +58,14 @@ export default async function TimelinePage({ params }: { params: Promise<{ id: s
         return "NOTE";
     }
   };
+  // fetch event types for client modal form (and to map labels/icons on existing rows)
+  const eventTypes = await getEventTypes();
+  const typeMeta = new Map<string, { label: string; icon: string; color: string }>();
+  for (const t of eventTypes) typeMeta.set(t.key, { label: t.label, icon: t.icon, color: t.color });
+
   const timelineEvents: TimelineEvent[] = (events ?? []).map((e) => {
     const manualKey = (e as { manual_type_key?: string | null }).manual_type_key ?? null;
+    const meta = manualKey ? typeMeta.get(manualKey) ?? null : null;
     const cleanedNotes = (e as { notes?: string | null }).notes ?? null;
     return {
       id: e.id,
@@ -68,6 +74,9 @@ export default async function TimelinePage({ params }: { params: Promise<{ id: s
       title: (e as { title?: string | null }).title ?? null,
       notes: cleanedNotes,
       display_type: manualKey,
+      display_icon: meta?.icon ?? null,
+      display_color: meta?.color ?? null,
+      display_label: meta?.label ?? null,
       occurred_at: (e as { occurred_at?: string | null }).occurred_at ?? e.created_at,
       occurred_on: (e as { occurred_on?: string | null }).occurred_on ?? (e.created_at ? (e.created_at as string).slice(0, 10) : null),
       date_confidence: (e as { date_confidence?: string | null }).date_confidence as "exact"|"approximate"|"unknown" ?? "exact",
@@ -82,8 +91,7 @@ export default async function TimelinePage({ params }: { params: Promise<{ id: s
 
   // no vehicle switcher here
 
-  // fetch event types for client modal form
-  const eventTypes = await getEventTypes();
+  // eventTypes already fetched above; pass through for the create modal
 
   return (
     <div className="space-y-6">
