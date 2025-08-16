@@ -2,7 +2,7 @@
 "use client";
 import * as React from "react";
 import EventTypeIcon from "./EventTypeIcon";
-import { getEventMeta, formatEventDate } from "@/lib/events";
+import { formatEventDate } from "@/lib/events";
 function cn(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
 }
@@ -10,19 +10,21 @@ function cn(...classes: Array<string | false | null | undefined>) {
 type EventCardProps = {
   event: {
     id: string;
-    type: string | null;            // "acquired" | "sold" | ...
+    type: string | null;            // manual type key
     title: string | null;           // short title (optional)
     description: string | null;     // notes (optional)
     occurred_at: string | null;     // timestamp when time is known
     occurred_on: string | null;     // date-only when time unknown
     date_confidence?: "exact" | "approximate" | "unknown";
+    icon?: string | null;           // lucide icon name
+    color?: string | null;          // tailwind hue root
+    label?: string | null;          // display label
   };
   onEdit?: (id: string) => void;
   onDelete?: (id: string) => void;
 };
 
 export default function EventCard({ event, onEdit, onDelete }: EventCardProps) {
-  const meta = getEventMeta(event.type);
   const showTime = event.date_confidence === "exact" && !!event.occurred_at;
   const displayDate = formatEventDate(event.occurred_at ?? event.occurred_on, { showTime });
 
@@ -33,12 +35,12 @@ export default function EventCard({ event, onEdit, onDelete }: EventCardProps) {
       )}
     >
       <div className="flex items-start gap-3">
-        <EventTypeIcon type={event.type} />
+        <EventTypeIcon iconName={event.icon ?? undefined} color={event.color ?? undefined} label={event.label ?? undefined} />
 
         <div className="min-w-0 flex-1">
           {/* Top row: type label + date */}
           <div className="flex items-baseline justify-between gap-3">
-            <div className="text-sm font-medium text-white/90">{meta.label}</div>
+            <div className="text-sm font-medium text-white/90">{event.label ?? "Note"}</div>
             <time className="shrink-0 text-xs text-white/60">{displayDate}</time>
           </div>
 

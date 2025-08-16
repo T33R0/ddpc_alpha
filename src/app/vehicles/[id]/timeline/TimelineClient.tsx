@@ -17,6 +17,9 @@ export type TimelineEvent = {
   title?: string | null;
   notes?: string | null;
   display_type?: string | null;
+  display_icon?: string | null;
+  display_color?: string | null;
+  display_label?: string | null;
   occurred_at: string; // ISO
   occurred_on?: string | null;
   date_confidence?: "exact" | "approximate" | "unknown";
@@ -211,6 +214,9 @@ export default function TimelineClient({ events, vehicleId, canWrite = true, eve
                   vehicle_id: ev.vehicle_id,
                   type: (ev.type as TimelineEventType) || "NOTE",
                   display_type: (ev as unknown as { manualTypeKey?: string | null }).manualTypeKey ?? null,
+                  display_icon: (ev as unknown as { icon?: string | null }).icon ?? null,
+                  display_color: (ev as unknown as { color?: string | null }).color ?? null,
+                  display_label: (ev as unknown as { label?: string | null }).label ?? null,
                   title: ev.title ?? null,
                   notes: (ev as unknown as { notes?: string | null }).notes ?? (ev.title ?? null),
                   occurred_at: (ev as unknown as { occurred_at?: string | null }).occurred_at ?? new Date().toISOString(),
@@ -276,6 +282,9 @@ export default function TimelineClient({ events, vehicleId, canWrite = true, eve
           const cards = items.map((e) => ({
             id: e.id,
             type: e.display_type ?? null,
+            icon: e.display_icon ?? null,
+            color: e.display_color ?? null,
+            label: e.display_label ?? null,
             title: e.title ?? null,
             description: e.notes ?? null,
             occurred_at: e.occurred_at ?? null,

@@ -1,14 +1,13 @@
 // src/components/timeline/EventTypeIcon.tsx
 "use client";
 import * as React from "react";
-import { getEventMeta } from "@/lib/events";
+import * as Icons from "lucide-react";
 function cn(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(" ");
 }
 
-export default function EventTypeIcon({ type, size = 20 }: { type?: string | null; size?: number }) {
-  const meta = getEventMeta(type);
-  const Icon = meta.icon;
+export default function EventTypeIcon({ iconName, color, label, size = 20 }: { iconName?: string | null; color?: string | null; label?: string | null; size?: number }) {
+  const Icon = (iconName && (Icons as unknown as Record<string, React.ComponentType<{ className?: string; size?: number }>>)[iconName]) || Icons.FileText;
   const bgClass: Record<string, string> = {
     emerald: "bg-emerald-500/15",
     rose: "bg-rose-500/15",
@@ -31,12 +30,12 @@ export default function EventTypeIcon({ type, size = 20 }: { type?: string | nul
     <div
       className={cn(
         "inline-flex items-center justify-center rounded-xl",
-        bgClass[meta.color] || bgClass.slate,
-        textClass[meta.color] || textClass.slate,
+        bgClass[(color || "slate")] || bgClass.slate,
+        textClass[(color || "slate")] || textClass.slate,
         "h-9 w-9"
       )}
-      aria-label={meta.label}
-      title={meta.label}
+      aria-label={label || undefined}
+      title={label || undefined}
     >
       <Icon size={size} className="shrink-0" />
     </div>

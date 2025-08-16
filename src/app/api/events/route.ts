@@ -88,6 +88,19 @@ export async function POST(req: NextRequest) {
     // Map DB type -> app type in response
     const dbToApp: Record<string, string> = { SERVICE: "SERVICE", INSTALL: "MOD", INSPECT: "NOTE", TUNE: "DYNO" };
     const appType = dbToApp[created.type] ?? "NOTE";
+    // Try to enrich display metadata from event_types when manualTypeKey provided
+    let display: { label?: string | null; icon?: string | null; color?: string | null } = {};
+    if (manualTypeKey) {
+      try {
+        const { data: et } = await supabase
+          .from('event_types')
+          .select('label, icon, color')
+          .eq('key', manualTypeKey)
+          .maybeSingle();
+        if (et) display = { label: et.label as string, icon: et.icon as string, color: et.color as string };
+      } catch {}
+    }
+
     const event = {
       id: created.id,
       vehicle_id: created.vehicle_id,
@@ -97,6 +110,7 @@ export async function POST(req: NextRequest) {
       occurred_on: occurred_on ?? (created.created_at ? created.created_at.slice(0,10) : null),
       date_confidence: date_confidence === 'exact' ? 'exact' : 'unknown',
       manualTypeKey,
+      ...display,
     } as const;
     return NextResponse.json({ event }, { status: 201 });
   } catch (err: unknown) {
