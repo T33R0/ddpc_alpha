@@ -26,7 +26,9 @@ type EventCardProps = {
 
 export default function EventCard({ event, onEdit, onDelete }: EventCardProps) {
   const showTime = event.date_confidence === "exact" && !!event.occurred_at;
-  const displayDate = formatEventDate(event.occurred_at ?? event.occurred_on, { showTime });
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => setMounted(true), []);
+  const displayDate = mounted ? formatEventDate(event.occurred_at ?? event.occurred_on, { showTime }) : "";
 
   return (
     <article
@@ -41,7 +43,7 @@ export default function EventCard({ event, onEdit, onDelete }: EventCardProps) {
           {/* Top row: type label + date */}
           <div className="flex items-baseline justify-between gap-3">
             <div className="text-sm font-medium text-white/90">{event.label ?? "Note"}</div>
-            <time className="shrink-0 text-xs text-white/60">{displayDate}</time>
+            <time suppressHydrationWarning className="shrink-0 text-xs text-white/60">{displayDate}</time>
           </div>
 
           {/* Title (optional) */}
