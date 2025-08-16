@@ -1,15 +1,14 @@
 import Link from "next/link";
-import Image from "next/image";
 import { SignInButton } from "@/components/auth/SignInButton";
 import { getServerSupabase } from "@/lib/supabase";
 import CopyToClipboard from "@/components/CopyToClipboard";
 import { serverLog } from "@/lib/serverLog";
-import PrivacyBadge from "@/components/PrivacyBadge";
+// import PrivacyBadge from "@/components/PrivacyBadge";
 import { getVehicleCoverUrl } from "@/lib/getVehicleCoverUrl";
 import UpcomingListClient from "@/components/dashboard/UpcomingListClient";
 import ActivityFeedClient from "@/components/dashboard/ActivityFeedClient";
 import GarageGallery from "@/components/dashboard/GarageGallery";
-import { SpendBreakdownChart, MilesTrendChart } from "@/components/dashboard/Charts";
+import { MilesTrendChart } from "@/components/dashboard/Charts";
 
 export const dynamic = "force-dynamic";
 
@@ -334,8 +333,10 @@ export default async function Home() {
     .in("garage_id", garageIds)
     .order("last_event_at", { ascending: false })
     .limit(24);
+  type GalleryVehicleRow = { id: string; photo_url: string | null };
+  const galleryRows: GalleryVehicleRow[] = Array.isArray(galleryPool) ? (galleryPool as GalleryVehicleRow[]) : [];
   const galleryCoverUrls: Array<string | null> = await Promise.all(
-    (Array.isArray(galleryPool) ? galleryPool : []).map((v: any) => getVehicleCoverUrl(supabase, v.id, v.photo_url))
+    galleryRows.map((v) => getVehicleCoverUrl(supabase, v.id, v.photo_url))
   );
 
   return (
