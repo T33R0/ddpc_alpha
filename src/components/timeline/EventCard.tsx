@@ -3,7 +3,9 @@
 import * as React from "react";
 import EventTypeIcon from "./EventTypeIcon";
 import { getEventMeta, formatEventDate } from "@/lib/events";
-import clsx from "clsx";
+function cn(...classes: Array<string | false | null | undefined>) {
+  return classes.filter(Boolean).join(" ");
+}
 
 type EventCardProps = {
   event: {
@@ -26,7 +28,7 @@ export default function EventCard({ event, onEdit, onDelete }: EventCardProps) {
 
   return (
     <article
-      className={clsx(
+      className={cn(
         "group relative w-full rounded-2xl border border-white/10 bg-white/5 p-3 hover:bg-white/[0.08] transition-colors"
       )}
     >
