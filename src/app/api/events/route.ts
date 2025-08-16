@@ -20,6 +20,8 @@ export async function POST(req: NextRequest) {
     const { vehicle_id, occurred_at, title, notes, type } = v.data;
     const raw = await req.json().catch(() => ({}));
     const manualTypeKey = typeof (raw as Record<string, unknown>).type_key === 'string' ? String((raw as Record<string, unknown>).type_key) : undefined;
+    const occurred_on = typeof (raw as Record<string, unknown>).occurred_on === 'string' ? String((raw as Record<string, unknown>).occurred_on) : null;
+    const date_confidence = typeof (raw as Record<string, unknown>).date_confidence === 'string' ? String((raw as Record<string, unknown>).date_confidence) : undefined;
     // Map app types -> DB types
     const typeToDb: Record<string, string> = {
       SERVICE: "SERVICE",
@@ -86,7 +88,16 @@ export async function POST(req: NextRequest) {
     // Map DB type -> app type in response
     const dbToApp: Record<string, string> = { SERVICE: "SERVICE", INSTALL: "MOD", INSPECT: "NOTE", TUNE: "DYNO" };
     const appType = dbToApp[created.type] ?? "NOTE";
-    const event = { id: created.id, vehicle_id: created.vehicle_id, type: appType, title, occurred_at: created.created_at, manualTypeKey } as const;
+    const event = {
+      id: created.id,
+      vehicle_id: created.vehicle_id,
+      type: appType,
+      title,
+      occurred_at: occurred_at ?? created.created_at,
+      occurred_on: occurred_on ?? (created.created_at ? created.created_at.slice(0,10) : null),
+      date_confidence: date_confidence === 'exact' ? 'exact' : 'unknown',
+      manualTypeKey,
+    } as const;
     return NextResponse.json({ event }, { status: 201 });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Unknown error";

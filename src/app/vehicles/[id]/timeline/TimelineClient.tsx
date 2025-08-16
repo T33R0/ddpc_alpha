@@ -6,6 +6,7 @@ import { isEnabled } from "@/lib/featureFlags";
 import { makeOptimisticMergeEvent } from "@/lib/timeline/makeOptimisticMergeEvent";
 import { QuickAddEventForm } from "@/components/event/QuickAddEventForm";
 import type { EventType as ManualEventType } from "@/types/event-types";
+import EventList from "@/components/timeline/EventList";
 
 type TimelineEventType = "MERGE" | "SERVICE" | "MOD" | "DYNO" | "NOTE";
 
@@ -15,7 +16,10 @@ export type TimelineEvent = {
   type: TimelineEventType;
   title?: string | null;
   notes?: string | null;
+  display_type?: string | null;
   occurred_at: string; // ISO
+  occurred_on?: string | null;
+  date_confidence?: "exact" | "approximate" | "unknown";
   task_id?: string; // optional link to originating task
   optimistic?: boolean;
   created_at?: string | null;
@@ -43,9 +47,6 @@ export default function TimelineClient({ events, vehicleId, canWrite = true, eve
   const [initialLoading, setInitialLoading] = useState<boolean>(true);
   const [filterLoading, setFilterLoading] = useState<boolean>(false);
   const didMount = useRef(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editNotes, setEditNotes] = useState<string>("");
-  const [editType, setEditType] = useState<TimelineEvent["type"]>("SERVICE");
   const [savingId, setSavingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmingDeleteId, setConfirmingDeleteId] = useState<string | null>(null);
@@ -150,29 +151,20 @@ export default function TimelineClient({ events, vehicleId, canWrite = true, eve
 
   const isEditable = (_e: TimelineEvent) => true;
 
-  const startEdit = (e: TimelineEvent) => {
-    setEditingId(e.id);
-    setEditNotes(e.notes ?? "");
-    setEditType(e.type);
-  };
-
-  const cancelEdit = () => {
-    setEditingId(null);
-    setSavingId(null);
-  };
-
-  const saveEdit = async (id: string) => {
+  const handleEdit = async (id: string) => {
     const target = data.find(x => x.id === id);
     if (!target) return;
+    const nextNotes = window.prompt("Edit notes", target.notes ?? "");
+    if (nextNotes == null) return;
     setSavingId(id);
     const prev = data;
-    const nextEvent: TimelineEvent = { ...target, notes: editNotes, type: editType } as TimelineEvent;
-    setData(prev => prev.map(x => (x.id === id ? nextEvent : x)));
+    const optimistic: TimelineEvent = { ...target, notes: nextNotes } as TimelineEvent;
+    setData(prev => prev.map(x => (x.id === id ? optimistic : x)));
     try {
       const res = await fetch(`/api/events/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ notes: editNotes, type: editType }),
+        body: JSON.stringify({ notes: nextNotes }),
       });
       if (!res.ok) {
         const j = await res.json().catch(() => ({}));
@@ -182,7 +174,6 @@ export default function TimelineClient({ events, vehicleId, canWrite = true, eve
       const updated: TimelineEvent = json.event;
       setData(prev => prev.map(x => (x.id === id ? updated : x)));
       success("Event updated");
-      setEditingId(null);
     } catch (e) {
       setData(prev);
       const msg = e instanceof Error ? e.message : "Failed to update";
@@ -219,9 +210,13 @@ export default function TimelineClient({ events, vehicleId, canWrite = true, eve
                   id: ev.id,
                   vehicle_id: ev.vehicle_id,
                   type: (ev.type as TimelineEventType) || "NOTE",
-                  notes: ev.title ?? null,
-                  occurred_at: ev.occurred_at,
-                  created_at: ev.occurred_at,
+                  display_type: (ev as unknown as { manualTypeKey?: string | null }).manualTypeKey ?? null,
+                  title: ev.title ?? null,
+                  notes: (ev as unknown as { notes?: string | null }).notes ?? (ev.title ?? null),
+                  occurred_at: (ev as unknown as { occurred_at?: string | null }).occurred_at ?? new Date().toISOString(),
+                  occurred_on: (ev as unknown as { occurred_on?: string | null }).occurred_on ?? null,
+                  date_confidence: (ev as unknown as { date_confidence?: "exact"|"approximate"|"unknown" }).date_confidence ?? "exact",
+                  created_at: (ev as unknown as { occurred_at?: string | null }).occurred_at ?? null,
                 } as TimelineEvent;
                 setData(prev => [created, ...prev]);
               }}
@@ -277,92 +272,27 @@ export default function TimelineClient({ events, vehicleId, canWrite = true, eve
         )
       ) : (
       <div className="space-y-6">
-        {groups.map(({ label, items }) => (
-          <div key={label} className="space-y-3">
-            <div className="sticky top-0 z-10 bg-bg/80 backdrop-blur px-1 py-1 text-xs font-semibold text-muted">{label}</div>
-            {items.map((e) => (
-              <div key={e.id} className="border rounded p-3 flex items-start gap-4 bg-card" data-id={e.id} data-testid={e.id.startsWith("merge-") ? "timeline-merge-optimistic" : undefined}>
-                <div className="text-xs px-2 py-0.5 rounded border bg-bg">{editingId === e.id ? (
-                  <select
-                    value={editType}
-                    onChange={(ev) => setEditType(ev.target.value as TimelineEvent["type"])}
-                    className="text-xs border rounded px-1 py-0.5 bg-bg text-fg"
-                  >
-                    {TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-                  </select>
-                ) : (
-                  e.type
-                )}</div>
-                <div className="flex-1 min-w-0">
-                  {editingId === e.id ? (
-                    <input
-                      value={editNotes}
-                      onChange={(ev) => setEditNotes(ev.target.value)}
-                      className="text-sm border rounded px-2 py-1 w-full bg-bg text-fg"
-                      placeholder="Notes"
-                    />
-                  ) : (
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="inline-flex items-center text-[10px] px-1.5 py-0.5 rounded border bg-bg uppercase tracking-wide">{e.type}</span>
-                        <span className="text-xs text-muted">{new Date(e.occurred_at).toLocaleString()}</span>
-                      </div>
-                      {e.notes ? (
-                        <div className="text-sm text-fg truncate" title={e.notes}>{e.notes}</div>
-                      ) : (
-                        <div className="text-sm text-muted">No description</div>
-                      )}
-                    </div>
-                  )}
-                   <div className="text-xs text-muted flex items-center gap-2">
-                    {e.updated_at && (new Date(e.updated_at).getTime() > new Date(e.created_at ?? e.occurred_at).getTime()) && (
-                      <span className="inline-flex items-center text-[10px] px-1.5 py-0.5 rounded border bg-bg" title={new Date(e.updated_at).toLocaleString()}>edited</span>
-                    )}
-                    {!!e.task_id && (
-                      <span title="Created from task completion" className="inline-flex items-center text-[10px] px-1.5 py-0.5 rounded border bg-bg">from task</span>
-                    )}
-                   </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  {editingId === e.id ? (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => saveEdit(e.id)}
-                        disabled={savingId === e.id}
-                        className="text-xs text-green-400 hover:underline disabled:opacity-50"
-                      >{savingId === e.id ? "Saving…" : "Save"}</button>
-                      <button
-                        type="button"
-                        onClick={cancelEdit}
-                        className="text-xs text-muted hover:underline"
-                      >Cancel</button>
-                    </>
-                  ) : (
-                    <>
-                      {isEditable(e) && (
-                        <button
-                          type="button"
-                          onClick={() => startEdit(e)}
-                          className="text-xs text-blue-400 hover:underline disabled:opacity-50"
-                          disabled={!canWrite || deletingId === e.id}
-                          title={!canWrite ? "Insufficient permissions" : undefined}
-                        >Edit</button>
-                      )}
-                      <button
-                        onClick={() => setConfirmingDeleteId(e.id)}
-                        className="text-xs text-red-400 hover:underline disabled:opacity-50"
-                        type="button"
-                        disabled={!canWrite || deletingId === e.id || savingId === e.id}
-                        title={!canWrite ? "Insufficient permissions" : undefined}
-                      >{deletingId === e.id ? "Deleting…" : "Delete"}</button>
-                    </>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        ))}
+        {groups.map(({ label, items }) => {
+          const cards = items.map((e) => ({
+            id: e.id,
+            type: e.display_type ?? null,
+            title: e.title ?? null,
+            description: e.notes ?? null,
+            occurred_at: e.occurred_at ?? null,
+            occurred_on: e.occurred_on ?? (e.occurred_at ? e.occurred_at.slice(0,10) : null),
+            date_confidence: e.date_confidence ?? (e.occurred_at ? "exact" : "unknown"),
+          }));
+          return (
+            <div key={label} className="space-y-3">
+              <div className="sticky top-0 z-10 bg-bg/80 backdrop-blur px-1 py-1 text-xs font-semibold text-muted">{label}</div>
+              <EventList
+                events={cards}
+                onEdit={(id) => { if (!canWrite) return; handleEdit(id); }}
+                onDelete={(id) => { if (!canWrite) return; setConfirmingDeleteId(id); }}
+              />
+            </div>
+          );
+        })}
       </div>
       )}
     </div>

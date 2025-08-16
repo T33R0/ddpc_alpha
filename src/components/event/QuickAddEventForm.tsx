@@ -25,13 +25,31 @@ export function QuickAddEventForm({ vehicleId, eventTypes, defaultDate, onSucces
   const [eventTypeKey, setEventTypeKey] = React.useState<string>('');
   const [title, setTitle] = React.useState('');
   const [notes, setNotes] = React.useState('');
-  const [when, setWhen] = React.useState(defaultDate ?? new Date().toISOString().slice(0,10));
+  const [whenDate, setWhenDate] = React.useState(defaultDate ?? new Date().toISOString().slice(0,10));
+  const [whenTime, setWhenTime] = React.useState<string>('');
+  const [timeKnown, setTimeKnown] = React.useState<boolean>(false);
   const [isPending, startTransition] = useTransition();
   const toast = useToast();
+
+  const tzAwareISO = (d: Date) => new Date(d.getTime() - d.getTimezoneOffset()*60000).toISOString();
 
   const submit = () => {
     if (!eventTypeKey) { toast.error('Select an event type'); return; }
     startTransition(async () => {
+      let occurred_at: string | null = null;
+      let occurred_on: string | null = null;
+      try {
+        const [y,m,d] = whenDate.split('-').map(Number);
+        const base = new Date(Date.UTC(y, (m||1)-1, d||1, 0, 0, 0));
+        if (timeKnown && whenTime) {
+          const [hh, mm] = whenTime.split(':').map(Number);
+          base.setUTCHours(hh||0, mm||0, 0, 0);
+          occurred_at = tzAwareISO(base);
+          occurred_on = whenDate;
+        } else {
+          occurred_on = whenDate;
+        }
+      } catch {}
       const res = await fetch('/api/events', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -40,7 +58,10 @@ export function QuickAddEventForm({ vehicleId, eventTypes, defaultDate, onSucces
           type: 'NOTE',
           title: title || eventTypeKey,
           notes: notes || null,
-          occurred_at: when,
+          occurred_at,
+          occurred_on,
+          date_confidence: timeKnown && occurred_at ? 'exact' : 'unknown',
+          type_key: eventTypeKey,
         })
       });
       if (!res.ok) {
@@ -50,7 +71,7 @@ export function QuickAddEventForm({ vehicleId, eventTypes, defaultDate, onSucces
       }
       const json = await res.json().catch(() => null);
       toast.success('Event added');
-      setTitle(''); setNotes('');
+      setTitle(''); setNotes(''); setWhenTime(''); setTimeKnown(false);
       if (json && json.event) onCreated?.(json.event);
       onSuccess?.();
     });
@@ -64,8 +85,13 @@ export function QuickAddEventForm({ vehicleId, eventTypes, defaultDate, onSucces
         onChange={setEventTypeKey}
         placeholder="Select a manual event type…"
       />
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <Input id="when" name="when" type="date" value={when} onChange={e => setWhen(e.target.value)} />
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <Input id="whenDate" name="whenDate" type="date" value={whenDate} onChange={e => setWhenDate(e.target.value)} />
+        <div className="flex items-center gap-2">
+          <input id="timeKnown" name="timeKnown" type="checkbox" checked={timeKnown} onChange={e => setTimeKnown(e.target.checked)} />
+          <label htmlFor="timeKnown" className="text-sm text-muted">Time known</label>
+        </div>
+        <Input id="whenTime" name="whenTime" type="time" value={whenTime} onChange={e => setWhenTime(e.target.value)} disabled={!timeKnown} />
         <Input id="title" name="title" placeholder="Optional short title (e.g., Entered storage)" value={title} onChange={e=>setTitle(e.target.value)} />
       </div>
       <div>

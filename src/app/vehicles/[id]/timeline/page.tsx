@@ -63,6 +63,8 @@ export default async function TimelinePage({ params }: { params: Promise<{ id: s
     type: mapType(e.type),
     notes: e.notes,
     occurred_at: e.created_at,
+    occurred_on: e.created_at ? (e.created_at as string).slice(0,10) : null,
+    date_confidence: "exact",
     created_at: e.created_at,
     updated_at: (e as { updated_at?: string | null }).updated_at ?? null,
   }));
