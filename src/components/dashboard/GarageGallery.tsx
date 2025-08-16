@@ -12,17 +12,14 @@ export default function GarageGallery({ urls }: Props) {
     [urls]
   );
 
-  const initial: string[] = useMemo(() => {
-    if (pool.length === 0) return [];
-    const shuffled = [...pool].sort(() => Math.random() - 0.5);
-    return shuffled.slice(0, 6);
-  }, [pool]);
-
-  const [visible, setVisible] = useState<string[]>(initial);
+  // Avoid SSR/client mismatch by rendering placeholders first and filling after mount
+  const [visible, setVisible] = useState<string[]>(Array.from({ length: 6 }).map(() => ""));
 
   useEffect(() => {
-    setVisible(initial);
-  }, [initial]);
+    if (pool.length === 0) return;
+    const shuffled = [...pool].sort(() => Math.random() - 0.5);
+    setVisible(shuffled.slice(0, 6));
+  }, [pool]);
 
   useEffect(() => {
     if (pool.length <= 1) return;
@@ -46,7 +43,8 @@ export default function GarageGallery({ urls }: Props) {
   return (
     <div className="grid grid-cols-3 grid-rows-2 gap-1 h-60 p-1">
       {Array.from({ length: 6 }).map((_, i) => {
-        const url = visible[i] ?? null;
+        const u = visible[i];
+        const url = u && u.length > 0 ? u : null;
         return (
           <div key={i} className="relative w-full h-full rounded overflow-hidden bg-bg/40">
             {url && (
