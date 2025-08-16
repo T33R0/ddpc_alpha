@@ -17,7 +17,7 @@ export default function ActivityFeedClient({ items }: { items: Item[] }) {
           <button
             key={t}
             onClick={() => setFilter(prev => prev === t ? null : t)}
-            className={`text-xs px-2 py-1 rounded border ${filter === t ? "bg-bg" : "bg-white"}`}
+            className={`text-xs px-2 py-1 rounded border ${filter === t ? "bg-bg text-fg border-neutral-700" : "bg-card text-muted hover:text-fg border-neutral-800"}`}
             data-testid="activity-filter-chip"
           >{t}</button>
         ))}
@@ -27,7 +27,7 @@ export default function ActivityFeedClient({ items }: { items: Item[] }) {
           <li className="text-sm text-muted">No activity.</li>
         ) : (
           filtered.map(i => (
-            <li key={i.id} className="flex items-center justify-between text-sm border rounded p-2 bg-white">
+            <li key={i.id} className="flex items-center justify-between text-sm border rounded p-2 bg-card border-neutral-800">
               <Link href={`/vehicles/${i.vehicle_id}/timeline`} className="hover:underline">{i.notes ?? i.type}</Link>
               <span className="text-xs text-muted">{new Date(i.created_at).toLocaleString()}</span>
             </li>

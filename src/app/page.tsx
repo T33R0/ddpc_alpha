@@ -326,7 +326,11 @@ export default async function Home() {
   const recentArr: EventRow[] = Array.isArray(recent) ? (recent as EventRow[]) : [];
   const overdueArr: TaskRow[] = Array.isArray(overdue) ? (overdue as TaskRow[]) : [];
 
-  const heroCoverUrl = topVehicles[0] ? await getVehicleCoverUrl(supabase, topVehicles[0].id, topVehicles[0].photo_url) : null;
+  // Build a small gallery of cover images from top vehicles
+  const galleryVehicles = topVehicles.slice(0, 6);
+  const galleryCoverUrls: Array<string | null> = await Promise.all(
+    galleryVehicles.map((v) => getVehicleCoverUrl(supabase, v.id, v.photo_url))
+  );
 
   return (
     <div className="min-h-screen p-6 space-y-6">
@@ -335,16 +339,28 @@ export default async function Home() {
       <div className="grid md:grid-cols-3 gap-5">
         {/* Left column */}
         <div className="md:col-span-2 space-y-5">
-          {/* Hero card */}
+          {/* Garage gallery card (clickable) */}
           <section className="rounded-2xl border border-neutral-800 bg-[#111318] overflow-hidden">
-            {heroCoverUrl ? (
-              <Image src={heroCoverUrl} alt="Garage" width={1200} height={600} className="w-full h-60 object-cover" />
-            ) : (
-              <div className="w-full h-60 bg-bg/40" />
-            )}
-            <div className="p-4">
-              <Link href="/vehicles?new=1" className="inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm">+ Add Vehicle</Link>
-            </div>
+            <Link href="/vehicles" className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]">
+              <div className="grid grid-cols-3 grid-rows-2 gap-1 h-60 p-1">
+                {Array.from({ length: 6 }).map((_, i) => {
+                  const url = galleryCoverUrls[i] ?? null;
+                  return (
+                    <div key={i} className="relative w-full h-full rounded overflow-hidden bg-bg/40">
+                      {url && (
+                        <Image
+                          src={url}
+                          alt="Vehicle"
+                          fill
+                          className="object-cover"
+                          sizes="(max-width: 768px) 100vw, 33vw"
+                        />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </Link>
           </section>
 
           {/* Recent Activity */}
