@@ -57,17 +57,26 @@ export default async function TimelinePage({ params }: { params: Promise<{ id: s
         return "NOTE";
     }
   };
-  const timelineEvents: TimelineEvent[] = (events ?? []).map((e) => ({
+  const timelineEvents: TimelineEvent[] = (events ?? []).map((e) => {
+    // Attempt to recover manual type metadata from encoded marker in notes (::type=key::)
+    let manualKey: string | null = null;
+    try {
+      const m = (e.notes || "").match(/::type=([a-z0-9_-]+)::/i);
+      manualKey = m ? m[1] : null;
+    } catch {}
+    return ({
     id: e.id,
     vehicle_id: vehicleId,
     type: mapType(e.type),
-    notes: e.notes,
+    // Strip the inline manual type marker from notes for display
+    notes: (e.notes || "").replace(/::type=[^:]+::/g, "").trim() || null,
+    display_type: manualKey,
     occurred_at: e.created_at,
     occurred_on: e.created_at ? (e.created_at as string).slice(0,10) : null,
     date_confidence: "exact",
     created_at: e.created_at,
     updated_at: (e as { updated_at?: string | null }).updated_at ?? null,
-  }));
+  });
 
   // Determine role for UI gating (VIEWER => read-only; CONTRIBUTOR+ => write)
   // For this stage: assume everyone is an owner; allow editing/adding

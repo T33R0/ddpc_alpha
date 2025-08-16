@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
     } = {
       vehicle_id,
       type: dbType,
-      notes: title + (notes ? ` — ${notes}` : ""),
+      notes: (title + (notes ? ` — ${notes}` : "")) + (manualTypeKey ? ` ::type=${manualTypeKey}::` : ""),
     };
     // include created_by when available to align with schemas that record authorship
     try { insertPayload.created_by = user.id; } catch { /* noop */ }
