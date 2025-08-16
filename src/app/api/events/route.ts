@@ -19,24 +19,32 @@ export async function POST(req: NextRequest) {
     if (!v.ok) return NextResponse.json({ error: v.error, code: 400 }, { status: 400 });
     const { vehicle_id, occurred_at, title, notes, type } = v.data;
 
-    // AuthZ: OWNER or MANAGER of vehicle's garage
+    // AuthZ: user must own the garage or be a member (role model can vary across envs)
     const { data: veh, error: vehErr } = await supabase
       .from("vehicle")
-      .select("id, owner_id, garage_id")
+      .select("id, garage_id")
       .eq("id", vehicle_id)
       .maybeSingle();
     if (vehErr) return NextResponse.json({ error: "vehicle_lookup_failed", detail: vehErr.message, code: 400 }, { status: 400 });
     if (!veh) return NextResponse.json({ error: "vehicle_not_found_or_rls", vehicleId: vehicle_id, userId: user.id, code: 404 }, { status: 404 });
 
-    let authorized = veh.owner_id === user.id;
-    if (!authorized && veh.garage_id) {
+    let authorized = false;
+    // check garage owner
+    const { data: garage } = await supabase
+      .from("garage")
+      .select("owner_id")
+      .eq("id", veh.garage_id as string)
+      .maybeSingle();
+    if (garage?.owner_id === user.id) authorized = true;
+    if (!authorized) {
+      // check any membership (role values differ across schemas)
       const { data: mem } = await supabase
         .from("garage_member")
         .select("user_id, role")
-        .eq("garage_id", veh.garage_id)
+        .eq("garage_id", veh.garage_id as string)
         .eq("user_id", user.id)
         .maybeSingle();
-      if (mem && (mem.role === "OWNER" || mem.role === "MANAGER")) authorized = true;
+      if (mem) authorized = true;
     }
     if (!authorized) return NextResponse.json({ error: "Forbidden", code: 403 }, { status: 403 });
 
