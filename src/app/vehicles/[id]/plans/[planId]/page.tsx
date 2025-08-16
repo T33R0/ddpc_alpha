@@ -2,6 +2,9 @@ import Link from "next/link";
 import { getServerSupabase } from "@/lib/supabase";
 import JobPanelClient from "./JobPanelClient";
 
+type JobRow = { id: string; title: string; description: string | null; status: string };
+type GroupKey = "planning" | "purchased" | "active" | "complete" | "canceled";
+
 export const dynamic = "force-dynamic";
 
 export default async function PlanDetailPage({ params }: { params: Promise<{ id: string; planId: string }> }) {
@@ -59,17 +62,34 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
 
   const isOpen = plan.status === "active";
 
-  const groups: Record<string, { id: string; title: string; description: string | null; status: string }[]> = {
+  const groups: Record<GroupKey, JobRow[]> = {
     planning: [],
     purchased: [],
     active: [],
     complete: [],
     canceled: [],
   };
+  const toGroup = (s?: string): GroupKey => {
+    const k = (s ?? "planning").toLowerCase();
+    switch (k) {
+      case "planning":
+      case "purchased":
+      case "active":
+      case "complete":
+      case "canceled":
+        return k;
+      default:
+        return "planning";
+    }
+  };
   for (const j of (jobs ?? [])) {
-    const key = (j.status ?? "planning").toLowerCase();
-    if (groups[key as keyof typeof groups]) groups[key as keyof typeof groups].push(j as any);
-    else (groups.planning).push(j as any);
+    const row: JobRow = {
+      id: j.id as string,
+      title: j.title as string,
+      description: (j as { description?: string | null })?.description ?? null,
+      status: (j.status as string) ?? "planning",
+    };
+    groups[toGroup(j.status as string)].push(row);
   }
 
   return (
