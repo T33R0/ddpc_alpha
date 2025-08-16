@@ -8,6 +8,7 @@ import PrivacyBadge from "@/components/PrivacyBadge";
 import { getVehicleCoverUrl } from "@/lib/getVehicleCoverUrl";
 import UpcomingListClient from "@/components/dashboard/UpcomingListClient";
 import ActivityFeedClient from "@/components/dashboard/ActivityFeedClient";
+import GarageGallery from "@/components/dashboard/GarageGallery";
 import { SpendBreakdownChart, MilesTrendChart } from "@/components/dashboard/Charts";
 
 export const dynamic = "force-dynamic";
@@ -326,10 +327,15 @@ export default async function Home() {
   const recentArr: EventRow[] = Array.isArray(recent) ? (recent as EventRow[]) : [];
   const overdueArr: TaskRow[] = Array.isArray(overdue) ? (overdue as TaskRow[]) : [];
 
-  // Build a small gallery of cover images from top vehicles
-  const galleryVehicles = topVehicles.slice(0, 6);
+  // Build a gallery pool from user's garages (broader than topVehicles)
+  const { data: galleryPool } = await supabase
+    .from("vehicle")
+    .select("id, photo_url, garage_id")
+    .in("garage_id", garageIds)
+    .order("last_event_at", { ascending: false })
+    .limit(24);
   const galleryCoverUrls: Array<string | null> = await Promise.all(
-    galleryVehicles.map((v) => getVehicleCoverUrl(supabase, v.id, v.photo_url))
+    (Array.isArray(galleryPool) ? galleryPool : []).map((v: any) => getVehicleCoverUrl(supabase, v.id, v.photo_url))
   );
 
   return (
@@ -342,24 +348,7 @@ export default async function Home() {
           {/* Garage gallery card (clickable) */}
           <section className="rounded-2xl border border-neutral-800 bg-[#111318] overflow-hidden">
             <Link href="/vehicles" className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]">
-              <div className="grid grid-cols-3 grid-rows-2 gap-1 h-60 p-1">
-                {Array.from({ length: 6 }).map((_, i) => {
-                  const url = galleryCoverUrls[i] ?? null;
-                  return (
-                    <div key={i} className="relative w-full h-full rounded overflow-hidden bg-bg/40">
-                      {url && (
-                        <Image
-                          src={url}
-                          alt="Vehicle"
-                          fill
-                          className="object-cover"
-                          sizes="(max-width: 768px) 100vw, 33vw"
-                        />
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
+              <GarageGallery urls={galleryCoverUrls} />
             </Link>
           </section>
 
