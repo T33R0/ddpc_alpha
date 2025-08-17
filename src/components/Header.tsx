@@ -16,6 +16,7 @@ export default function Header() {
           </Link>
         </div>
         <div className="flex items-center gap-3">
+          <Link href="/discover" className="text-sm text-muted hover:text-fg" aria-label="Discover">Discover</Link>
           <Link href="/about" className="text-sm text-muted hover:text-fg" aria-label="About ddpc">ddpc?</Link>
           <HeaderAuth />
         </div>
