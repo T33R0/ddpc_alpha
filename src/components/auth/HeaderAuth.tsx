@@ -15,9 +15,18 @@ export default function HeaderAuth() {
       setEmail(session?.user?.email ?? null);
       const uid = session?.user?.id;
       if (uid) {
-        supabase.from("user_profile").select("avatar_url").eq("user_id", uid).maybeSingle().then(({ data }) => {
-          setAvatarUrl((data as { avatar_url?: string } | null)?.avatar_url ?? null);
-        }).catch(() => setAvatarUrl(null));
+        (async () => {
+          try {
+            const { data } = await supabase
+              .from("user_profile")
+              .select("avatar_url")
+              .eq("user_id", uid)
+              .maybeSingle();
+            setAvatarUrl((data as { avatar_url?: string } | null)?.avatar_url ?? null);
+          } catch {
+            setAvatarUrl(null);
+          }
+        })();
       } else {
         setAvatarUrl(null);
       }
@@ -26,8 +35,16 @@ export default function HeaderAuth() {
       setEmail(data.session?.user?.email ?? null);
       const uid = data.session?.user?.id;
       if (uid) {
-        const { data: row } = await supabase.from("user_profile").select("avatar_url").eq("user_id", uid).maybeSingle();
-        setAvatarUrl((row as { avatar_url?: string } | null)?.avatar_url ?? null);
+        try {
+          const { data: row } = await supabase
+            .from("user_profile")
+            .select("avatar_url")
+            .eq("user_id", uid)
+            .maybeSingle();
+          setAvatarUrl((row as { avatar_url?: string } | null)?.avatar_url ?? null);
+        } catch {
+          setAvatarUrl(null);
+        }
       }
     });
     const onDoc = (e: MouseEvent) => { if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false); };
