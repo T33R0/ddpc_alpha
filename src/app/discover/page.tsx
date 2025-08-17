@@ -55,12 +55,31 @@ export default async function DiscoverPage({ searchParams = {} }: { searchParams
 	const probe = await supabase.from("vehicle_data").select("*").limit(1);
 	const probeRow = Array.isArray(probe.data) && probe.data.length > 0 ? (probe.data[0] as Record<string, unknown>) : null;
 
+
+	async function pickColDynamic(candidates: string[], withFilters?: (q: ReturnType<typeof supabase.from>) => ReturnType<typeof supabase.from>): Promise<string> {
+		for (const c of candidates) {
+			try {
+				let q = supabase.from("vehicle_data").select(c, { head: false, count: "exact" }).not(c, "is", null);
+				if (withFilters) q = withFilters(q);
+				const { data } = await q.limit(1);
+				if (Array.isArray(data) && data.length > 0) return c;
+			} catch {}
+		}
+		return candidates[0] || "";
+	}
+
+	// Resolve critical columns using dynamic probing to survive schema differences
+	const yearCol = await pickColDynamic(["year", "model_year"]);
+	const makeCol = await pickColDynamic(["make", "brand"]);
+	const modelCol = await pickColDynamic(["model"], (q) => q.not("model", "is", null));
+	const trimCol = await pickColDynamic(["trim"]);
+
 	// Column mapping per possible names present in different datasets
 	const columns = {
-		year: pickColumn(probeRow, ["year", "model_year"]) || "year",
-		make: pickColumn(probeRow, ["make", "brand"]) || "make",
-		model: pickColumn(probeRow, ["model"]) || "model",
-		trim: pickColumn(probeRow, ["trim"]) || "trim",
+		year: yearCol || pickColumn(probeRow, ["year", "model_year"]) || "year",
+		make: makeCol || pickColumn(probeRow, ["make", "brand"]) || "make",
+		model: modelCol || pickColumn(probeRow, ["model"]) || "model",
+		trim: trimCol || pickColumn(probeRow, ["trim"]) || "trim",
 		body: pickColumn(probeRow, ["body_type", "body_style"]) || "body_type",
 		classification: pickColumn(probeRow, ["car_classification", "class", "segment"]) || "car_classification",
 		drive: pickColumn(probeRow, ["drivetrain", "drive_type", "drive"]) || "drivetrain",
@@ -134,7 +153,17 @@ export default async function DiscoverPage({ searchParams = {} }: { searchParams
 	// Apply range for pagination
 	q = q.range(from, to);
 
-	const { data: vehiclesRaw, count: totalCount } = await q;
+	const { data: vehiclesRaw, count: totalCount, error: vehiclesError } = await q;
+	if (vehiclesError) {
+		return (
+			<div className="mx-auto max-w-7xl px-4 py-6">
+				<div className="rounded border p-4 bg-yellow-50 text-yellow-900">
+					<div className="font-semibold mb-1">Discover data unavailable</div>
+					<div className="text-sm">{vehiclesError.message}</div>
+				</div>
+			</div>
+		);
+	}
 	const vehicles: VehicleDataRow[] = (vehiclesRaw as unknown as VehicleDataRow[]) || [];
 
 	// Build filter options (distinct values) based on available columns
