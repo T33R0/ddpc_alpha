@@ -78,7 +78,8 @@ export default function AddVehicleModalClient() {
           .order(mapping.year, { ascending: false })
           .limit(500);
         if (cancelled) return;
-        const yrs = Array.from(new Set(((yearsRes.data as Array<Record<string, string | number>>) || []).map(v => String(v[mapping.year as keyof typeof v])))).filter(Boolean);
+        const yearRows = (yearsRes.data as unknown as Array<Record<string, string | number>> | null) ?? [];
+        const yrs = Array.from(new Set(yearRows.map(v => String(v[mapping.year as keyof typeof v])))).filter(Boolean);
         setYears(yrs);
       } catch {}
     })();
@@ -99,7 +100,8 @@ export default function AddVehicleModalClient() {
           .order(cols.make, { ascending: true })
           .limit(500);
         if (cancelled) return;
-        const mks = Array.from(new Set(((data as Array<Record<string, string>>) || []).map(v => String(v[cols.make as keyof typeof v])))).filter(Boolean);
+        const makeRows = (data as unknown as Array<Record<string, string>> | null) ?? [];
+        const mks = Array.from(new Set(makeRows.map(v => String(v[cols.make as keyof typeof v])))).filter(Boolean);
         setMakes(mks);
       } catch {}
     })();
@@ -126,7 +128,8 @@ export default function AddVehicleModalClient() {
           .order(cols.model, { ascending: true })
           .limit(500);
         if (cancelled) return;
-        const mdls = Array.from(new Set(((data as Array<Record<string, string>>) || []).map(v => String(v[cols.model as keyof typeof v])))).filter(Boolean);
+        const modelRows = (data as unknown as Array<Record<string, string>> | null) ?? [];
+        const mdls = Array.from(new Set(modelRows.map(v => String(v[cols.model as keyof typeof v])))).filter(Boolean);
         setModels(mdls);
       } catch {}
     })();
@@ -149,7 +152,8 @@ export default function AddVehicleModalClient() {
           .order(cols.trim, { ascending: true })
           .limit(500);
         if (cancelled) return;
-        const tr = Array.from(new Set(((data as Array<Record<string, string>>) || []).map(v => String(v[cols.trim as keyof typeof v])))).filter(Boolean);
+        const trimRows = (data as unknown as Array<Record<string, string>> | null) ?? [];
+        const tr = Array.from(new Set(trimRows.map(v => String(v[cols.trim as keyof typeof v])))).filter(Boolean);
         setTrims(tr);
       } catch {}
     })();
