@@ -1,6 +1,4 @@
 "use client";
-
-import { useMemo } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 type Options = {
@@ -22,13 +20,21 @@ export default function DiscoverFiltersClient({ options }: { options: Options })
 	const pathname = usePathname();
 	const sp = useSearchParams();
 
+	const replace = (next: URLSearchParams) => {
+		next.set("page", "1");
+		router.replace(`${pathname}?${next.toString()}`, { scroll: false });
+		if (typeof window !== "undefined") {
+			window.requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "smooth" }));
+		}
+	};
+
 	const def = (key: keyof Options, label: string, allLabel = `All ${label}`) => {
 		const val = sp.get(key as string) ?? "";
 		const onChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
 			const next = new URLSearchParams(sp.toString());
 			const v = e.target.value;
 			if (v) next.set(key as string, v); else next.delete(key as string);
-			router.replace(`${pathname}?${next.toString()}`, { scroll: false });
+			replace(next);
 		};
 		return (
 			<div className="mb-3">
@@ -54,7 +60,7 @@ export default function DiscoverFiltersClient({ options }: { options: Options })
 						const next = new URLSearchParams(sp.toString());
 						const v = e.target.value.trim();
 						if (v) next.set("q", v); else next.delete("q");
-						router.replace(`${pathname}?${next.toString()}`, { scroll: false });
+						replace(next);
 					}}
 				/>
 			</div>

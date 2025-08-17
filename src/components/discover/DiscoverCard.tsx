@@ -1,12 +1,15 @@
 "use client";
 
 import Image from "next/image";
+import { compareStore } from "./compareStore";
 
 export default function DiscoverCard({
+	id,
 	title,
 	imageSrc,
 	stats,
 }: {
+	id: string;
 	title: string;
 	imageSrc: string;
 	stats: { power: string; engine: string; weight: string; drive: string };
@@ -38,7 +41,12 @@ export default function DiscoverCard({
 				</div>
 				<div className="mt-3 flex gap-2">
 					<button className="rounded bg-red-500 px-3 py-1 text-sm font-medium text-white">Save Vehicle</button>
-					<button className="rounded border px-3 py-1 text-sm font-medium">Compare</button>
+					<button
+						className="rounded border px-3 py-1 text-sm font-medium"
+						onClick={() => compareStore.add({ id, title, imageSrc })}
+					>
+						Compare
+					</button>
 				</div>
 			</div>
 		</div>

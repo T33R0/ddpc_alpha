@@ -1,6 +1,8 @@
 import { getServerSupabase } from "@/lib/supabase";
 import DiscoverFiltersClient from "@/components/discover/DiscoverFiltersClient";
 import DiscoverCard from "@/components/discover/DiscoverCard";
+import PaginationClient from "@/components/discover/PaginationClient";
+import DiscoverCompareBarClient from "@/components/discover/DiscoverCompareBarClient";
 
 // Static import of fallback DDPC logo from the repository's media folder
 // This brings the asset into the Next build pipeline even though it's not in /public
@@ -76,8 +78,18 @@ export default async function DiscoverPage({ searchParams = {} }: { searchParams
 		fuel: pickColumn(probeRow, ["fuel_type", "fuel"]) || "fuel_type",
 	};
 
-	// Build main query
-	let q = supabase.from("vehicle_data").select("*");
+	// Pagination params
+	const allowedLimits = new Set([10, 20, 50, 100]);
+	const limit = (() => {
+		const raw = Number(searchParams["limit"] ?? 20);
+		return allowedLimits.has(raw) ? raw : 20;
+	})();
+	const page = Math.max(1, Number(searchParams["page"] ?? 1));
+	const from = (page - 1) * limit;
+	const to = from + limit - 1;
+
+	// Build main query with total count
+	let q = supabase.from("vehicle_data").select("*", { count: "exact", head: false });
 
 	const eqIf = (key: string, col: string | null) => {
 		const [val] = toArray(searchParams[key]);
@@ -119,10 +131,10 @@ export default async function DiscoverPage({ searchParams = {} }: { searchParams
 		q = q.order(columns.year as string, { ascending: false }).order(columns.make as string).order(columns.model as string);
 	}
 
-	// Limit for the initial page
-	q = q.limit(24);
+	// Apply range for pagination
+	q = q.range(from, to);
 
-	const { data: vehiclesRaw } = await q;
+	const { data: vehiclesRaw, count: totalCount } = await q;
 	const vehicles: VehicleDataRow[] = (vehiclesRaw as unknown as VehicleDataRow[]) || [];
 
 	// Build filter options (distinct values) based on available columns
@@ -174,6 +186,8 @@ export default async function DiscoverPage({ searchParams = {} }: { searchParams
 				</div>
 			</aside>
 			<main className="col-span-12 md:col-span-9 lg:col-span-9">
+				<PaginationClient totalCount={totalCount ?? 0} page={page} limit={limit} />
+				<DiscoverCompareBarClient />
 				<div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
 					{vehicles.map((v) => {
 						const title = `${v.year ?? ""} ${v.make ?? ""} ${v.model ?? ""}`.trim();
@@ -190,6 +204,7 @@ export default async function DiscoverPage({ searchParams = {} }: { searchParams
 						return (
 							<DiscoverCard
 								key={v.id}
+								id={v.id}
 								title={title || v.trim || "Vehicle"}
 								imageSrc={imageSrc || fallbackSrc}
 								stats={{
@@ -202,6 +217,7 @@ export default async function DiscoverPage({ searchParams = {} }: { searchParams
 						);
 					})}
 				</div>
+				<PaginationClient totalCount={totalCount ?? 0} page={page} limit={limit} />
 			</main>
 		</div>
 	);
