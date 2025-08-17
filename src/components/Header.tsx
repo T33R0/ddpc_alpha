@@ -12,7 +12,7 @@ export default function Header() {
       <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <Link href="/" className="inline-flex items-center" data-testid="brand-ddpc" aria-label="ddpc home">
-            <Image src={LogoPng} alt="ddpc" height={24} className="h-6 w-auto" />
+            <Image src={LogoPng} alt="ddpc" height={32} className="h-8 w-auto" />
           </Link>
         </div>
         <div className="flex items-center gap-3">

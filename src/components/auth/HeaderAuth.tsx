@@ -6,14 +6,30 @@ import { getBrowserSupabase } from "@/lib/supabase-browser";
 export default function HeaderAuth() {
   const supabase = getBrowserSupabase();
   const [email, setEmail] = useState<string | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const sub = supabase.auth.onAuthStateChange((_event, session) => {
       setEmail(session?.user?.email ?? null);
+      const uid = session?.user?.id;
+      if (uid) {
+        supabase.from("user_profile").select("avatar_url").eq("user_id", uid).maybeSingle().then(({ data }) => {
+          setAvatarUrl((data as { avatar_url?: string } | null)?.avatar_url ?? null);
+        }).catch(() => setAvatarUrl(null));
+      } else {
+        setAvatarUrl(null);
+      }
     });
-    supabase.auth.getSession().then(({ data }) => setEmail(data.session?.user?.email ?? null));
+    supabase.auth.getSession().then(async ({ data }) => {
+      setEmail(data.session?.user?.email ?? null);
+      const uid = data.session?.user?.id;
+      if (uid) {
+        const { data: row } = await supabase.from("user_profile").select("avatar_url").eq("user_id", uid).maybeSingle();
+        setAvatarUrl((row as { avatar_url?: string } | null)?.avatar_url ?? null);
+      }
+    });
     const onDoc = (e: MouseEvent) => { if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false); };
     document.addEventListener("mousedown", onDoc);
     return () => { sub.data.subscription.unsubscribe(); document.removeEventListener("mousedown", onDoc); };
@@ -40,8 +56,13 @@ export default function HeaderAuth() {
 
   return (
     <div className="relative" ref={menuRef}>
-      <button onClick={() => setMenuOpen(o => !o)} className="w-8 h-8 rounded-full bg-card text-fg border flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]" aria-haspopup="menu" aria-expanded={menuOpen} data-testid="menu-avatar">
-        <span className="text-xs">{email[0]?.toUpperCase?.() || "U"}</span>
+      <button onClick={() => setMenuOpen(o => !o)} className="w-8 h-8 rounded-full bg-card text-fg border overflow-hidden flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]" aria-haspopup="menu" aria-expanded={menuOpen} data-testid="menu-avatar">
+        {avatarUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={avatarUrl} alt="avatar" className="w-full h-full object-cover" />
+        ) : (
+          <span className="text-xs">{email[0]?.toUpperCase?.() || "U"}</span>
+        )}
       </button>
       {menuOpen && (
         <div role="menu" className="absolute right-0 mt-2 w-40 rounded border bg-card text-fg shadow">
