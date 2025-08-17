@@ -1,4 +1,5 @@
 import { getServerSupabase } from "@/lib/supabase";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import DiscoverFiltersClient from "@/components/discover/DiscoverFiltersClient";
 import DiscoverCard from "@/components/discover/DiscoverCard";
 import PaginationClient from "@/components/discover/PaginationClient";
@@ -49,19 +50,22 @@ function toArray(val: string | string[] | undefined): string[] {
 }
 
 export default async function DiscoverPage({ searchParams = {} }: { searchParams?: SearchParams }) {
-	const supabase = await getServerSupabase();
+	// Prefer service role (server-side only) if available to ensure public discover data loads regardless of anon RLS
+	const adminUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+	const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+	const supabase: SupabaseClient = (adminUrl && serviceKey)
+		? createClient(adminUrl, serviceKey, { auth: { persistSession: false } })
+		: await getServerSupabase();
 
 	// Probe one row to infer available columns for resilient filtering
 	const probe = await supabase.from("vehicle_data").select("*").limit(1);
 	const probeRow = Array.isArray(probe.data) && probe.data.length > 0 ? (probe.data[0] as Record<string, unknown>) : null;
 
 
-	async function pickColDynamic(candidates: string[], withFilters?: (q: ReturnType<typeof supabase.from>) => ReturnType<typeof supabase.from>): Promise<string> {
+	async function pickColDynamic(candidates: string[]): Promise<string> {
 		for (const c of candidates) {
 			try {
-				let q = supabase.from("vehicle_data").select(c, { head: false, count: "exact" }).not(c, "is", null);
-				if (withFilters) q = withFilters(q);
-				const { data } = await q.limit(1);
+				const { data } = await supabase.from("vehicle_data").select(c, { head: false, count: "exact" }).not(c, "is", null).limit(1);
 				if (Array.isArray(data) && data.length > 0) return c;
 			} catch {}
 		}
@@ -71,7 +75,7 @@ export default async function DiscoverPage({ searchParams = {} }: { searchParams
 	// Resolve critical columns using dynamic probing to survive schema differences
 	const yearCol = await pickColDynamic(["year", "model_year"]);
 	const makeCol = await pickColDynamic(["make", "brand"]);
-	const modelCol = await pickColDynamic(["model"], (q) => q.not("model", "is", null));
+	const modelCol = await pickColDynamic(["model"]);
 	const trimCol = await pickColDynamic(["trim"]);
 
 	// Column mapping per possible names present in different datasets
