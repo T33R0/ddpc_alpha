@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 export const dynamic = "force-dynamic";
 
@@ -9,23 +9,20 @@ const MAKE_CANDIDATES = ["make", "brand"] as const;
 const MODEL_CANDIDATES = ["model"] as const;
 const TRIM_CANDIDATES = ["trim"] as const;
 
-type DB = Awaited<ReturnType<typeof getServerSupabase>>;
+type DB = SupabaseClient;
 
-function getDbClient(): DB | ReturnType<typeof createClient> {
+function getDbClient(): DB | null {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (url && serviceKey) {
     return createClient(url, serviceKey, { auth: { persistSession: false } });
   }
-  // Fallback to user-scoped client (RLS must allow public reads)
-  // Note: This returns a Promise in our app lib, but we only call from async contexts
-  // We'll wrap usages accordingly
-  return null as unknown as DB;
+  return null;
 }
 
-async function selectDistinct(supabase: DB | ReturnType<typeof createClient>, col: string, filters?: Array<{ col: string; val: string }>): Promise<string[]> {
+async function selectDistinct(supabase: DB, col: string, filters?: Array<{ col: string; val: string }>): Promise<string[]> {
   try {
-    let q = (supabase as any).from("vehicle_data").select(col, { head: false, count: "exact" }).not(col, "is", null);
+    let q = supabase.from("vehicle_data").select(col, { head: false, count: "exact" }).not(col, "is", null);
     if (filters) {
       for (const f of filters) {
         q = q.eq(f.col, f.val);
@@ -39,34 +36,6 @@ async function selectDistinct(supabase: DB | ReturnType<typeof createClient>, co
   }
 }
 
-async function tryCandidates(
-  supabase: DB | ReturnType<typeof createClient>,
-  colCandidates: readonly string[],
-  filterCols: Array<{ key: string; candidates: readonly string[]; value: string }> = []
-): Promise<{ col: string; values: string[] } | null> {
-  for (const col of colCandidates) {
-    // Expand filter combinations
-    const filterCombos: Array<Array<{ col: string; val: string }>> = [[]];
-    for (const f of filterCols) {
-      const next: Array<Array<{ col: string; val: string }>> = [];
-      for (const cand of f.candidates) {
-        for (const combo of filterCombos) {
-          next.push([...combo, { col: cand, val: f.value }]);
-        }
-      }
-      filterCombos.splice(0, filterCombos.length, ...next);
-    }
-    // If no filters, still attempt once with empty
-    if (filterCombos.length === 0) filterCombos.push([]);
-
-    for (const filters of filterCombos) {
-      const values = await selectDistinct(supabase, col, filters);
-      if (values.length > 0) return { col, values };
-    }
-  }
-  return null;
-}
-
 export async function GET(req: Request) {
   try {
     const url = new URL(req.url);
@@ -76,9 +45,9 @@ export async function GET(req: Request) {
     const model = url.searchParams.get("model") || "";
 
     const admin = getDbClient();
-    const supabase = admin || await getServerSupabase();
+    const supabase: DB = admin || await getServerSupabase();
     // Probe a row to infer available columns; fallback to candidate-first if probe empty
-    const probe = await (supabase as any).from("vehicle_data").select("*").limit(1);
+    const probe = await supabase.from("vehicle_data").select("*").limit(1);
     const row = Array.isArray(probe.data) && probe.data.length > 0 ? (probe.data[0] as Record<string, unknown>) : null;
     const pick = (cands: readonly string[]) => {
       if (row) {
