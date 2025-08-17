@@ -1,12 +1,11 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createVehicle } from "./actions";
-import { getBrowserSupabase } from "@/lib/supabase-browser";
+// Switch to server-backed API for options to avoid client Supabase wiring issues
 
 export default function AddVehicleModalClient() {
   const [open, setOpen] = useState(false);
   const dialogRef = useRef<HTMLDivElement | null>(null);
-  const supabase = useMemo(() => getBrowserSupabase(), []);
 
   // Progressive selectors
   const [years, setYears] = useState<string[]>([]);
@@ -49,64 +48,34 @@ export default function AddVehicleModalClient() {
     return null;
   }
 
-  // Load initial lists and column mappings for resilience
-  const [cols, setCols] = useState<{ year: string; make: string; model: string; trim: string; cylinders: string; displacement_l: string; transmission: string } | null>(null);
-
+  // Load years from server API
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const probe = await supabase.from("vehicle_data").select("*").limit(1);
-        const probeRow = Array.isArray(probe.data) && probe.data.length > 0 ? (probe.data[0] as Record<string, unknown>) : null;
-        const mapping = {
-          year: pickColumn(probeRow, ["year", "model_year"]) || "year",
-          make: pickColumn(probeRow, ["make", "brand"]) || "make",
-          model: pickColumn(probeRow, ["model"]) || "model",
-          trim: pickColumn(probeRow, ["trim"]) || "trim",
-          cylinders: pickColumn(probeRow, ["cylinders"]) || "cylinders",
-          displacement_l: pickColumn(probeRow, ["displacement_l", "displacement", "engine_liters"]) || "displacement_l",
-          transmission: pickColumn(probeRow, ["transmission", "transmission_type"]) || "transmission",
-        };
+        const res = await fetch("/api/vehicle-data/options?scope=years", { cache: "no-store" });
+        const json = (await res.json()) as { values: string[] };
         if (cancelled) return;
-        setCols(mapping as typeof mapping);
-
-        // Load distinct years (top-level choice)
-        const yearsRes = await supabase
-          .from("vehicle_data")
-          .select(`${mapping.year}`, { count: "exact", head: false })
-          .not(mapping.year, "is", null)
-          .order(mapping.year, { ascending: false })
-          .limit(500);
-        if (cancelled) return;
-        const yearRows = (yearsRes.data as unknown as Array<Record<string, string | number>> | null) ?? [];
-        const yrs = Array.from(new Set(yearRows.map(v => String(v[mapping.year as keyof typeof v])))).filter(Boolean);
-        setYears(yrs);
+        setYears(json.values || []);
       } catch {}
     })();
     return () => { cancelled = true; };
-  }, [supabase]);
+  }, []);
 
   // Load makes when year selected
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      if (!cols || !year) { setMakes([]); return; }
+      if (!year) { setMakes([]); return; }
       try {
-        const { data } = await supabase
-          .from("vehicle_data")
-          .select(`${cols.make}`)
-          .eq(cols.year, year)
-          .not(cols.make, "is", null)
-          .order(cols.make, { ascending: true })
-          .limit(500);
+        const res = await fetch(`/api/vehicle-data/options?scope=makes&year=${encodeURIComponent(year)}`, { cache: "no-store" });
+        const json = (await res.json()) as { values: string[] };
         if (cancelled) return;
-        const makeRows = (data as unknown as Array<Record<string, string>> | null) ?? [];
-        const mks = Array.from(new Set(makeRows.map(v => String(v[cols.make as keyof typeof v])))).filter(Boolean);
-        setMakes(mks);
+        setMakes(json.values || []);
       } catch {}
     })();
     return () => { cancelled = true; };
-  }, [cols, supabase, year]);
+  }, [year]);
 
   // When year changes, reset downstream and load models and trims after make chosen
   useEffect(() => { setMake(""); setModel(""); setTrim(""); setModels([]); setTrims([]); }, [year]);
@@ -117,48 +86,31 @@ export default function AddVehicleModalClient() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      if (!cols || !year || !make) return;
+      if (!year || !make) return;
       try {
-        const { data } = await supabase
-          .from("vehicle_data")
-          .select(`${cols.model}`)
-          .eq(cols.year, year)
-          .eq(cols.make, make)
-          .not(cols.model, "is", null)
-          .order(cols.model, { ascending: true })
-          .limit(500);
+        const res = await fetch(`/api/vehicle-data/options?scope=models&year=${encodeURIComponent(year)}&make=${encodeURIComponent(make)}`, { cache: "no-store" });
+        const json = (await res.json()) as { values: string[] };
         if (cancelled) return;
-        const modelRows = (data as unknown as Array<Record<string, string>> | null) ?? [];
-        const mdls = Array.from(new Set(modelRows.map(v => String(v[cols.model as keyof typeof v])))).filter(Boolean);
-        setModels(mdls);
+        setModels(json.values || []);
       } catch {}
     })();
     return () => { cancelled = true; };
-  }, [cols, supabase, year, make]);
+  }, [year, make]);
 
   // Load trims when year+make+model selected
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      if (!cols || !year || !make || !model) return;
+      if (!year || !make || !model) return;
       try {
-        const { data } = await supabase
-          .from("vehicle_data")
-          .select(`${cols.trim}`)
-          .eq(cols.year, year)
-          .eq(cols.make, make)
-          .eq(cols.model, model)
-          .not(cols.trim, "is", null)
-          .order(cols.trim, { ascending: true })
-          .limit(500);
+        const res = await fetch(`/api/vehicle-data/options?scope=trims&year=${encodeURIComponent(year)}&make=${encodeURIComponent(make)}&model=${encodeURIComponent(model)}`, { cache: "no-store" });
+        const json = (await res.json()) as { values: string[] };
         if (cancelled) return;
-        const trimRows = (data as unknown as Array<Record<string, string>> | null) ?? [];
-        const tr = Array.from(new Set(trimRows.map(v => String(v[cols.trim as keyof typeof v])))).filter(Boolean);
-        setTrims(tr);
+        setTrims(json.values || []);
       } catch {}
     })();
     return () => { cancelled = true; };
-  }, [cols, supabase, year, make, model]);
+  }, [year, make, model]);
 
   return (
     <div className="flex items-center justify-end">
@@ -185,89 +137,116 @@ export default function AddVehicleModalClient() {
                 await createVehicle(fd);
                 setOpen(false);
               }}
-              className="grid grid-cols-1 md:grid-cols-6 gap-3"
+              className="grid grid-cols-1 md:grid-cols-2 gap-4"
             >
-              <input name="vin" placeholder="VIN" className="border rounded px-2 py-1 md:col-span-2 bg-bg text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]" />
+              <div className="md:col-span-2">
+                <label className="mb-1 block text-sm text-muted">VIN</label>
+                <input name="vin" placeholder="Optional VIN" className="w-full border rounded px-2 py-1 bg-bg text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]" />
+              </div>
 
-              <select
-                name="year"
-                className="border rounded px-2 py-1 bg-bg text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]"
-                value={year}
-                onChange={(e) => setYear(e.target.value)}
-                required
-              >
-                <option value="" disabled>Select year</option>
-                {years.map((y) => (<option key={`y-${y}`} value={y}>{y}</option>))}
-              </select>
+              <div>
+                <label className="mb-1 block text-sm text-muted">Year</label>
+                <select
+                  name="year"
+                  className="w-full border rounded px-2 py-1 bg-bg text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]"
+                  value={year}
+                  onChange={(e) => setYear(e.target.value)}
+                  required
+                >
+                  <option value="" disabled>Select year</option>
+                  {years.map((y) => (<option key={`y-${y}`} value={y}>{y}</option>))}
+                </select>
+              </div>
 
-              <select
-                name="make"
-                className="border rounded px-2 py-1 bg-bg text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]"
-                value={make}
-                onChange={(e) => setMake(e.target.value)}
-                disabled={!year}
-                required
-              >
-                <option value="" disabled>{year ? "Select make" : "Select year first"}</option>
-                {makes.map((m) => (<option key={`mk-${m}`} value={m}>{m}</option>))}
-              </select>
+              <div>
+                <label className="mb-1 block text-sm text-muted">Make</label>
+                <select
+                  name="make"
+                  className="w-full border rounded px-2 py-1 bg-bg text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]"
+                  value={make}
+                  onChange={(e) => setMake(e.target.value)}
+                  disabled={!year}
+                  required
+                >
+                  <option value="" disabled>{year ? "Select make" : "Select year first"}</option>
+                  {makes.map((m) => (<option key={`mk-${m}`} value={m}>{m}</option>))}
+                </select>
+              </div>
 
-              <select
-                name="model"
-                className="border rounded px-2 py-1 bg-bg text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]"
-                value={model}
-                onChange={(e) => setModel(e.target.value)}
-                disabled={!year || !make}
-                required
-              >
-                <option value="" disabled>{make ? "Select model" : "Select make first"}</option>
-                {models.map((m) => (<option key={`md-${m}`} value={m}>{m}</option>))}
-              </select>
+              <div>
+                <label className="mb-1 block text-sm text-muted">Model</label>
+                <select
+                  name="model"
+                  className="w-full border rounded px-2 py-1 bg-bg text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]"
+                  value={model}
+                  onChange={(e) => setModel(e.target.value)}
+                  disabled={!year || !make}
+                  required
+                >
+                  <option value="" disabled>{make ? "Select model" : "Select make first"}</option>
+                  {models.map((m) => (<option key={`md-${m}`} value={m}>{m}</option>))}
+                </select>
+              </div>
 
-              <select
-                name="trim"
-                className="border rounded px-2 py-1 bg-bg text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]"
-                value={trim}
-                onChange={(e) => setTrim(e.target.value)}
-                disabled={!year || !make || !model}
-              >
-                <option value="">{model ? "Optional: trim" : "Select model first"}</option>
-                {trims.map((t) => (<option key={`tr-${t}`} value={t}>{t}</option>))}
-              </select>
+              <div>
+                <label className="mb-1 block text-sm text-muted">Trim</label>
+                <select
+                  name="trim"
+                  className="w-full border rounded px-2 py-1 bg-bg text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]"
+                  value={trim}
+                  onChange={(e) => setTrim(e.target.value)}
+                  disabled={!year || !make || !model}
+                >
+                  <option value="">{model ? "Optional: trim" : "Select model first"}</option>
+                  {trims.map((t) => (<option key={`tr-${t}`} value={t}>{t}</option>))}
+                </select>
+              </div>
 
-              <input name="nickname" placeholder="Nickname" className="border rounded px-2 py-1 md:col-span-2 bg-bg text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]" />
+              <div className="md:col-span-2">
+                <label className="mb-1 block text-sm text-muted">Nickname</label>
+                <input name="nickname" placeholder="Optional nickname" className="w-full border rounded px-2 py-1 bg-bg text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]" />
+              </div>
 
               {/* Optional dependent specs */}
-              <select
-                name="cylinders"
-                className="border rounded px-2 py-1 bg-bg text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]"
-                value={cylinders}
-                onChange={(e) => setCylinders(e.target.value)}
-                disabled={!year || !make || !model}
-              >
-                <option value="">Optional: cylinders</option>
-                {["2","3","4","5","6","8","10","12","16"].map((c) => (<option key={`cyl-${c}`} value={c}>{c}</option>))}
-              </select>
+              <div>
+                <label className="mb-1 block text-sm text-muted">Cylinders</label>
+                <select
+                  name="cylinders"
+                  className="w-full border rounded px-2 py-1 bg-bg text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]"
+                  value={cylinders}
+                  onChange={(e) => setCylinders(e.target.value)}
+                  disabled={!year || !make || !model}
+                >
+                  <option value="">Optional</option>
+                  {["2","3","4","5","6","8","10","12","16"].map((c) => (<option key={`cyl-${c}`} value={c}>{c}</option>))}
+                </select>
+              </div>
 
-              <input
-                name="displacement_l"
-                placeholder="Engine size (L)"
-                className="border rounded px-2 py-1 bg-bg text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]"
-                value={displacement}
-                onChange={(e) => setDisplacement(e.target.value)}
-                disabled={!year || !make || !model}
-                inputMode="decimal"
-              />
+              <div>
+                <label className="mb-1 block text-sm text-muted">Engine size (L)</label>
+                <input
+                  name="displacement_l"
+                  placeholder="Optional"
+                  className="w-full border rounded px-2 py-1 bg-bg text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]"
+                  value={displacement}
+                  onChange={(e) => setDisplacement(e.target.value)}
+                  disabled={!year || !make || !model}
+                  inputMode="decimal"
+                />
+              </div>
 
-              <input
-                name="transmission"
-                placeholder="Transmission"
-                className="border rounded px-2 py-1 bg-bg text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]"
-                value={transmission}
-                onChange={(e) => setTransmission(e.target.value)}
-                disabled={!year || !make || !model}
-                list="transmission-options"
-              />
+              <div>
+                <label className="mb-1 block text-sm text-muted">Transmission</label>
+                <input
+                  name="transmission"
+                  placeholder="Optional"
+                  className="w-full border rounded px-2 py-1 bg-bg text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]"
+                  value={transmission}
+                  onChange={(e) => setTransmission(e.target.value)}
+                  disabled={!year || !make || !model}
+                  list="transmission-options"
+                />
+              </div>
               <datalist id="transmission-options">
                 <option value="Manual" />
                 <option value="Automatic" />
@@ -275,12 +254,15 @@ export default function AddVehicleModalClient() {
                 <option value="CVT" />
               </datalist>
 
-              <select name="privacy" className="border rounded px-2 py-1 bg-bg text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]">
-                <option value="PRIVATE">Private</option>
-                <option value="PUBLIC">Public</option>
-              </select>
+              <div>
+                <label className="mb-1 block text-sm text-muted">Privacy</label>
+                <select name="privacy" className="w-full border rounded px-2 py-1 bg-bg text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]">
+                  <option value="PRIVATE">Private</option>
+                  <option value="PUBLIC">Public</option>
+                </select>
+              </div>
 
-              <div className="md:col-span-2 flex items-center gap-2">
+              <div className="md:col-span-2 flex items-center justify-end gap-2 pt-2">
                 <button type="button" className="border rounded px-3 py-1 bg-bg text-fg" onClick={onClose}>Cancel</button>
                 <button type="submit" className="bg-brand text-white rounded px-3 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]">Add Vehicle</button>
               </div>
