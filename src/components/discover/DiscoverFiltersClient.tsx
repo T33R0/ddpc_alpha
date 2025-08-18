@@ -5,6 +5,8 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 type Options = {
 	year: string[];
 	make: string[];
+	model: string[];
+	trim: string[];
 	body: string[];
 	classification: string[];
 	drive: string[];
@@ -28,7 +30,16 @@ export default function DiscoverFiltersClient({ options }: { options: Options })
 		let canceled = false;
 		(async () => {
 			try {
-				const res = await fetch("/api/discover/filters", { cache: "no-store" });
+				const url = new URL("/api/discover/filters", window.location.origin);
+				const y = sp.get("year");
+				const mk = sp.get("make");
+				const mdl = sp.get("model");
+				const tr = sp.get("trim");
+				if (y) url.searchParams.set("year", y);
+				if (mk) url.searchParams.set("make", mk);
+				if (mdl) url.searchParams.set("model", mdl);
+				if (tr) url.searchParams.set("trim", tr);
+				const res = await fetch(url.toString(), { cache: "no-store" });
 				const data = await res.json();
 				if (!canceled && data?.options) {
 					setOpts(data.options as Options);
@@ -37,7 +48,7 @@ export default function DiscoverFiltersClient({ options }: { options: Options })
 			} catch {}
 		})();
 		return () => { canceled = true; };
-	}, []);
+	}, [sp]);
 
 	const replace = (next: URLSearchParams) => {
 		next.set("page", "1");
@@ -53,6 +64,19 @@ export default function DiscoverFiltersClient({ options }: { options: Options })
 			const next = new URLSearchParams(sp.toString());
 			const v = e.target.value;
 			if (v) next.set(key as string, v); else next.delete(key as string);
+			// Clear dependent selections when parent changes
+			if (key === "year") {
+				next.delete("make");
+				next.delete("model");
+				next.delete("trim");
+			}
+			if (key === "make") {
+				next.delete("model");
+				next.delete("trim");
+			}
+			if (key === "model") {
+				next.delete("trim");
+			}
 			replace(next);
 		};
 		return (
@@ -85,6 +109,8 @@ export default function DiscoverFiltersClient({ options }: { options: Options })
 			</div>
 			{def("year", "Year")}
 			{def("make", "Make")}
+			{def("model", "Model")}
+			{def("trim", "Trim")}
 			{def("body", "Body Type")}
 			{def("classification", "Car Classification")}
 			{def("drive", "Drive Type")}

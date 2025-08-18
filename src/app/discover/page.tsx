@@ -86,7 +86,7 @@ export default async function DiscoverPage({ searchParams = {} }: { searchParams
 		engineConfig: pickColumn(probeRow, ["engine_configuration", "engine", "engine_config"]) || "",
 		cylinders: pickColumn(probeRow, ["cylinders"]) || "",
 		displacement: pickColumn(probeRow, ["displacement_l", "displacement", "engine_liters"]) || "",
-		power: pickColumn(probeRow, ["power_hp", "horsepower", "bhp", "power_bhp", "hp", "power"]) || "",
+		power: pickColumn(probeRow, ["horsepower_hp", "power_hp", "horsepower", "bhp", "power_bhp", "hp", "power"]) || "",
 		torque: pickColumn(probeRow, ["torque_lbft", "torque", "torque_lb_ft"]) || "",
 		weight: pickColumn(probeRow, ["weight_lbs", "curb_weight_lbs", "weight"]) || "",
 		image: pickColumn(probeRow, ["image_url", "photo_url"]) || "",
@@ -205,6 +205,8 @@ export default async function DiscoverPage({ searchParams = {} }: { searchParams
 						options={{
 							year: [],
 							make: [],
+							model: [],
+							trim: [],
 							body: [],
 							classification: [],
 							drive: [],

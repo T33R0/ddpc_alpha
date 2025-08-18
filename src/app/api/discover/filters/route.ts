@@ -30,7 +30,7 @@ async function selectDistinct(
   supabase: Awaited<ReturnType<typeof getServerSupabase>>,
   column: string,
   filters?: Array<{ col: string; val: string }>,
-  limit = 500
+  limit = 2000
 ): Promise<string[]> {
   if (!column) return [];
   try {
@@ -44,7 +44,7 @@ async function selectDistinct(
   }
 }
 
-export async function GET(): Promise<Response> {
+export async function GET(req: Request): Promise<Response> {
   try {
     // Prefer service-role server-side to ensure public filter reads regardless of anon RLS
     const adminUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
@@ -72,27 +72,55 @@ export async function GET(): Promise<Response> {
       country: pickColumn(row, ["country_of_origin", "origin", "country"]) || "",
     };
 
+    // Parse current selections from query string to constrain option lists
+    const url = new URL(req.url);
+    const selYear = url.searchParams.get("year") || undefined;
+    const selMake = url.searchParams.get("make") || undefined;
+    const selModel = url.searchParams.get("model") || undefined;
+    const selTrim = url.searchParams.get("trim") || undefined;
+
+    const baseFilters: Array<{ col: string; val: string }> = [];
+    if (selYear && columns.year) baseFilters.push({ col: columns.year, val: selYear });
+    // We only include make/model/trim in base for non-dependent lists so they narrow too
+    if (selMake && columns.make) baseFilters.push({ col: columns.make, val: selMake });
+    if (selModel && columns.model) baseFilters.push({ col: columns.model, val: selModel });
+    if (selTrim && columns.trim) baseFilters.push({ col: columns.trim, val: selTrim });
+
     // Years: prefer table distinct, else fill 1990..2026
     let years: string[] = [];
     if (columns.year) {
-      years = await selectDistinct(supabase, columns.year, undefined, 1000);
+      years = await selectDistinct(supabase, columns.year, undefined, 2000);
       years = Array.from(new Set(years.map(String))).sort((a, b) => Number(b) - Number(a));
     }
     if (years.length === 0) {
       years = Array.from({ length: 2026 - 1990 + 1 }, (_, i) => String(2026 - i));
     }
 
-    const [make, body, classification, drive, transmission, engine, doors, seating, fuel, country] = await Promise.all([
-      selectDistinct(supabase, columns.make),
-      selectDistinct(supabase, columns.body),
-      selectDistinct(supabase, columns.classification),
-      selectDistinct(supabase, columns.drive),
-      selectDistinct(supabase, columns.transmission),
-      selectDistinct(supabase, columns.engine),
-      selectDistinct(supabase, columns.doors),
-      selectDistinct(supabase, columns.seating),
-      selectDistinct(supabase, columns.fuel),
-      selectDistinct(supabase, columns.country),
+    // Dependent lists: make depends on year; model depends on year+make; trim depends on year+make+model
+    const makeFilters = selYear && columns.year ? [{ col: columns.year, val: selYear }] : undefined;
+    const modelFilters = [
+      ...(selYear && columns.year ? [{ col: columns.year, val: selYear }] : []),
+      ...(selMake && columns.make ? [{ col: columns.make, val: selMake }] : []),
+    ];
+    const trimFilters = [
+      ...(selYear && columns.year ? [{ col: columns.year, val: selYear }] : []),
+      ...(selMake && columns.make ? [{ col: columns.make, val: selMake }] : []),
+      ...(selModel && columns.model ? [{ col: columns.model, val: selModel }] : []),
+    ];
+
+    const [make, model, trim, body, classification, drive, transmission, engine, doors, seating, fuel, country] = await Promise.all([
+      selectDistinct(supabase, columns.make, makeFilters, 5000),
+      selectDistinct(supabase, columns.model, modelFilters.length ? modelFilters : undefined, 5000),
+      selectDistinct(supabase, columns.trim, trimFilters.length ? trimFilters : undefined, 5000),
+      selectDistinct(supabase, columns.body, baseFilters, 5000),
+      selectDistinct(supabase, columns.classification, baseFilters, 5000),
+      selectDistinct(supabase, columns.drive, baseFilters),
+      selectDistinct(supabase, columns.transmission, baseFilters),
+      selectDistinct(supabase, columns.engine, baseFilters),
+      selectDistinct(supabase, columns.doors, baseFilters),
+      selectDistinct(supabase, columns.seating, baseFilters),
+      selectDistinct(supabase, columns.fuel, baseFilters),
+      selectDistinct(supabase, columns.country, baseFilters),
     ]);
 
     const payload = {
@@ -100,6 +128,8 @@ export async function GET(): Promise<Response> {
       options: {
         year: years,
         make,
+        model,
+        trim,
         body,
         classification,
         drive,
