@@ -23,7 +23,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   }
 
   const supabase = await sb()
-  // Guardrail: ensure job belongs to an open plan and caller owns the vehicle
+  // Guardrail: ensure job belongs to an open plan; rely on RLS for authorization
   const { data: job } = await supabase
     .from('job')
     .select('id, build_plan_id')
@@ -39,14 +39,8 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   if (plan.status !== 'open') {
     return NextResponse.json({ error: 'Plan is not open. You can only add parts to jobs on an open plan.' }, { status: 400 })
   }
-  const { data: veh } = await supabase
-    .from('vehicle')
-    .select('owner_id')
-    .eq('id', plan.vehicle_id as string)
-    .maybeSingle()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  if (!veh || veh.owner_id !== user.id) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   const { error } = await supabase.from('job_part').insert({
     job_id: params.id,
     name,

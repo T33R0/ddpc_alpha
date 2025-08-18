@@ -22,7 +22,7 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    // Load job with plan + vehicle to enforce RLS-like guardrails and ownership
+    // Load job with plan to enforce open-plan guard; authorization via RLS
     const { data: job } = await supabase
       .from("job")
       .select("id, title, description, status, build_plan_id")
@@ -36,13 +36,6 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
       .eq("id", job.build_plan_id as string)
       .maybeSingle();
     if (!plan) return NextResponse.json({ error: "Plan not found" }, { status: 404 });
-
-    const { data: veh } = await supabase
-      .from("vehicle")
-      .select("id, owner_id")
-      .eq("id", plan.vehicle_id as string)
-      .maybeSingle();
-    if (!veh || veh.owner_id !== user.id) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
     // Guardrail: only update jobs on open plans
     if (plan.status !== "open") {
@@ -65,15 +58,13 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
     const { error: updErr } = await supabase.from("job").update(update).eq("id", id);
     if (updErr) return NextResponse.json({ error: updErr.message }, { status: 400 });
 
-    if (user) {
-      await logActivity({
-        actorId: user.id,
-        entityType: "work_item",
-        entityId: id,
-        action: "update",
-        diff: { changed_fields: Object.keys(update) },
-      });
-    }
+    await logActivity({
+      actorId: user.id,
+      entityType: "job",
+      entityId: id,
+      action: "update",
+      diff: { changed_fields: Object.keys(update) },
+    });
 
     return NextResponse.json({ ok: true });
   } catch (e) {
