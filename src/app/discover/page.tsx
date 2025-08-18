@@ -69,7 +69,8 @@ export default async function DiscoverPage({ searchParams = {} }: { searchParams
 				if (Array.isArray(data) && data.length > 0) return c;
 			} catch {}
 		}
-		return candidates[0] || "";
+		// None of the candidates exist in this dataset
+		return "";
 	}
 
 	// Resolve columns using dynamic probing for resilience across schemas
@@ -112,7 +113,7 @@ export default async function DiscoverPage({ searchParams = {} }: { searchParams
 		columns.make || undefined,
 		columns.model || undefined,
 		columns.trim || undefined,
-		columns.displacement || undefined,
+		(columns.displacement || columns.engineConfig) || undefined,
 		columns.cylinders || undefined,
 		columns.drive || undefined,
 		columns.power || undefined,
@@ -161,6 +162,12 @@ export default async function DiscoverPage({ searchParams = {} }: { searchParams
 		// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 		// @ts-ignore - chained order accepted by supabase-js
 		q = q.order(columns.year as string, { ascending: false }).order(columns.make as string).order(columns.model as string);
+	} else if (columns.make && columns.model) {
+		q = q.order(columns.make as string).order(columns.model as string);
+	} else if (columns.make) {
+		q = q.order(columns.make as string);
+	} else if (columns.model) {
+		q = q.order(columns.model as string);
 	}
 
 	// Apply range for pagination
@@ -178,6 +185,14 @@ export default async function DiscoverPage({ searchParams = {} }: { searchParams
 		);
 	}
 	const vehicles: VehicleDataRow[] = (vehiclesRaw as unknown as VehicleDataRow[]) || [];
+
+	// Safe accessors for stats columns that may be absent
+	const getStat = (row: VehicleDataRow, col: string | ""): string | null => {
+		if (!col) return null;
+		const r = row as unknown as Record<string, unknown>;
+		const v = r[col];
+		return v == null ? null : String(v);
+	};
 
 	// Build filter options (distinct values) based on available columns
 	async function distinct(col: string | null): Promise<string[]> {
@@ -250,13 +265,15 @@ export default async function DiscoverPage({ searchParams = {} }: { searchParams
 					{vehicles.map((v) => {
 						const title = `${v.year ?? ""} ${v.make ?? ""} ${v.model ?? ""}`.trim();
 						const engineLabel = (() => {
-							const disp = v.displacement_l ? `${v.displacement_l} L` : null;
-							const cyl = v.cylinders ? `${v.cylinders} cyl` : null;
-							return [disp, cyl].filter(Boolean).join(" ");
+							const disp = getStat(v, columns.displacement);
+							const cyl = getStat(v, columns.cylinders);
+							const dispStr = disp ? `${disp} L` : null;
+							const cylStr = cyl ? `${cyl} cyl` : null;
+							return [dispStr, cylStr].filter(Boolean).join(" ");
 						})();
-						const drive = (v.drivetrain || v.drive_type || "") as string;
+						const drive = getStat(v, columns.drive) || "";
 
-						const imageSrc = (v as Record<string, unknown>)[columns.image] as string | undefined;
+						const imageSrc = (columns.image ? (v as Record<string, unknown>)[columns.image] as string | undefined : undefined);
 						const fallbackSrc = (ddpcLogo as { src: string }).src;
 
 						return (
