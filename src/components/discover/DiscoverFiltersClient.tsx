@@ -28,7 +28,7 @@ export default function DiscoverFiltersClient({ options }: { options: Options })
 		let canceled = false;
 		(async () => {
 			try {
-				const res = await fetch("/api/discover/filters", { cache: "force-cache" });
+				const res = await fetch("/api/discover/filters", { cache: "no-store" });
 				const data = await res.json();
 				if (!canceled && data?.options) {
 					setOpts(data.options as Options);

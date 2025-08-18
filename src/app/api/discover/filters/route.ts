@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 type Columns = {
   year: string;
@@ -45,7 +46,12 @@ async function selectDistinct(
 
 export async function GET(): Promise<Response> {
   try {
-    const supabase = await getServerSupabase();
+    // Prefer service-role server-side to ensure public filter reads regardless of anon RLS
+    const adminUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const supabase: SupabaseClient = (adminUrl && serviceKey)
+      ? createClient(adminUrl, serviceKey, { auth: { persistSession: false } })
+      : await getServerSupabase();
     // Single probe to infer columns
     const probe = await supabase.from("vehicle_data").select("*").limit(1);
     const row = Array.isArray(probe.data) && probe.data.length > 0 ? (probe.data[0] as Record<string, unknown>) : null;

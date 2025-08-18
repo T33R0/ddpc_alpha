@@ -51,7 +51,7 @@ export async function createBuildPlan(formData: FormData) {
       vehicle_id: vehicleId,
       name,
       description: description || null,
-      status: 'draft',
+      status: 'open',
       is_default: false,
       created_by: user.id,
     });
