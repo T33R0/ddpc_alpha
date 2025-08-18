@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getServerSupabase } from "@/lib/supabase";
-import JobPanelClient from "./JobPanelClient";
+import PlanDetail from "@/components/build/PlanDetail";
 
 type JobRow = { id: string; title: string; description: string | null; status: string };
 type GroupKey = "planning" | "purchased" | "active" | "complete" | "canceled";
@@ -114,45 +114,8 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
         </div>
       </div>
 
-      <div className="rounded border p-4 space-y-3">
-        <div className="text-sm font-medium">Edit Plan</div>
-        <form action={updatePlan} className="grid gap-3 md:grid-cols-2">
-          <div className="flex flex-col">
-            <label htmlFor="plan-name" className="text-xs text-gray-600">Name</label>
-            <input id="plan-name" name="name" defaultValue={plan.name} className="border rounded px-2 py-1" />
-          </div>
-          <div className="flex flex-col md:col-span-2">
-            <label htmlFor="plan-description" className="text-xs text-gray-600">Description</label>
-            <textarea id="plan-description" name="description" defaultValue={plan.description ?? ""} className="border rounded px-2 py-1 min-h-[72px]"></textarea>
-          </div>
-          <div className="flex items-center gap-2 md:col-span-2">
-            <button type="submit" data-testid="plan-save-btn" className="text-sm px-3 py-1 rounded border">Save</button>
-            <form action={setDefault}>
-              <button type="submit" data-testid="plan-set-default-btn" className="text-sm px-3 py-1 rounded border" disabled={!!plan.is_default}>Set Default</button>
-            </form>
-          </div>
-        </form>
-      </div>
-
-      {/* Jobs grouped by status with a minimal job panel */}
-      <div className="rounded border">
-        <div className="p-3 text-sm font-medium bg-gray-50">Jobs</div>
-        <div className="p-3 grid md:grid-cols-2 gap-4">
-          {Object.entries(groups).map(([status, list]) => (
-            <div key={status} className="space-y-2">
-              <div className="text-xs uppercase text-gray-600">{status}</div>
-              {list.map(j => (
-                <div key={j.id} className="border rounded p-3 space-y-2">
-                  <div className="font-medium">{j.title}</div>
-                  <div className="text-xs text-gray-600">{j.status}</div>
-                  <JobPanelClient jobId={j.id} disabled={!isOpen} />
-                </div>
-              ))}
-              {list.length === 0 && <div className="text-xs text-gray-500">No jobs.</div>}
-            </div>
-          ))}
-        </div>
-      </div>
+      {/* Client plan interactivity */}
+      <PlanDetail planId={planId} />
 
       <div className="rounded border divide-y">
         <div className="p-3 text-sm font-medium bg-gray-50">Tasks in this plan</div>
