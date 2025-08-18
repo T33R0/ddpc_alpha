@@ -2,8 +2,8 @@ import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { createServerClient } from '@supabase/ssr'
 
-function sb(){
-  const c = cookies()
+async function sb(){
+  const c = await cookies()
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -12,7 +12,7 @@ function sb(){
 }
 
 export async function GET(_: Request, { params }: { params: { id: string } }) {
-  const supabase = sb()
+  const supabase = await sb()
   // Link table contains event_id for build events
   const { data: links, error: linkErr } = await supabase
     .from('event_entities')

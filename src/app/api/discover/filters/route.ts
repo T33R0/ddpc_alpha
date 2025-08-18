@@ -57,19 +57,19 @@ export async function GET(req: Request): Promise<Response> {
     const row = Array.isArray(probe.data) && probe.data.length > 0 ? (probe.data[0] as Record<string, unknown>) : null;
 
     const columns: Columns = {
-      year: pickColumn(row, ["year", "model_year"]) || "",
-      make: pickColumn(row, ["make", "brand"]) || "",
-      model: pickColumn(row, ["model"]) || "",
-      trim: pickColumn(row, ["trim"]) || "",
-      body: pickColumn(row, ["body_type", "body_style"]) || "",
-      classification: pickColumn(row, ["car_classification", "class", "segment"]) || "",
-      drive: pickColumn(row, ["drive_type", "drivetrain", "drive"]) || "",
-      transmission: pickColumn(row, ["transmission", "transmission_type"]) || "",
-      engine: pickColumn(row, ["engine_type", "engine_configuration", "engine", "engine_config"]) || "",
-      doors: pickColumn(row, ["doors"]) || "",
-      seating: pickColumn(row, ["total_seating", "seating", "seats"]) || "",
-      fuel: pickColumn(row, ["fuel_type", "fuel"]) || "",
-      country: pickColumn(row, ["country_of_origin", "origin", "country"]) || "",
+      year: pickColumn(row, ["year", "model_year", "Year"]) || "",
+      make: pickColumn(row, ["make", "brand", "Make"]) || "",
+      model: pickColumn(row, ["model", "Model"]) || "",
+      trim: pickColumn(row, ["trim", "Trim"]) || "",
+      body: pickColumn(row, ["body_type", "body_style", "Body type", "Body style"]) || "",
+      classification: pickColumn(row, ["car_classification", "class", "segment", "Car classification", "Classification"]) || "",
+      drive: pickColumn(row, ["drive_type", "drivetrain", "drive", "Drive type", "Drivetrain"]) || "",
+      transmission: pickColumn(row, ["transmission", "transmission_type", "Transmission", "Transmission type"]) || "",
+      engine: pickColumn(row, ["engine_type", "engine_configuration", "engine", "engine_config", "Engine configuration", "Engine"]) || "",
+      doors: pickColumn(row, ["doors", "Doors"]) || "",
+      seating: pickColumn(row, ["total_seating", "seating", "seats", "Total seating", "Seating", "Seats"]) || "",
+      fuel: pickColumn(row, ["fuel_type", "fuel", "Fuel type"]) || "",
+      country: pickColumn(row, ["country_of_origin", "origin", "country", "Country of origin", "Origin", "Country"]) || "",
     };
 
     // Parse current selections from query string to constrain option lists
