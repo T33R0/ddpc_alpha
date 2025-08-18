@@ -194,47 +194,7 @@ export default async function DiscoverPage({ searchParams = {} }: { searchParams
 		return v == null ? null : String(v);
 	};
 
-	// Build filter options (distinct values) based on available columns
-	async function distinct(col: string | null): Promise<string[]> {
-		if (!col) return [];
-		try {
-			// Fetch in batches to include more than the default limit; dedupe client-side
-			const MAX = 5000;
-			const BATCH = 1000;
-			const results = new Set<string>();
-			for (let start = 0; start < MAX; start += BATCH) {
-				const { data } = await supabase
-					.from("vehicle_data")
-					.select(`${col}`)
-					.not(col, "is", null)
-					.order(col as string, { ascending: true })
-					.range(start, start + BATCH - 1);
-				const rows = (data as Array<Record<string, string | number>> | null) || [];
-				for (const r of rows) {
-					const v = String(r[col as keyof typeof r] ?? "");
-					if (v) results.add(v);
-				}
-				if (rows.length < BATCH) break;
-			}
-			return Array.from(results);
-		} catch {
-			return [];
-		}
-	}
-
-	const [years, makes, bodies, classes, drives, transmissions, engines, doors, seatings, fuels, countries] = await Promise.all([
-		distinct(columns.year),
-		distinct(columns.make),
-		distinct(columns.body),
-		distinct(columns.classification),
-		distinct(columns.drive),
-		distinct(columns.transmission),
-		distinct(columns.engineConfig),
-		distinct(columns.doors),
-		distinct(columns.seating),
-		distinct(columns.fuel),
-		distinct(columns.country),
-	]);
+	// Defer filter option lists to client via /api/discover/filters for faster SSR
 
 	return (
 		<div className="mx-auto max-w-7xl px-4 py-6 grid grid-cols-12 gap-6">
@@ -243,17 +203,17 @@ export default async function DiscoverPage({ searchParams = {} }: { searchParams
 					<h2 className="mb-3 text-lg font-semibold">Filters</h2>
 					<DiscoverFiltersClient
 						options={{
-							year: years,
-							make: makes,
-							body: bodies,
-							classification: classes,
-							drive: drives,
-							transmission: transmissions,
-							engine: engines,
-							doors: doors,
-							seating: seatings,
-							fuel: fuels,
-							country: countries,
+							year: [],
+							make: [],
+							body: [],
+							classification: [],
+							drive: [],
+							transmission: [],
+							engine: [],
+							doors: [],
+							seating: [],
+							fuel: [],
+							country: [],
 						}}
 					/>
 				</div>

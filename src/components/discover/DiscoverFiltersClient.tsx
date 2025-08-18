@@ -1,4 +1,5 @@
 "use client";
+import { useEffect, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 type Options = {
@@ -20,6 +21,24 @@ export default function DiscoverFiltersClient({ options }: { options: Options })
 	const pathname = usePathname();
 	const sp = useSearchParams();
 
+	const [loaded, setLoaded] = useState(false);
+	const [opts, setOpts] = useState<Options>(options);
+
+	useEffect(() => {
+		let canceled = false;
+		(async () => {
+			try {
+				const res = await fetch("/api/discover/filters", { cache: "force-cache" });
+				const data = await res.json();
+				if (!canceled && data?.options) {
+					setOpts(data.options as Options);
+					setLoaded(true);
+				}
+			} catch {}
+		})();
+		return () => { canceled = true; };
+	}, []);
+
 	const replace = (next: URLSearchParams) => {
 		next.set("page", "1");
 		router.replace(`${pathname}?${next.toString()}`, { scroll: false });
@@ -39,9 +58,9 @@ export default function DiscoverFiltersClient({ options }: { options: Options })
 		return (
 			<div className="mb-3">
 				<label className="mb-1 block text-sm text-gray-700">{label}</label>
-				<select size={8} className="w-full rounded border px-2 py-1 text-sm" value={val} onChange={onChange}>
+				<select className="w-full rounded border px-2 py-1 text-sm" value={val} onChange={onChange} disabled={!loaded}>
 					<option value="">{allLabel}</option>
-					{options[key].map((o) => (
+					{(opts[key] ?? []).map((o) => (
 						<option key={`${key}-${o}`} value={o}>{o}</option>
 					))}
 				</select>
