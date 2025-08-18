@@ -11,13 +11,13 @@ async function sb() {
   )
 }
 
-export async function GET(_: Request, { params }: { params: { vehicleId: string } }) {
+export async function GET(_: Request, { params }: { params: { id: string } }) {
   const supabase = await sb()
 
   const { data: plan, error: planErr } = await supabase
     .from('build_plans')
     .select('id, vehicle_id, name, description, status, created_by, created_at, updated_at')
-    .eq('vehicle_id', params.vehicleId)
+    .eq('vehicle_id', params.id)
     .single()
   if (planErr || !plan) return NextResponse.json({ error: 'Plan not found' }, { status: 404 })
 

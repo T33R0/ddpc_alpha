@@ -11,12 +11,12 @@ async function sb() {
   )
 }
 
-export async function GET(_: Request, { params }: { params: { vehicleId: string } }) {
+export async function GET(_: Request, { params }: { params: { id: string } }) {
   const supabase = await sb()
   const { data: plan } = await supabase
     .from('build_plans')
     .select('id')
-    .eq('vehicle_id', params.vehicleId)
+    .eq('vehicle_id', params.id)
     .single()
   if (!plan) return NextResponse.json({ recent: [], upcoming: [] })
 

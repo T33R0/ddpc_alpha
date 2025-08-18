@@ -11,7 +11,7 @@ async function sb() {
   )
 }
 
-export async function POST(req: Request, { params }: { params: { vehicleId: string } }) {
+export async function POST(req: Request, { params }: { params: { id: string } }) {
   const body = await req.json().catch(() => ({})) as { title?: string; description?: string }
   const { title, description } = body
   if (!title) return NextResponse.json({ error: 'title is required' }, { status: 400 })
@@ -20,7 +20,7 @@ export async function POST(req: Request, { params }: { params: { vehicleId: stri
   const { data: plan, error: planErr } = await supabase
     .from('build_plans')
     .select('id, status')
-    .eq('vehicle_id', params.vehicleId)
+    .eq('vehicle_id', params.id)
     .single()
   if (planErr || !plan) return NextResponse.json({ error: 'Plan not found' }, { status: 404 })
   if (plan.status !== 'open') return NextResponse.json({ error: `Plan is ${plan.status}` }, { status: 400 })
