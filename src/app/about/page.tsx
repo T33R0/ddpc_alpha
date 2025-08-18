@@ -1,118 +1,49 @@
-import Link from "next/link";
-
 export default function AboutPage() {
-  const demoId = process.env.PUBLIC_VEHICLE_ID?.trim();
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8 space-y-12">
-      {/* Hero / Intro */}
-      <section className="space-y-3">
-        <h1 className="text-3xl font-bold tracking-tight">About ddpc</h1>
-        <p className="text-lg text-gray-700">
-          ddpc (Daily Driver Project Companion) helps enthusiasts, owners, and garages collaborate on vehicle care
-          and builds. Plan work with Tasks, track progress on the Timeline, and keep sensitive details private by default.
+    <main className="relative isolate min-h-screen bg-neutral-950 text-neutral-200">
+      {/* Background accents */}
+      <div aria-hidden className="pointer-events-none absolute inset-0">
+        <div className="absolute left-1/2 top-[-10%] aspect-[2/1] w-[120vw] -translate-x-1/2 bg-[radial-gradient(ellipse_at_center,rgba(120,120,120,0.12),transparent_60%)]" />
+        <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-neutral-800 to-transparent" />
+      </div>
+
+      {/* Hero */}
+      <section className="mx-auto w-full max-w-6xl px-6 py-28 sm:py-36">
+        <h1 className="text-balance text-5xl font-extrabold tracking-tight sm:text-6xl md:text-7xl">
+          <span className="bg-gradient-to-b from-neutral-100 to-neutral-400 bg-clip-text text-transparent">
+            Your Build. Documented. Shared. Immortalized.
+          </span>
+        </h1>
+        <p className="mt-6 max-w-2xl text-lg leading-relaxed text-neutral-400">
+          ddpc is the system of record for automotive builds—manage, track, and share the full modification lifecycle.
         </p>
-        {demoId && (
-          <p className="text-gray-700">
-            Explore a public demo vehicle: {""}
-            <Link href={`/v/${demoId}`} className="text-blue-600 hover:underline">View demo</Link>
-          </p>
-        )}
       </section>
 
-      {/* Mission & Vision */}
-      <section className="grid gap-6 md:grid-cols-2">
-        <div className="rounded-lg border p-6">
-          <h2 className="mb-2 text-xl font-semibold">Our Mission</h2>
-          <p className="text-gray-700">
-            Empower every vehicle owner and garage to collaborate with clarity and trust—reducing guesswork,
-            improving safety, and extending the life of vehicles through well-documented work.
-          </p>
-        </div>
-        <div className="rounded-lg border p-6">
-          <h2 className="mb-2 text-xl font-semibold">Our Vision</h2>
-          <p className="text-gray-700">
-            A global, privacy-first network where each vehicle has a living history—searchable, verifiable,
-            and portable across owners and shops.
-          </p>
-        </div>
-      </section>
-
-      {/* History */}
-      <section>
-        <h2 className="mb-4 text-xl font-semibold">History</h2>
-        <ol className="relative border-s pl-6">
-          <li className="mb-6 ms-6">
-            <div className="absolute -start-1.5 h-3 w-3 rounded-full border bg-white" />
-            <h3 className="font-medium">2024 — Concept</h3>
-            <p className="text-gray-700">Seeded from the frustration of scattered receipts, text threads, and lost maintenance logs.</p>
-          </li>
-          <li className="mb-6 ms-6">
-            <div className="absolute -start-1.5 h-3 w-3 rounded-full border bg-white" />
-            <h3 className="font-medium">2025 — ddpc alpha</h3>
-            <p className="text-gray-700">Introduced Tasks, Timeline, and public vehicle pages with privacy by default.</p>
-          </li>
-          <li className="ms-6">
-            <div className="absolute -start-1.5 h-3 w-3 rounded-full border bg-white" />
-            <h3 className="font-medium">Roadmap</h3>
-            <p className="text-gray-700">Deeper parts intelligence, build plans, and collaboration with shops and clubs.</p>
-          </li>
-        </ol>
-      </section>
-
-      {/* Values */}
-      <section>
-        <h2 className="mb-4 text-xl font-semibold">Core Values</h2>
-        <div className="grid gap-4 md:grid-cols-3">
-          <div className="rounded-lg border p-4">
-            <h3 className="font-medium">Privacy by Default</h3>
-            <p className="text-gray-700">You decide what’s shared. Public pages show high-level updates only.</p>
+      {/* Core identity */}
+      <section className="mx-auto w-full max-w-6xl px-6 pb-16 sm:pb-24">
+        <div className="grid grid-cols-1 gap-6 sm:gap-8 md:grid-cols-3">
+          <div className="group rounded-xl border border-neutral-800 bg-neutral-900/40 p-6 backdrop-blur transition-colors hover:bg-neutral-900/60">
+            <h3 className="text-xl font-semibold tracking-tight text-neutral-100">Precision</h3>
+            <p className="mt-3 text-neutral-400">A digital twin of your build, every part and event logged.</p>
           </div>
-          <div className="rounded-lg border p-4">
-            <h3 className="font-medium">Clarity Over Complexity</h3>
-            <p className="text-gray-700">Simple workflows for planning work and recording what actually happened.</p>
+          <div className="group rounded-xl border border-neutral-800 bg-neutral-900/40 p-6 backdrop-blur transition-colors hover:bg-neutral-900/60">
+            <h3 className="text-xl font-semibold tracking-tight text-neutral-100">Community</h3>
+            <p className="mt-3 text-neutral-400">Connect with enthusiasts, share milestones, and learn from others.</p>
           </div>
-          <div className="rounded-lg border p-4">
-            <h3 className="font-medium">Data Portability</h3>
-            <p className="text-gray-700">Your vehicle’s history should follow the vehicle—across owners and garages.</p>
+          <div className="group rounded-xl border border-neutral-800 bg-neutral-900/40 p-6 backdrop-blur transition-colors hover:bg-neutral-900/60">
+            <h3 className="text-xl font-semibold tracking-tight text-neutral-100">Legacy</h3>
+            <p className="mt-3 text-neutral-400">Preserve the full story of your car for shows, sales, or the next generation.</p>
           </div>
         </div>
       </section>
 
-      {/* Team (placeholders) */}
-      <section>
-        <h2 className="mb-4 text-xl font-semibold">Team</h2>
-        <div className="grid gap-6 md:grid-cols-3">
-          <div className="rounded-lg border p-4">
-            <h3 className="font-medium">Alex Rivera</h3>
-            <p className="text-gray-700 text-sm">Founder & Product</p>
-            <p className="mt-2 text-gray-700 text-sm">Former shop hand, software PM. Obsessed with build documentation and safety.</p>
-          </div>
-          <div className="rounded-lg border p-4">
-            <h3 className="font-medium">Sam Patel</h3>
-            <p className="text-gray-700 text-sm">Engineering</p>
-            <p className="mt-2 text-gray-700 text-sm">Full‑stack dev with a soft spot for track day prep and telemetry.</p>
-          </div>
-          <div className="rounded-lg border p-4">
-            <h3 className="font-medium">Jordan Lee</h3>
-            <p className="text-gray-700 text-sm">Design</p>
-            <p className="mt-2 text-gray-700 text-sm">Designing clear, friendly workflows for owners and garages alike.</p>
-          </div>
-        </div>
+      {/* Closing line */}
+      <section className="mx-auto w-full max-w-6xl px-6 pb-32">
+        <p className="text-center text-xl text-neutral-300">
+          Every build deserves a record. This is yours.
+        </p>
       </section>
-
-      {/* Contact / Press */}
-      <section className="rounded-lg border p-6">
-        <h2 className="mb-2 text-xl font-semibold">Contact</h2>
-        <p className="text-gray-700">Have feedback or want to collaborate? Reach out:</p>
-        <ul className="mt-2 list-inside list-disc text-gray-700">
-          <li>Email: <a href="mailto:hello@ddpc.app" className="text-blue-600 hover:underline">hello@ddpc.app</a></li>
-          <li>Docs: <Link href="/docs" className="text-blue-600 hover:underline">/docs</Link></li>
-          {demoId && (
-            <li>Demo vehicle: <Link href={`/v/${demoId}`} className="text-blue-600 hover:underline">View demo</Link></li>
-          )}
-        </ul>
-      </section>
-    </div>
+    </main>
   );
 }
 

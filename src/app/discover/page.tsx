@@ -111,8 +111,22 @@ export default async function DiscoverPage({ searchParams = {} }: { searchParams
 	const from = (page - 1) * limit;
 	const to = from + limit - 1;
 
-	// Build main query with total count
-	let q = supabase.from("vehicle_data").select("*", { count: "exact", head: false });
+	// Build main query with a narrow column list and faster, planned count
+	const selectCols = [
+		"id",
+		columns.year,
+		columns.make,
+		columns.model,
+		columns.trim,
+		columns.displacement,
+		columns.cylinders,
+		columns.drive,
+		columns.power,
+		columns.weight,
+		columns.image,
+	].filter(Boolean).join(",");
+
+	let q = supabase.from("vehicle_data").select(selectCols, { count: "planned", head: false });
 
 	const eqIf = (key: string, col: string | null) => {
 		const [val] = toArray(searchParams[key]);
@@ -174,9 +188,25 @@ export default async function DiscoverPage({ searchParams = {} }: { searchParams
 	async function distinct(col: string | null): Promise<string[]> {
 		if (!col) return [];
 		try {
-			const { data } = await supabase.from("vehicle_data").select(`${col}`, { count: "exact", head: false }).not(col, "is", null).order(col, { ascending: true }).limit(500);
-			const vals = (data as Array<Record<string, string | number>> | null) || [];
-			return Array.from(new Set(vals.map(v => String(v[col as keyof typeof v])))).filter(Boolean);
+			// Fetch in batches to include more than the default limit; dedupe client-side
+			const MAX = 5000;
+			const BATCH = 1000;
+			const results = new Set<string>();
+			for (let start = 0; start < MAX; start += BATCH) {
+				const { data } = await supabase
+					.from("vehicle_data")
+					.select(`${col}`)
+					.not(col, "is", null)
+					.order(col as string, { ascending: true })
+					.range(start, start + BATCH - 1);
+				const rows = (data as Array<Record<string, string | number>> | null) || [];
+				for (const r of rows) {
+					const v = String(r[col as keyof typeof r] ?? "");
+					if (v) results.add(v);
+				}
+				if (rows.length < BATCH) break;
+			}
+			return Array.from(results);
 		} catch {
 			return [];
 		}
