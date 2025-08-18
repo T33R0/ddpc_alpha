@@ -3,13 +3,13 @@
 export default function VehicleTabs({ vehicleId }: { vehicleId: string }) {
   const items: Array<{ href: string; label: string; internal?: boolean }> = [
     { href: `#overview`, label: "Overview", internal: true },
-    { href: `#timeline`, label: "Timeline", internal: true },
+    { href: `/vehicles/${vehicleId}/plan`, label: "Build Plan", internal: false },
     { href: `#tasks`, label: "Tasks", internal: true },
-    { href: `#build-plans`, label: "Build Plans", internal: true },
+    { href: `#timeline`, label: "Timeline", internal: true },
     { href: `#gallery`, label: "Gallery", internal: true },
     // Parts stub can map to plans or future parts route if added
     { href: `#parts`, label: "Parts", internal: true },
-    { href: `/v/${vehicleId}`, label: "Display Page", internal: false },
+    { href: `/vehicles/${vehicleId}`, label: "Specs", internal: false },
   ];
 
   return (
