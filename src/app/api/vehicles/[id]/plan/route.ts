@@ -27,13 +27,24 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
     .eq('build_plan_id', plan.id)
     .order('created_at', { ascending: true })
 
+  type PartRow = {
+    id: string
+    job_id: string
+    name: string
+    brand: string | null
+    part_number: string | null
+    affiliate_url: string | null
+    price: number | null
+    qty: number | null
+    created_at: string
+  }
   const jobIds = (jobs ?? []).map(j => j.id)
   const { data: parts } = jobIds.length
     ? await supabase
         .from('job_part')
         .select('id, job_id, name, brand, part_number, affiliate_url, price, qty, created_at')
         .in('job_id', jobIds)
-    : { data: [] as any[] }
+    : { data: [] as PartRow[] }
 
   const { data: planTotal } = await supabase
     .from('v_build_plan_costs')
@@ -43,7 +54,7 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
 
   return NextResponse.json({
     plan: { ...plan, total_cost: planTotal?.cost_total ?? 0 },
-    jobs: (jobs ?? []).map(j => ({ ...j, parts: (parts ?? []).filter((p: { job_id: string }) => p.job_id === j.id) })),
+    jobs: (jobs ?? []).map(j => ({ ...j, parts: (parts ?? [] as PartRow[]).filter((p) => p.job_id === j.id) })),
   })
 }
 

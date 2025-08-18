@@ -5,7 +5,10 @@ const GROUPS = ['planning','purchased','active','complete','canceled'] as const
 
 export default function Page({ params }: { params: { id: string } }) {
   const vehicleId = params.id
-  const [data, setData] = useState<{ plan: { id: string; name: string; status: string; total_cost: number }, jobs: any[] } | null>(null)
+  type JobPart = { job_id: string; name: string | null; price: number | null; qty: number | null; affiliate_url: string | null }
+  type Job = { id: string; title: string; status: 'planning'|'purchased'|'active'|'complete'|'canceled'; parts: JobPart[] }
+  type PlanPayload = { plan: { id: string; name: string; status: 'open'|'closed'|'archived'; total_cost: number }, jobs: Job[] }
+  const [data, setData] = useState<PlanPayload | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [newJob, setNewJob] = useState('')
@@ -60,13 +63,13 @@ export default function Page({ params }: { params: { id: string } }) {
       </div>
 
       {GROUPS.map((g) => {
-        const items = (jobs ?? []).filter((j: any) => j.status === g)
+        const items = (jobs ?? []).filter((j) => j.status === g)
         return (
           <section key={g} className="space-y-2">
             <h2 className="text-lg font-medium capitalize">{g}</h2>
             {items.length === 0 ? <div className="text-sm text-zinc-500">No jobs.</div> : (
               <ul className="grid gap-2">
-                {items.map((j: any) => (
+                {items.map((j) => (
                   <li key={j.id} className="rounded-xl border p-3 space-y-2">
                     <div className="flex items-center justify-between gap-3">
                       <div className="font-medium">{j.title}</div>
@@ -83,8 +86,8 @@ export default function Page({ params }: { params: { id: string } }) {
                     {/* Parts inline add */}
                     <form className="grid grid-cols-6 gap-2" onSubmit={async (ev) => {
                       ev.preventDefault()
-                      const fd = new FormData(ev.currentTarget); const b = Object.fromEntries(fd.entries())
-                      await fetch(`/api/jobs/${j.id}/parts`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: b.name, price: Number(b.price || 0), qty: Number(b.qty || 1), affiliate_url: b.affiliate_url }) })
+                      const fd = new FormData(ev.currentTarget); const b = Object.fromEntries(fd.entries()) as Record<string, FormDataEntryValue>
+                      await fetch(`/api/jobs/${j.id}/parts`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: String(b.name || ''), price: Number(b.price || 0), qty: Number(b.qty || 1), affiliate_url: String(b.affiliate_url || '') }) })
                       ev.currentTarget.reset(); await load()
                     }}>
                       <input name="name" placeholder="Part name" className="col-span-2 border rounded px-2 py-1" disabled={plan.status !== 'open'} />
@@ -95,7 +98,7 @@ export default function Page({ params }: { params: { id: string } }) {
                     </form>
 
                     <div className="text-sm text-zinc-600">
-                      {(j.parts ?? []).length ? (j.parts ?? []).map((p: any) => `${p.name || 'Part'} x${p.qty ?? 1} $${p.price ?? 0}`).join(' • ')
+                      {(j.parts ?? []).length ? (j.parts ?? []).map((p) => `${p.name || 'Part'} x${p.qty ?? 1} $${p.price ?? 0}`).join(' • ')
                         : 'No parts yet'}
                     </div>
                   </li>
