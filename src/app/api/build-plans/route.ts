@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
 
     const { data, error } = await supabase
       .from("build_plans")
-      .insert({ vehicle_id, name, description: description || null, created_by: user.id })
+      .insert({ vehicle_id, name, description: description || null, created_by: user.id, status: 'open' })
       .select("id, vehicle_id, name, description, status, is_default, created_at, updated_at")
       .single();
     if (error) return NextResponse.json({ error: error.message }, { status: 400 });

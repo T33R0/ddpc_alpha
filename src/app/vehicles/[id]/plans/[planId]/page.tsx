@@ -60,7 +60,7 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
     });
   }
 
-  const isOpen = plan.status === "active";
+  const isOpen = plan.status === "open";
 
   const groups: Record<GroupKey, JobRow[]> = {
     planning: [],

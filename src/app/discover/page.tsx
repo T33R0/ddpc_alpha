@@ -73,27 +73,27 @@ export default async function DiscoverPage({ searchParams = {} }: { searchParams
 		return "";
 	}
 
-	// Resolve columns using dynamic probing for resilience across schemas
+	// Resolve columns using a single probe row for resilience across schemas (avoid many round-trips)
 	const columns = {
-		year: await pickColDynamic(["year", "model_year"]) || "",
-		make: await pickColDynamic(["make", "brand"]) || "",
-		model: await pickColDynamic(["model"]) || "",
-		trim: await pickColDynamic(["trim"]) || "",
-		body: await pickColDynamic(["body_type", "body_style"]) || "",
-		classification: await pickColDynamic(["car_classification", "class", "segment"]) || "",
-		drive: await pickColDynamic(["drivetrain", "drive_type", "drive"]) || "",
-		transmission: await pickColDynamic(["transmission", "transmission_type"]) || "",
-		engineConfig: await pickColDynamic(["engine_configuration", "engine", "engine_config"]) || "",
-		cylinders: await pickColDynamic(["cylinders"]) || "",
-		displacement: await pickColDynamic(["displacement_l", "displacement", "engine_liters"]) || "",
-		power: await pickColDynamic(["power_hp", "hp", "power"]) || "",
-		torque: await pickColDynamic(["torque_lbft", "torque", "torque_lb_ft"]) || "",
-		weight: await pickColDynamic(["weight_lbs", "curb_weight_lbs", "weight"]) || "",
-		image: await pickColDynamic(["image_url", "photo_url"]) || "",
-		country: await pickColDynamic(["country_of_origin", "origin", "country"]) || "",
-		seating: await pickColDynamic(["seating", "total_seating", "seats"]) || "",
-		doors: await pickColDynamic(["doors", "num_doors"]) || "",
-		fuel: await pickColDynamic(["fuel_type", "fuel"]) || "",
+		year: pickColumn(probeRow, ["year", "model_year"]) || "",
+		make: pickColumn(probeRow, ["make", "brand"]) || "",
+		model: pickColumn(probeRow, ["model"]) || "",
+		trim: pickColumn(probeRow, ["trim"]) || "",
+		body: pickColumn(probeRow, ["body_type", "body_style"]) || "",
+		classification: pickColumn(probeRow, ["car_classification", "class", "segment"]) || "",
+		drive: pickColumn(probeRow, ["drivetrain", "drive_type", "drive"]) || "",
+		transmission: pickColumn(probeRow, ["transmission", "transmission_type"]) || "",
+		engineConfig: pickColumn(probeRow, ["engine_configuration", "engine", "engine_config"]) || "",
+		cylinders: pickColumn(probeRow, ["cylinders"]) || "",
+		displacement: pickColumn(probeRow, ["displacement_l", "displacement", "engine_liters"]) || "",
+		power: pickColumn(probeRow, ["power_hp", "hp", "power"]) || "",
+		torque: pickColumn(probeRow, ["torque_lbft", "torque", "torque_lb_ft"]) || "",
+		weight: pickColumn(probeRow, ["weight_lbs", "curb_weight_lbs", "weight"]) || "",
+		image: pickColumn(probeRow, ["image_url", "photo_url"]) || "",
+		country: pickColumn(probeRow, ["country_of_origin", "origin", "country"]) || "",
+		seating: pickColumn(probeRow, ["seating", "total_seating", "seats"]) || "",
+		doors: pickColumn(probeRow, ["doors", "num_doors"]) || "",
+		fuel: pickColumn(probeRow, ["fuel_type", "fuel"]) || "",
 	};
 
 	// Pagination params
@@ -243,9 +243,15 @@ export default async function DiscoverPage({ searchParams = {} }: { searchParams
 								title={title || v.trim || "Vehicle"}
 								imageSrc={imageSrc || fallbackSrc}
 								stats={{
-									power: v.power_hp ? `${v.power_hp} HP` : "N/A",
+									power: (() => {
+										const p = getStat(v, columns.power);
+										return p ? `${p} HP` : "N/A";
+									})(),
 									engine: engineLabel || "N/A",
-									weight: v.weight_lbs ? `${v.weight_lbs} lbs` : "N/A",
+									weight: (() => {
+										const w = getStat(v, columns.weight);
+										return w ? `${w} lbs` : "N/A";
+									})(),
 									drive: drive || "N/A",
 								}}
 							/>

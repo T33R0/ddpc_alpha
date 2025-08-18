@@ -87,14 +87,11 @@ export async function PATCH(req: NextRequest, context: RouteContext) {
     const { data: veh } = await supabase.from("vehicle").select("id, owner_id").eq("id", plan.vehicle_id).maybeSingle();
     if (!veh || veh.owner_id !== user.id) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-    // Validate status transitions: allow draft<->active, active->archived; merged not settable here
+    // Validate status transitions using new model: open|closed|archived
     const nextStatus: string | undefined = status;
     if (typeof nextStatus !== "undefined") {
-      if (["draft","active","archived"].indexOf(nextStatus) === -1) {
+      if (["open","closed","archived"].indexOf(nextStatus) === -1) {
         return NextResponse.json({ error: "Invalid status" }, { status: 400 });
-      }
-      if (plan.status === "merged") {
-        return NextResponse.json({ error: "Cannot modify merged plan" }, { status: 400 });
       }
     }
 

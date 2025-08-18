@@ -23,6 +23,30 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   }
 
   const supabase = await sb()
+  // Guardrail: ensure job belongs to an open plan and caller owns the vehicle
+  const { data: job } = await supabase
+    .from('job')
+    .select('id, build_plan_id')
+    .eq('id', params.id)
+    .maybeSingle()
+  if (!job) return NextResponse.json({ error: 'Job not found' }, { status: 404 })
+  const { data: plan } = await supabase
+    .from('build_plans')
+    .select('id, vehicle_id, status')
+    .eq('id', job.build_plan_id as string)
+    .maybeSingle()
+  if (!plan) return NextResponse.json({ error: 'Plan not found' }, { status: 404 })
+  if (plan.status !== 'open') {
+    return NextResponse.json({ error: 'Plan is not open. You can only add parts to jobs on an open plan.' }, { status: 400 })
+  }
+  const { data: veh } = await supabase
+    .from('vehicle')
+    .select('owner_id')
+    .eq('id', plan.vehicle_id as string)
+    .maybeSingle()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!veh || veh.owner_id !== user.id) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   const { error } = await supabase.from('job_part').insert({
     job_id: params.id,
     name,

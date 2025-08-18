@@ -21,6 +21,28 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'build_plan_id and title are required' }, { status: 400 })
 
   const supabase = await sb()
+
+  // Guardrail: plan must be open; also verify ownership via vehicle
+  const { data: plan, error: planErr } = await supabase
+    .from('build_plans')
+    .select('id, vehicle_id, status')
+    .eq('id', build_plan_id)
+    .maybeSingle()
+  if (planErr) return NextResponse.json({ error: planErr.message }, { status: 400 })
+  if (!plan) return NextResponse.json({ error: 'Plan not found' }, { status: 404 })
+  if (plan.status !== 'open') {
+    return NextResponse.json({ error: 'Plan is not open. You can only add jobs to an open plan.' }, { status: 400 })
+  }
+
+  const { data: veh } = await supabase
+    .from('vehicle')
+    .select('owner_id')
+    .eq('id', plan.vehicle_id as string)
+    .maybeSingle()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!veh || veh.owner_id !== user.id) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
   const { data, error } = await supabase
     .from('job')
     .insert({ build_plan_id, title, description })

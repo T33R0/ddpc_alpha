@@ -1,6 +1,6 @@
 import { getServerSupabase } from "@/lib/supabase";
 
-export type ActivityEntityType = "vehicle" | "event" | "work_item" | "garage";
+export type ActivityEntityType = "vehicle" | "event" | "work_item" | "garage" | "build_plan" | "job" | "job_part";
 export type ActivityAction =
   | "create"
   | "update"
