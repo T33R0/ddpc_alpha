@@ -39,7 +39,7 @@ export default function DiscoverFiltersClient({ options }: { options: Options })
 		return (
 			<div className="mb-3">
 				<label className="mb-1 block text-sm text-gray-700">{label}</label>
-				<select className="max-h-48 w-full overflow-auto rounded border px-2 py-1 text-sm" value={val} onChange={onChange}>
+				<select size={8} className="w-full rounded border px-2 py-1 text-sm" value={val} onChange={onChange}>
 					<option value="">{allLabel}</option>
 					{options[key].map((o) => (
 						<option key={`${key}-${o}`} value={o}>{o}</option>
