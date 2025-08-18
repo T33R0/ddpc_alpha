@@ -179,7 +179,7 @@ export default async function DiscoverPage({ searchParams = {} }: { searchParams
 			<div className="mx-auto max-w-7xl px-4 py-6">
 				<div className="rounded border p-4 bg-yellow-50 text-yellow-900">
 					<div className="font-semibold mb-1">Discover data unavailable</div>
-					<div className="text-sm">{vehiclesError.message}</div>
+					<div className="text-sm break-all">{vehiclesError.message}</div>
 				</div>
 			</div>
 		);
@@ -239,7 +239,7 @@ export default async function DiscoverPage({ searchParams = {} }: { searchParams
 	return (
 		<div className="mx-auto max-w-7xl px-4 py-6 grid grid-cols-12 gap-6">
 			<aside className="col-span-12 md:col-span-3 lg:col-span-3">
-				<div className="sticky top-4 rounded-lg border p-4">
+				<div className="sticky top-4 max-h-[calc(100vh-2rem)] overflow-auto rounded-lg border p-4">
 					<h2 className="mb-3 text-lg font-semibold">Filters</h2>
 					<DiscoverFiltersClient
 						options={{
