@@ -30,7 +30,7 @@ async function selectDistinct(
   supabase: Awaited<ReturnType<typeof getServerSupabase>>,
   column: string,
   filters?: Array<{ col: string; val: string }>,
-  limit = 2000
+  limit = 100000
 ): Promise<string[]> {
   if (!column) return [];
   try {
@@ -89,38 +89,31 @@ export async function GET(req: Request): Promise<Response> {
     // Years: prefer table distinct, else fill 1990..2026
     let years: string[] = [];
     if (columns.year) {
-      years = await selectDistinct(supabase, columns.year, undefined, 2000);
+      years = await selectDistinct(supabase, columns.year, undefined, 100000);
       years = Array.from(new Set(years.map(String))).sort((a, b) => Number(b) - Number(a));
     }
     if (years.length === 0) {
       years = Array.from({ length: 2026 - 1990 + 1 }, (_, i) => String(2026 - i));
     }
 
-    // Dependent lists: make depends on year; model depends on year+make; trim depends on year+make+model
-    const makeFilters = selYear && columns.year ? [{ col: columns.year, val: selYear }] : undefined;
-    const modelFilters = [
-      ...(selYear && columns.year ? [{ col: columns.year, val: selYear }] : []),
-      ...(selMake && columns.make ? [{ col: columns.make, val: selMake }] : []),
-    ];
-    const trimFilters = [
-      ...(selYear && columns.year ? [{ col: columns.year, val: selYear }] : []),
-      ...(selMake && columns.make ? [{ col: columns.make, val: selMake }] : []),
-      ...(selModel && columns.model ? [{ col: columns.model, val: selModel }] : []),
-    ];
+    // All lists should show full, unscoped options across vehicle_data (no dependency narrowing)
+    const makeFilters = undefined;
+    const modelFilters = undefined;
+    const trimFilters = undefined;
 
     const [make, model, trim, body, classification, drive, transmission, engine, doors, seating, fuel, country] = await Promise.all([
-      selectDistinct(supabase, columns.make, makeFilters, 5000),
-      selectDistinct(supabase, columns.model, modelFilters.length ? modelFilters : undefined, 5000),
-      selectDistinct(supabase, columns.trim, trimFilters.length ? trimFilters : undefined, 5000),
-      selectDistinct(supabase, columns.body, undefined, 5000),
-      selectDistinct(supabase, columns.classification, undefined, 5000),
-      selectDistinct(supabase, columns.drive, undefined),
-      selectDistinct(supabase, columns.transmission, undefined),
-      selectDistinct(supabase, columns.engine, undefined),
-      selectDistinct(supabase, columns.doors, undefined),
-      selectDistinct(supabase, columns.seating, undefined),
-      selectDistinct(supabase, columns.fuel, undefined),
-      selectDistinct(supabase, columns.country, undefined),
+      selectDistinct(supabase, columns.make, makeFilters, 100000),
+      selectDistinct(supabase, columns.model, modelFilters, 100000),
+      selectDistinct(supabase, columns.trim, trimFilters, 100000),
+      selectDistinct(supabase, columns.body, undefined, 100000),
+      selectDistinct(supabase, columns.classification, undefined, 100000),
+      selectDistinct(supabase, columns.drive, undefined, 100000),
+      selectDistinct(supabase, columns.transmission, undefined, 100000),
+      selectDistinct(supabase, columns.engine, undefined, 100000),
+      selectDistinct(supabase, columns.doors, undefined, 100000),
+      selectDistinct(supabase, columns.seating, undefined, 100000),
+      selectDistinct(supabase, columns.fuel, undefined, 100000),
+      selectDistinct(supabase, columns.country, undefined, 100000),
     ]);
 
     const payload = {
