@@ -15,13 +15,14 @@ export async function POST(req: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
 
+    type Inserted = { id: string };
     const { data, error } = await supabase
       .from("budget_plan" as unknown as string)
       .insert({ vehicle_id: vehicleId, name, period })
       .select("id")
-      .single();
+      .single<Inserted>();
     if (error) return NextResponse.json({ message: error.message }, { status: 400 });
-    return NextResponse.json({ ok: true, plan: { id: (data as any).id } }, { status: 201 });
+    return NextResponse.json({ ok: true, plan: { id: data.id } }, { status: 201 });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     return NextResponse.json({ message }, { status: 500 });

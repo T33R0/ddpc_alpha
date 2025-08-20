@@ -35,13 +35,14 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
       thumb_url: typeof body.thumb_url === "string" ? body.thumb_url : null,
     };
 
+    type Inserted = { id: string };
     const { data, error } = await supabase
       .from("market_vehicle" as unknown as string)
       .insert(payload)
       .select("id")
-      .single();
+      .single<Inserted>();
     if (error) return NextResponse.json({ message: error.message }, { status: 400 });
-    return NextResponse.json({ ok: true, listing: { id: (data as any).id } }, { status: 201 });
+    return NextResponse.json({ ok: true, listing: { id: data.id } }, { status: 201 });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     return NextResponse.json({ message }, { status: 500 });

@@ -30,13 +30,14 @@ export async function POST(req: NextRequest) {
       need_by: typeof body.need_by === "string" ? body.need_by : null,
     };
 
+    type Inserted = { id: string };
     const { data, error } = await supabase
       .from("budget_line" as unknown as string)
       .insert(payload)
       .select("id")
-      .single();
+      .single<Inserted>();
     if (error) return NextResponse.json({ message: error.message }, { status: 400 });
-    return NextResponse.json({ ok: true, line: { id: (data as any).id } }, { status: 201 });
+    return NextResponse.json({ ok: true, line: { id: data.id } }, { status: 201 });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     return NextResponse.json({ message }, { status: 500 });

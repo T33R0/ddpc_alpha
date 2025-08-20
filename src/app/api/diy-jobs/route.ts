@@ -15,20 +15,21 @@ export async function POST(req: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
 
+    type InsertedJob = { id: string };
     const { data: job, error } = await supabase
       .from("diy_job" as unknown as string)
       .insert({ vehicle_id: vehicleId, title, status: "open" })
       .select("id")
-      .single();
+      .single<InsertedJob>();
     if (error) return NextResponse.json({ message: error.message }, { status: 400 });
 
     if (wishlistIds.length > 0) {
-      const links = wishlistIds.map((wid) => ({ diy_job_id: (job as any).id, wishlist_item_id: wid }));
+      const links = wishlistIds.map((wid) => ({ diy_job_id: job.id, wishlist_item_id: wid }));
       const { error: linkErr } = await supabase.from("part_use" as unknown as string).insert(links);
       if (linkErr) return NextResponse.json({ message: linkErr.message }, { status: 400 });
     }
 
-    return NextResponse.json({ ok: true, job: { id: (job as any).id } }, { status: 201 });
+    return NextResponse.json({ ok: true, job: { id: job.id } }, { status: 201 });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
     return NextResponse.json({ message }, { status: 500 });

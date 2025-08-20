@@ -13,18 +13,19 @@ export async function POST(req: NextRequest) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
 
+    type WishlistRow = { id: string; vendor_id: string | null };
     const { data: items, error: selErr } = await supabase
       .from("wishlist_item" as unknown as string)
       .select("id, vendor_id")
-      .in("id", ids);
+      .in("id", ids) as unknown as { data: WishlistRow[] | null; error: { message: string } | null };
     if (selErr) return NextResponse.json({ message: selErr.message }, { status: 400 });
     if (!items || items.length === 0) return NextResponse.json({ message: "No items found" }, { status: 404 });
 
     const byVendor = new Map<string | null, string[]>();
     for (const it of items) {
-      const key = (it as any).vendor_id ?? null;
+      const key = it.vendor_id ?? null;
       const list = byVendor.get(key) ?? [];
-      list.push((it as any).id);
+      list.push(it.id);
       byVendor.set(key, list);
     }
 

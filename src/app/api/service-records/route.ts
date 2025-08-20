@@ -29,16 +29,17 @@ export async function POST(req: NextRequest) {
       occurred_at: typeof body.occurred_at === "string" ? body.occurred_at : null,
       cost: typeof body.cost === "number" ? body.cost : null,
     };
+    type Inserted = { id: string; vehicle_id: string; title: string; occurred_at: string | null };
     const { data, error } = await supabase
       .from("service_record" as unknown as string)
       .insert(payload)
       .select("id, vehicle_id, title, occurred_at")
-      .single();
+      .single<Inserted>();
     if (error) return NextResponse.json({ message: error.message }, { status: 400 });
 
     let uploadUrl: { url: string; path: string } | undefined;
     if (body.wantInvoice) {
-      const signed = await getInvoiceUploadUrl((data as any).vehicle_id, (data as any).id);
+      const signed = await getInvoiceUploadUrl(data.vehicle_id, data.id);
       uploadUrl = { url: signed.url, path: signed.path };
     }
 
