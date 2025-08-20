@@ -48,8 +48,15 @@ export default function VehicleJobsPage({ params }: { params: { id: string } }) 
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || "Failed to create jobs");
-      const newJobs: Job[] = (data.jobs || ids.map((id: string) => ({ id, title: `Job for ${id}`, status: "PLANNED" as const })))
-        .map((j: any) => ({ id: j.id || crypto.randomUUID(), title: j.title || "New Job", status: j.status || "PLANNED" }));
+      type JobLike = Partial<Pick<Job, "id" | "title" | "status">>;
+      const rawJobs: JobLike[] = Array.isArray((data as { jobs?: JobLike[] }).jobs)
+        ? (data as { jobs: JobLike[] }).jobs
+        : ids.map((id: string) => ({ id, title: `Job for ${id}`, status: "PLANNED" as const }));
+      const newJobs: Job[] = rawJobs.map((j) => ({
+        id: j.id ?? crypto.randomUUID(),
+        title: j.title ?? "New Job",
+        status: (j.status ?? "PLANNED") as Job["status"],
+      }));
       setJobs((prev) => [...newJobs, ...prev]);
       setShowWizard(false);
       setSelected({});
