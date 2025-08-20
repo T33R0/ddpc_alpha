@@ -7,6 +7,9 @@ import VehicleTabs from "@/components/vehicle/VehicleTabs";
 import { getVehicleCoverUrl } from "@/lib/getVehicleCoverUrl";
 import DeleteVehicleButtonClient from "./DeleteVehicleButtonClient";
 import MediaSection from "./media-section";
+import VehicleWishlistBody from "@/components/vehicle/VehicleWishlistBody";
+import VehicleJobsBody from "@/components/vehicle/VehicleJobsBody";
+import VehicleReceiptsBody from "@/components/vehicle/VehicleReceiptsBody";
 // Editing UI is no longer shown on the details landing; users can access it from a dedicated page later
 
 export const dynamic = "force-dynamic";
@@ -149,13 +152,28 @@ export default async function VehicleOverviewPage({ params }: { params: Promise<
         <MediaSection media={mediaItems} vehicleId={vehicleId} />
       </div>
 
+      <div id="veh-content-wishlist" data-section="wishlist" style={{ display: 'none' }}>
+        <VehicleWishlistBody vehicleId={vehicleId} />
+      </div>
+
+      <div id="veh-content-jobs" data-section="jobs" style={{ display: 'none' }}>
+        <VehicleJobsBody vehicleId={vehicleId} />
+      </div>
+
+      <div id="veh-content-receipts" data-section="receipts" style={{ display: 'none' }}>
+        <VehicleReceiptsBody vehicleId={vehicleId} />
+      </div>
+
       {/* Client-side content router for sub-navigation */}
       <script
         dangerouslySetInnerHTML={{
           __html: `(() => {
             const sections = {
               overview: document.getElementById('veh-content-overview'),
-              media: document.getElementById('veh-content-media')
+              media: document.getElementById('veh-content-media'),
+              wishlist: document.getElementById('veh-content-wishlist'),
+              jobs: document.getElementById('veh-content-jobs'),
+              receipts: document.getElementById('veh-content-receipts'),
             };
             function setActive(targetName) {
               document.querySelectorAll('a[data-veh-nav]').forEach((a) => {
@@ -173,6 +191,9 @@ export default async function VehicleOverviewPage({ params }: { params: Promise<
               });
               // Update active based on section + current slide
               if (section === 'media') { setActive('gallery'); return; }
+              if (section === 'wishlist') { setActive('wishlist'); return; }
+              if (section === 'jobs') { setActive('jobs'); return; }
+              if (section === 'receipts') { setActive('receipts'); return; }
               // Default to overview; try to reflect current slide if available
               try {
                 // @ts-ignore
@@ -184,11 +205,17 @@ export default async function VehicleOverviewPage({ params }: { params: Promise<
             // Initialize from hash
             const hash = location.hash.replace('#','');
             if (hash === 'gallery') show('media');
+            else if (hash === 'wishlist') show('wishlist');
+            else if (hash === 'jobs') show('jobs');
+            else if (hash === 'receipts') show('receipts');
             else show('overview');
             // React to hash changes
             window.addEventListener('hashchange', () => {
               const h = location.hash.replace('#','');
               if (h === 'gallery') show('media');
+              else if (h === 'wishlist') show('wishlist');
+              else if (h === 'jobs') show('jobs');
+              else if (h === 'receipts') show('receipts');
               else show('overview');
             });
             // Enhance in-page nav: set hash and prevent default full nav
@@ -201,6 +228,10 @@ export default async function VehicleOverviewPage({ params }: { params: Promise<
               if (target === 'gallery') {
                 if (location.hash !== '#gallery') location.hash = '#gallery';
                 else show('media');
+                return;
+              }
+              if (target === 'wishlist' || target === 'jobs' || target === 'receipts') {
+                location.hash = '#' + target;
                 return;
               }
               // All other tabs are slides within overview
