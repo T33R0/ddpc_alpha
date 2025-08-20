@@ -3,7 +3,7 @@ import Image from "next/image";
 import { SignInButton } from "@/components/auth/SignInButton";
 import { getServerSupabase } from "@/lib/supabase";
 import { Warehouse, Search, User as UserIcon, CircleHelp } from "lucide-react";
-import ddpcLogo from "../media/branding/Fiverr Premium Kit/PNG Logo Files/Original Logo.png";
+import ddpcLogo from "../../media/branding/Fiverr Premium Kit/PNG Logo Files/Original Logo.png";
 
 export const dynamic = "force-dynamic";
 
