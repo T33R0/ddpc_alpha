@@ -18,7 +18,8 @@ export async function getSignedUploadUrl(bucket: "invoices" | "jobs", path: stri
   const supabase = await getServerSupabase();
   const objectPath = ensurePath("", [path]);
   // Using createSignedUploadUrl allows clients to PUT directly to storage
-  const { data, error } = await supabase.storage.from(bucket).createSignedUploadUrl(objectPath, expiresInSeconds);
+  // Current SDK expects an options object (e.g., { upsert: true })
+  const { data, error } = await supabase.storage.from(bucket).createSignedUploadUrl(objectPath, { upsert: true });
   if (error || !data) {
     const message = error?.message ?? "Failed to create signed upload URL";
     throw new Error(message);
@@ -27,12 +28,14 @@ export async function getSignedUploadUrl(bucket: "invoices" | "jobs", path: stri
 }
 
 export async function getInvoiceUploadUrl(vehicleId: string, id: string): Promise<SignedUpload> {
-  const path = ensurePath("invoices", [vehicleId, id]);
+  // Path must be relative to the bucket, do not prefix bucket name here
+  const path = ensurePath("", [vehicleId, id]);
   return getSignedUploadUrl("invoices", path);
 }
 
 export async function getJobMediaUploadUrl(vehicleId: string, id: string): Promise<SignedUpload> {
-  const path = ensurePath("jobs", [vehicleId, id]);
+  // Path must be relative to the bucket, do not prefix bucket name here
+  const path = ensurePath("", [vehicleId, id]);
   return getSignedUploadUrl("jobs", path);
 }
 
