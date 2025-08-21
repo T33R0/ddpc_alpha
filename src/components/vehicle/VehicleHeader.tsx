@@ -3,6 +3,7 @@ import Link from "next/link";
 import Image from "next/image";
 import PrivacyBadge from "@/components/PrivacyBadge";
 import { useCallback, useState } from "react";
+import { Warehouse } from "lucide-react";
 
 type Props = {
   vehicle: { id: string; nickname: string | null; year: number | null; make: string | null; model: string | null; privacy: string | null };
@@ -40,7 +41,9 @@ export default function VehicleHeader({ vehicle, coverUrl, backHref = "/vehicles
         </div>
         <div className="flex items-center gap-3 text-sm">
           {backHref ? (
-            <Link href={backHref} className="text-gray-600 hover:underline" data-testid="back-to-vehicles">← Back to Vehicles</Link>
+            <Link href={backHref} aria-label="Garage" title="Garage" className="inline-flex items-center justify-center w-8 h-8 rounded-full border bg-card text-fg hover:bg-bg/60" data-testid="back-to-vehicles">
+              <Warehouse className="w-5 h-5" />
+            </Link>
           ) : null}
         </div>
       </div>
