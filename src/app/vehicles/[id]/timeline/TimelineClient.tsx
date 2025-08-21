@@ -72,11 +72,15 @@ export default function TimelineClient({ events, vehicleId, canWrite = true, eve
     return () => window.removeEventListener("plan-merge-created", onMergeCreated as EventListener);
   }, [vehicleId]);
 
-  // Initial micro-skeleton to cover first render
+  // Initial micro-skeleton to cover first render; also refresh from server to ensure fresh data when navigating back
   useEffect(() => {
     const t = setTimeout(() => setInitialLoading(false), 200);
+    // Fetch latest events for this vehicle to avoid stale SSR data
+    fetch(`/api/vehicles/${vehicleId}/timeline`).then(r => r.json()).then((j) => {
+      if (Array.isArray(j.events)) setData(j.events as TimelineEvent[]);
+    }).catch(() => void 0);
     return () => clearTimeout(t);
-  }, []);
+  }, [vehicleId]);
 
   // Open modal if URL contains ?new=event, then clean the URL
   useEffect(() => {
