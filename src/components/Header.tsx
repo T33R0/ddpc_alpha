@@ -5,21 +5,21 @@ import CommandPalette from "@/components/CommandPalette";
 import { Suspense } from "react";
 import Image from "next/image";
 import LogoPng from "../../media/branding/Fiverr Premium Kit/Favicon/Wordpress Transparent.png";
+import { Warehouse } from "lucide-react";
 
 export default function Header() {
   return (
     <header className="border-b bg-card/70 backdrop-blur sticky top-0 z-40 text-fg">
-      <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <Link href="/" className="inline-flex items-center" data-testid="brand-ddpc" aria-label="ddpc home">
-            <Image src={LogoPng} alt="ddpc" height={32} className="h-8 w-auto" />
+      <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-center">
+        <nav className="flex items-center gap-8">
+          <Link href="/vehicles" className="inline-flex items-center" aria-label="Garage" data-testid="nav-garage">
+            <Warehouse className="w-6 h-6" />
           </Link>
-        </div>
-        <div className="flex items-center gap-3">
-          <Link href="/discover" className="text-sm text-muted hover:text-fg" aria-label="Discover">Discover</Link>
-          <Link href="/about" className="text-sm text-muted hover:text-fg" aria-label="About ddpc">ddpc?</Link>
+          <Link href="/" className="inline-flex items-center" data-testid="brand-ddpc" aria-label="ddpc home">
+            <Image src={LogoPng} alt="ddpc" height={40} className="h-10 w-auto" />
+          </Link>
           <HeaderAuth />
-        </div>
+        </nav>
       </div>
       <Suspense fallback={null}>
         <CommandPalette />

@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { getBrowserSupabase } from "@/lib/supabase-browser";
+import { User as UserIcon } from "lucide-react";
 
 export default function HeaderAuth() {
   const supabase = getBrowserSupabase();
@@ -56,7 +57,8 @@ export default function HeaderAuth() {
     return (
       <button
         type="button"
-        className="px-3 py-1 rounded border bg-white hover:bg-gray-50"
+        className="inline-flex items-center justify-center text-fg hover:opacity-80"
+        aria-label="Sign in"
         data-testid="btn-signin"
         onClick={async () => {
           const origin = window.location.origin;
@@ -66,19 +68,19 @@ export default function HeaderAuth() {
           });
         }}
       >
-        Sign in
+        <UserIcon className="w-6 h-6" />
       </button>
     );
   }
 
   return (
     <div className="relative" ref={menuRef}>
-      <button onClick={() => setMenuOpen(o => !o)} className="w-8 h-8 rounded-full bg-card text-fg border overflow-hidden flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]" aria-haspopup="menu" aria-expanded={menuOpen} data-testid="menu-avatar">
+      <button onClick={() => setMenuOpen(o => !o)} className="w-8 h-8 rounded-full bg-card text-fg border overflow-hidden flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]" aria-haspopup="menu" aria-expanded={menuOpen} data-testid="menu-avatar" aria-label="Account menu">
         {avatarUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={avatarUrl} alt="avatar" className="w-full h-full object-cover" />
         ) : (
-          <span className="text-xs">{email[0]?.toUpperCase?.() || "U"}</span>
+          <UserIcon className="w-5 h-5" />
         )}
       </button>
       {menuOpen && (
