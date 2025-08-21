@@ -77,7 +77,27 @@ export default function TimelineClient({ events, vehicleId, canWrite = true, eve
     const t = setTimeout(() => setInitialLoading(false), 200);
     // Fetch latest events for this vehicle to avoid stale SSR data
     fetch(`/api/vehicles/${vehicleId}/timeline`).then(r => r.json()).then((j) => {
-      if (Array.isArray(j.events)) setData(j.events as TimelineEvent[]);
+      if (Array.isArray(j.events)) {
+        // Normalize API (enriched) payload to TimelineEvent shape expected by client
+        const normalized: TimelineEvent[] = (j.events as Array<{ id: string; vehicle_id: string; db_type?: string; title?: string | null; notes?: string | null; display_type?: string | null; display_icon?: string | null; display_color?: string | null; display_label?: string | null; occurred_at?: string | null; occurred_on?: string | null; date_confidence?: string | null; created_at?: string | null; updated_at?: string | null }>).map((e) => ({
+          id: e.id,
+          vehicle_id: e.vehicle_id,
+          // Keep NOTE as default for filters; detailed display handled by display_* fields
+          type: (e.db_type === 'SERVICE' ? 'SERVICE' : e.db_type === 'INSTALL' ? 'MOD' : e.db_type === 'DYNO' ? 'DYNO' : 'NOTE') as TimelineEventType,
+          title: e.title ?? null,
+          notes: e.notes ?? null,
+          display_type: (e as unknown as { display_type?: string | null }).display_type ?? null,
+          display_icon: (e as unknown as { display_icon?: string | null }).display_icon ?? null,
+          display_color: (e as unknown as { display_color?: string | null }).display_color ?? null,
+          display_label: (e as unknown as { display_label?: string | null }).display_label ?? null,
+          occurred_at: (e.occurred_at ?? e.created_at ?? new Date().toISOString()),
+          occurred_on: e.occurred_on ?? (e.occurred_at ? e.occurred_at.slice(0,10) : (e.created_at ? e.created_at.slice(0,10) : null)),
+          date_confidence: (e.date_confidence === 'approximate' || e.date_confidence === 'unknown') ? e.date_confidence : 'exact',
+          created_at: e.created_at ?? null,
+          updated_at: e.updated_at ?? null,
+        }));
+        setData(normalized);
+      }
     }).catch(() => void 0);
     return () => clearTimeout(t);
   }, [vehicleId]);
