@@ -111,7 +111,7 @@ export default function VehicleOverviewCarousel({ vehicle, quickStats, tasks, ev
                 <p className="text-sm text-muted">See all events, filters, and quick add on the timeline page.</p>
               </div>
               <div className="mt-4">
-                <Link href={`/vehicles/${vehicle.id}/timeline`} className="inline-flex items-center px-3 py-2 text-sm rounded-md border">Go to timeline</Link>
+                <Link href={`/timeline`} className="inline-flex items-center px-3 py-2 text-sm rounded-md border">Go to timeline</Link>
               </div>
             </div>
           </div>

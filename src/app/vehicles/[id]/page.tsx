@@ -4,11 +4,15 @@ import VehicleHeader from "@/components/vehicle/VehicleHeader";
 // Slides are rendered inside a local carousel component
 import VehicleOverviewCarousel from "@/components/vehicle/VehicleOverviewCarousel";
 import VehicleTabs from "@/components/vehicle/VehicleTabs";
+import VehicleTabController from "@/components/vehicle/VehicleTabController";
 import { getVehicleCoverUrl } from "@/lib/getVehicleCoverUrl";
 import DeleteVehicleButtonClient from "./DeleteVehicleButtonClient";
 import MediaSection from "./media-section";
 import VehicleWishlistBody from "@/components/vehicle/VehicleWishlistBody";
-import VehicleJobsBody from "@/components/vehicle/VehicleJobsBody";
+import TasksClient from "@/app/vehicles/[id]/tasks/TasksClient";
+import TimelineClient, { type TimelineEvent } from "@/app/vehicles/[id]/timeline/TimelineClient";
+import { getEventTypes } from "@/lib/eventTypes";
+import { fetchVehicleEventsForCards } from "@/lib/timeline/enrichedEvents";
 import VehicleReceiptsBody from "@/components/vehicle/VehicleReceiptsBody";
 // Editing UI is no longer shown on the details landing; users can access it from a dedicated page later
 
@@ -84,6 +88,73 @@ export default async function VehicleOverviewPage({ params }: { params: Promise<
 
   const coverUrl = await getVehicleCoverUrl(supabase, vehicleId, (vehicle as { photo_url?: string | null } | null)?.photo_url ?? null);
 
+  // Full Timeline data (for in-page timeline tab)
+  const enriched = await fetchVehicleEventsForCards(supabase, vehicleId);
+  type EventType = "SERVICE" | "INSTALL" | "INSPECT" | "TUNE";
+  const mapType = (t: EventType): TimelineEvent["type"] => {
+    switch (t) {
+      case "SERVICE":
+        return "SERVICE";
+      case "INSTALL":
+        return "MOD";
+      case "INSPECT":
+        return "NOTE";
+      case "TUNE":
+        return "DYNO";
+      default:
+        return "NOTE";
+    }
+  };
+  const eventTypes = await getEventTypes();
+  const timelineEvents: TimelineEvent[] = enriched.map((e) => ({
+    id: e.id,
+    vehicle_id: vehicleId,
+    type: mapType(e.db_type as EventType),
+    title: e.title,
+    notes: e.notes,
+    display_type: e.display_type,
+    display_icon: e.display_icon,
+    display_color: e.display_color,
+    display_label: e.display_label,
+    occurred_at: e.occurred_at ?? e.created_at,
+    occurred_on: e.occurred_on ?? (e.created_at ? e.created_at.slice(0,10) : null),
+    date_confidence: e.date_confidence,
+    created_at: e.created_at,
+    updated_at: e.updated_at,
+  } as TimelineEvent));
+
+  // Full Tasks data (for in-page jobs tab)
+  const { data: items } = await supabase
+    .from("work_item")
+    .select("id, title, status, tags, due, build_plan_id")
+    .eq("vehicle_id", vehicleId)
+    .order("created_at", { ascending: true });
+  const { data: plans } = await supabase
+    .from("build_plans")
+    .select("id, name, is_default")
+    .eq("vehicle_id", vehicleId)
+    .order("updated_at", { ascending: false });
+  const initialItems = (items ?? []) as unknown as import("@/app/vehicles/[id]/tasks/TasksBoardClient").WorkItem[];
+  const plansList = (plans ?? []) as { id: string; name: string; is_default: boolean }[];
+  const defaultPlanId = plansList.find(p => p.is_default)?.id ?? (plansList[0]?.id ?? null);
+
+  // Determine permissions for tasks editing (VIEWER => read-only; CONTRIBUTOR+ => write)
+  type Role = "OWNER" | "MANAGER" | "CONTRIBUTOR" | "VIEWER";
+  async function getRole(garageId: string | null | undefined): Promise<Role|null> {
+    if (!garageId) return null;
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+    const { data: m } = await supabase
+      .from("garage_member")
+      .select("role")
+      .eq("garage_id", garageId as string)
+      .eq("user_id", user.id)
+      .maybeSingle();
+    return (m?.role as Role) ?? null;
+  }
+  const role = await getRole((vehicle as { garage_id?: string } | null)?.garage_id ?? null);
+  const canWrite = role === "OWNER" || role === "MANAGER" || role === "CONTRIBUTOR";
+
   // Media list from Supabase Storage (public URLs)
   let mediaItems: { id: string; src: string; fullSrc: string; alt?: string }[] = [];
   try {
@@ -157,7 +228,11 @@ export default async function VehicleOverviewPage({ params }: { params: Promise<
       </div>
 
       <div id="veh-content-jobs" data-section="jobs" style={{ display: 'none' }}>
-        <VehicleJobsBody vehicleId={vehicleId} />
+        <TasksClient vehicleId={vehicleId} initialItems={initialItems} canWrite={canWrite} plans={plansList} defaultPlanId={defaultPlanId} />
+      </div>
+
+      <div id="veh-content-timeline" data-section="timeline" style={{ display: 'none' }}>
+        <TimelineClient events={timelineEvents} vehicleId={vehicleId} canWrite={true} eventTypes={eventTypes} />
       </div>
 
       <div id="veh-content-receipts" data-section="receipts" style={{ display: 'none' }}>
@@ -165,86 +240,7 @@ export default async function VehicleOverviewPage({ params }: { params: Promise<
       </div>
 
       {/* Client-side content router for sub-navigation */}
-      <script
-        dangerouslySetInnerHTML={{
-          __html: `(() => {
-            const sections = {
-              overview: document.getElementById('veh-content-overview'),
-              media: document.getElementById('veh-content-media'),
-              wishlist: document.getElementById('veh-content-wishlist'),
-              jobs: document.getElementById('veh-content-jobs'),
-              receipts: document.getElementById('veh-content-receipts'),
-            };
-            function setActive(targetName) {
-              document.querySelectorAll('a[data-veh-nav]').forEach((a) => {
-                const t = a.getAttribute('data-target');
-                const active = (t === targetName);
-                const bar = a.querySelector('span');
-                if (bar) bar.className = 'block h-[2px] mt-2 rounded-full transition-all duration-200 ' + (active ? 'bg-fg w-full' : 'bg-transparent w-0');
-                const base = 'text-sm pb-3 transition-colors ';
-                a.className = base + (active ? 'text-fg' : 'text-muted hover:text-fg');
-              });
-            }
-            function show(section) {
-              Object.keys(sections).forEach((key) => {
-                const el = sections[key]; if (!el) return; el.style.display = key === section ? '' : 'none';
-              });
-              // Update active based on section + current slide
-              if (section === 'media') { setActive('gallery'); return; }
-              if (section === 'wishlist') { setActive('wishlist'); return; }
-              if (section === 'jobs') { setActive('jobs'); return; }
-              if (section === 'receipts') { setActive('receipts'); return; }
-              // Default to overview; try to reflect current slide if available
-              try {
-                // @ts-ignore
-                const slide = window.__vehGetSlide ? window.__vehGetSlide() : 'OVERVIEW';
-                const map = { OVERVIEW: 'overview', TIMELINE: 'timeline', TASKS: 'tasks', BUILD: 'build-plans', PARTS: 'parts', SPEC: 'display-page' };
-                setActive(map[slide] || 'overview');
-              } catch { setActive('overview'); }
-            }
-            // Initialize from hash
-            const hash = location.hash.replace('#','');
-            if (hash === 'gallery') show('media');
-            else if (hash === 'wishlist') show('wishlist');
-            else if (hash === 'jobs') show('jobs');
-            else if (hash === 'receipts') show('receipts');
-            else show('overview');
-            // React to hash changes
-            window.addEventListener('hashchange', () => {
-              const h = location.hash.replace('#','');
-              if (h === 'gallery') show('media');
-              else if (h === 'wishlist') show('wishlist');
-              else if (h === 'jobs') show('jobs');
-              else if (h === 'receipts') show('receipts');
-              else show('overview');
-            });
-            // Enhance in-page nav: set hash and prevent default full nav
-            document.addEventListener('click', (e) => {
-              const a = e.target.closest('a[data-veh-nav]');
-              if (!a) return;
-              const target = a.getAttribute('data-target');
-              if (!target) return;
-              e.preventDefault();
-              if (target === 'gallery') {
-                if (location.hash !== '#gallery') location.hash = '#gallery';
-                else show('media');
-                return;
-              }
-              if (target === 'wishlist' || target === 'jobs' || target === 'receipts') {
-                location.hash = '#' + target;
-                return;
-              }
-              // All other tabs are slides within overview
-              if (location.hash) history.replaceState({}, '', location.pathname);
-              show('overview');
-              const map = { overview: 'OVERVIEW', timeline: 'TIMELINE', tasks: 'TASKS', 'build-plans': 'BUILD', parts: 'PARTS', 'display-page': 'SPEC' };
-              // @ts-ignore
-              window.__vehSetSlide && window.__vehSetSlide(map[target] || 'OVERVIEW');
-              setActive(target);
-            }, true);
-          })();`
-        }}
-      />
+      <VehicleTabController />
 
       <div className="flex items-center justify-between">
         <div />

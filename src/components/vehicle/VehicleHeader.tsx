@@ -41,7 +41,7 @@ export default function VehicleHeader({ vehicle, coverUrl, backHref = "/vehicles
         </div>
         <div className="flex items-center gap-3 text-sm">
           {backHref ? (
-            <Link href={backHref} aria-label="Garage" title="Garage" className="inline-flex items-center justify-center w-8 h-8 rounded-full border bg-card text-fg hover:bg-bg/60" data-testid="back-to-vehicles">
+            <Link href={backHref} aria-label="Garage" title="Garage" className="text-muted hover:text-fg" data-testid="back-to-vehicles">
               <Warehouse className="w-5 h-5" />
             </Link>
           ) : null}
