@@ -4,6 +4,7 @@ import { getServerSupabase } from "@/lib/supabase";
 import { getMySettings, getProfile, updateProfile } from "./actions";
 import { serverLog } from "@/lib/serverLog";
 import Link from "next/link";
+import { LogOut } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -33,7 +34,12 @@ export default async function ProfilePage() {
       <div className="max-w-2xl mx-auto rounded-2xl border bg-card p-6 shadow-sm space-y-8">
         <header className="flex items-center justify-between">
           <h1 className="text-xl font-semibold">Profile</h1>
-          <Link href="/profile/billing" className="text-sm text-brand hover:underline">Billing</Link>
+          <form action={async () => { 'use server'; const supabase = await getServerSupabase(); await supabase.auth.signOut(); }}>
+            <button type="submit" className="inline-flex items-center gap-2 text-sm text-brand hover:opacity-80" title="Log out" aria-label="Log out">
+              <LogOut className="w-4 h-4" />
+              <span>Log out</span>
+            </button>
+          </form>
         </header>
 
         {/* Static profile info */}
@@ -53,6 +59,9 @@ export default async function ProfilePage() {
           </div>
           <div className="text-sm text-muted">Signed in as</div>
           <div className="text-base">{email}</div>
+          <div>
+            <Link href="/profile/billing" className="text-sm text-brand hover:underline">Billing</Link>
+          </div>
           {providers.length > 0 && (
             <div className="text-xs text-muted">Providers: {providers.join(", ")}</div>
           )}
