@@ -250,7 +250,7 @@ export default async function VehiclesPage(
         <VehiclesListClient
           vehicles={(vehicleRows ?? []).map((v) => ({
             id: v.id,
-            name: v.nickname ?? `${v.year ?? ''} ${v.make ?? ''} ${v.model ?? ''}`,
+            name: v.nickname ?? [v.year ?? '', v.make ?? '', v.model ?? ''].filter(Boolean).join(' '),
             year: v.year ?? null,
             make: v.make ?? null,
             model: v.model ?? null,
