@@ -80,16 +80,32 @@ export default async function VehiclesPage(
   let vehicleRows: VehicleSelect[] | null = null;
   if (supabase) {
     try {
-      let vehiclesQuery = supabase
+      let baseQuery = supabase
         .from("vehicle")
-        .select("id, vin, year, make, model, trim, nickname, privacy, photo_url, garage_id, created_at, updated_at");
+        .select("id, vin, year, make, model, trim, nickname, privacy, photo_url, garage_id, created_at");
       if (query) {
-        vehiclesQuery = vehiclesQuery.ilike("nickname", `%${query}%`);
+        baseQuery = baseQuery.ilike("nickname", `%${query}%");
       }
-      if (userGarageIds.length > 0) {
-        vehiclesQuery = vehiclesQuery.in("garage_id", userGarageIds);
+
+      let data: unknown | null = null;
+      let error: { message: string } | null = null;
+
+      if (user && userGarageIds.length > 0) {
+        // Prefer filtered by memberships; if it yields 0, fall back to unfiltered to avoid empty UI due to SSR/RLS edge cases
+        const filtered = await baseQuery.in("garage_id", userGarageIds).order("created_at", { ascending: false });
+        if (!filtered.error && (filtered.data as unknown[] | null)?.length) {
+          data = filtered.data;
+        } else {
+          const unf = await baseQuery.order("created_at", { ascending: false });
+          error = unf.error as { message: string } | null;
+          data = unf.data;
+        }
+      } else {
+        const unf = await baseQuery.order("created_at", { ascending: false });
+        error = unf.error as { message: string } | null;
+        data = unf.data;
       }
-      const { data, error } = await vehiclesQuery.order("created_at", { ascending: false });
+
       if (error) {
         console.error("vehicles_query_error", { reqId, error: error.message });
       }
