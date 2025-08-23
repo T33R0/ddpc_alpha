@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { getBrowserSupabase } from "@/lib/supabase-browser";
-import { User as UserIcon } from "lucide-react";
+import { Contact } from "lucide-react";
 
 export default function HeaderAuth() {
   const supabase = getBrowserSupabase();
@@ -33,14 +33,14 @@ export default function HeaderAuth() {
           });
         }}
       >
-        <UserIcon className="w-5 h-5" />
+        <Contact className="w-6 h-6" />
       </button>
     );
   }
 
   return (
     <Link href="/profile" aria-label="Profile" className="inline-flex items-center justify-center text-fg hover:opacity-80">
-      <UserIcon className="w-5 h-5" />
+      <Contact className="w-6 h-6" />
     </Link>
   );
 }
