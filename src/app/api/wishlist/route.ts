@@ -47,9 +47,8 @@ export async function POST(req: NextRequest): Promise<Response> {
         .single();
       return NextResponse.json({ ok: true, item: { id: data!.id as unknown as string } } satisfies PostResponse, { status: 201 });
     } catch (insErr: unknown) {
-      // Fallback: if schema isn't present, still return success so UI can proceed
-      const fallbackId = crypto.randomUUID();
-      return NextResponse.json({ ok: true, item: { id: fallbackId } } satisfies PostResponse, { status: 201 });
+      const message = insErr instanceof Error ? insErr.message : "Insert failed";
+      return NextResponse.json({ message }, { status: 400 });
     }
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
