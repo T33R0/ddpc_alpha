@@ -57,4 +57,34 @@ export async function POST(req: NextRequest): Promise<Response> {
   }
 }
 
+type GetResponse = { ok: true; items: Array<{ id: string; url: string | null; status: string | null; priority: number | null; est_unit_price: number | null; notes: string | null }> } | { message: string };
+
+export async function GET(req: NextRequest): Promise<Response> {
+  try {
+    const { searchParams } = new URL(req.url);
+    const vehicleId = searchParams.get("vehicleId");
+    if (!vehicleId) return NextResponse.json({ message: "vehicleId is required" } satisfies GetResponse, { status: 400 });
+
+    const supabase = await getServerSupabase();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return NextResponse.json({ message: "Unauthorized" } satisfies GetResponse, { status: 401 });
+
+    try {
+      const { data } = await supabase
+        .from("wishlist_item" as unknown as string)
+        .select("id, url, status, priority, est_unit_price, notes")
+        .eq("vehicle_id", vehicleId)
+        .order("created_at", { ascending: false });
+      const items = (data ?? []) as Array<{ id: string; url: string | null; status: string | null; priority: number | null; est_unit_price: number | null; notes: string | null }>;
+      return NextResponse.json({ ok: true, items } satisfies GetResponse);
+    } catch {
+      // In alpha environments without the table, return empty list for graceful UX
+      return NextResponse.json({ ok: true, items: [] } satisfies GetResponse);
+    }
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    return NextResponse.json({ message } satisfies GetResponse, { status: 500 });
+  }
+}
+
 

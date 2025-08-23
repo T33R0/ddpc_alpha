@@ -29,7 +29,40 @@ export default function VehicleWishlistBody({ vehicleId }: { vehicleId: string }
   }, [items]);
 
   useEffect(() => {
-    setItems([]);
+    let cancelled = false;
+    (async () => {
+      try {
+        setLoading(true);
+        const res = await fetch(`/api/wishlist?vehicleId=${encodeURIComponent(vehicleId)}`, { cache: "no-store" });
+        const data = (await res.json()) as { ok?: boolean; items?: Array<{ id: string; url: string | null; status: string | null; priority: number | null; est_unit_price: number | null; notes: string | null }>; message?: string };
+        if (cancelled) return;
+        if (!res.ok || data.ok === false) {
+          // Graceful fallback: keep empty list
+          setItems([]);
+          return;
+        }
+        const toTitle = (url: string | null, notes: string | null): string => {
+          if (notes && notes.trim()) return notes.trim();
+          if (url) try { return new URL(url).hostname; } catch { return url; }
+          return "Wishlist item";
+        };
+        const mapped: WishlistItem[] = (data.items || []).map((w) => ({
+          id: w.id,
+          title: toTitle(w.url ?? null, w.notes ?? null),
+          vendor: w.url ? (() => { try { return new URL(w.url!).hostname; } catch { return null; } })() : null,
+          estPrice: w.est_unit_price ?? null,
+          priority: (typeof w.priority === 'number' ? w.priority : null),
+          status: (w.status as WishlistItem["status"]) || "PENDING",
+          url: w.url ?? null,
+        }));
+        setItems(mapped);
+      } catch {
+        setItems([]);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
   }, [vehicleId]);
 
   async function addFromUrl() {
