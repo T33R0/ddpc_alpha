@@ -2,8 +2,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { SignInButton } from "@/components/auth/SignInButton";
 import { getServerSupabase } from "@/lib/supabase";
-import { Warehouse, Search, User as UserIcon, CircleHelp } from "lucide-react";
-import ddpcLogo from "../../media/branding/Fiverr Premium Kit/PNG Logo Files/Original Logo.png";
+import { Warehouse, Search, CircleHelp } from "lucide-react";
+import ddpcLogo from "../../media/branding/android-chrome-512x512.png";
 
 export const dynamic = "force-dynamic";
 
@@ -32,9 +32,9 @@ export default async function Home() {
   return (
     <div className="relative min-h-[70vh] flex items-center justify-center text-fg">
       <div aria-hidden className="pointer-events-none absolute inset-0 flex items-center justify-center">
-        <Image src={ddpcLogo} alt="" className="opacity-40 w-[60%] h-auto select-none" />
+        <Image src={ddpcLogo} alt="" className="opacity-40 w-[72%] h-auto select-none" />
       </div>
-      <div className="relative grid grid-cols-2 gap-6 sm:gap-8">
+      <div className="relative grid grid-cols-3 gap-6 sm:gap-8">
         <Link href="/vehicles" aria-label="Garage" className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]">
           <div className="w-28 h-28 sm:w-36 sm:h-36 md:w-40 md:h-40 rounded-2xl border bg-card/70 backdrop-blur flex items-center justify-center hover:bg-card transition-colors">
             <Warehouse className="w-12 h-12 md:w-16 md:h-16" />
@@ -43,11 +43,6 @@ export default async function Home() {
         <Link href="/discover" aria-label="Discover" className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]">
           <div className="w-28 h-28 sm:w-36 sm:h-36 md:w-40 md:h-40 rounded-2xl border bg-card/70 backdrop-blur flex items-center justify-center hover:bg-card transition-colors">
             <Search className="w-12 h-12 md:w-16 md:h-16" />
-          </div>
-        </Link>
-        <Link href="/profile" aria-label="Profile" className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]">
-          <div className="w-28 h-28 sm:w-36 sm:h-36 md:w-40 md:h-40 rounded-2xl border bg-card/70 backdrop-blur flex items-center justify-center hover:bg-card transition-colors">
-            <UserIcon className="w-12 h-12 md:w-16 md:h-16" />
           </div>
         </Link>
         <Link href="/ddpc" aria-label="ddpc?" className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]">
