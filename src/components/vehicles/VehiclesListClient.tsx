@@ -135,7 +135,19 @@ export default function VehiclesListClient({
             return (
               <article key={v.id} aria-labelledby={`veh-${v.id}-title`}>
                 <VehicleCard
-                  v={{ id: v.id, nickname: null, year: v.year, make: v.make, model: v.model, trim: v.trim ?? null, privacy: v.privacy ?? "PRIVATE", coverUrl }}
+                  v={{
+                    id: v.id,
+                    nickname: null,
+                    year: v.year,
+                    make: v.make,
+                    model: v.model,
+                    trim: v.trim ?? null,
+                    privacy: v.privacy ?? "PRIVATE",
+                    coverUrl,
+                    createdAt: v.created_at ?? null,
+                    updatedAt: v.updated_at ?? null,
+                    lastEventAt: v.last_event_at ?? null,
+                  }}
                   m={m}
                 />
               </article>

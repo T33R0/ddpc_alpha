@@ -2,13 +2,26 @@ import Link from "next/link";
 import Image from "next/image";
 import PrivacyBadge from "@/components/PrivacyBadge";
 
-type Vehicle = { id: string; nickname: string | null; year: number | null; make: string | null; model: string | null; trim: string | null; privacy: string; coverUrl: string | null };
+type Vehicle = {
+  id: string;
+  nickname: string | null;
+  year: number | null;
+  make: string | null;
+  model: string | null;
+  trim: string | null;
+  privacy: string;
+  coverUrl: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+  lastEventAt: string | null;
+};
 type Metrics = { upcoming: number; lastService: string | null; daysSince: number | null; avgBetween: number | null };
 
 export default function VehicleCard({ v, m }: { v: Vehicle; m: Metrics }) {
   const title = v.nickname && v.nickname.trim().length > 0 ? v.nickname : `${v.year ?? ''} ${v.make ?? ''} ${v.model ?? ''}`;
   const alt = `${title} — cover photo`;
-  const sinceStr = typeof m.daysSince === "number" ? `${m.daysSince} days ago` : "—";
+  const lastTs = v.lastEventAt || v.updatedAt || v.createdAt;
+  const sinceStr = lastTs ? `${Math.max(0, Math.round((Date.now() - new Date(lastTs).getTime()) / (24 * 60 * 60 * 1000)))} days ago` : "—";
   const due = (m.upcoming ?? 0) > 0;
   const meta = [v.year, v.make, v.model, v.trim].filter(Boolean).join(" ");
   return (

@@ -82,7 +82,7 @@ export default async function VehiclesPage(
     try {
       let vehiclesQuery = supabase
         .from("vehicle")
-        .select("id, vin, year, make, model, trim, nickname, privacy, photo_url, garage_id, created_at");
+        .select("id, vin, year, make, model, trim, nickname, privacy, photo_url, garage_id, created_at, updated_at");
       if (query) {
         vehiclesQuery = vehiclesQuery.ilike("nickname", `%${query}%`);
       }
@@ -118,6 +118,7 @@ export default async function VehiclesPage(
 
   // Analytics v0 aggregates (batched; no N+1)
   const metrics = new Map<string, { upcoming: number; lastService: string | null; events30: number; daysSince: number | null; avgBetween: number | null }>();
+  const lastEventByVehicle = new Map<string, string | null>();
   if (vehicleRows && vehicleRows.length > 0 && supabase) {
     const vehicleIds = vehicleRows.map((v) => v.id);
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
@@ -125,8 +126,9 @@ export default async function VehiclesPage(
     type WorkItemRow = { id: string; vehicle_id: string; status: "BACKLOG" | "PLANNED" | "IN_PROGRESS" | "DONE" | string };
     type ServiceEventRow = { vehicle_id: string; created_at: string; type: string };
     type RecentEventRow = { id: string; vehicle_id: string; created_at: string };
+    type AnyEventRow = { vehicle_id: string; created_at: string };
 
-    const [workItemsRes, lastServicesRes, recentEventsRes] = await Promise.all([
+    const [workItemsRes, lastServicesRes, recentEventsRes, lastAnyEventsRes] = await Promise.all([
       supabase
         .from("work_item")
         .select("id, vehicle_id, status")
@@ -143,6 +145,11 @@ export default async function VehiclesPage(
         .select("id, vehicle_id, created_at")
         .in("vehicle_id", vehicleIds)
         .gte("created_at", thirtyDaysAgo),
+      supabase
+        .from("event")
+        .select("vehicle_id, created_at")
+        .in("vehicle_id", vehicleIds)
+        .order("created_at", { ascending: false }),
     ]);
 
     const upcomingByVehicle = new Map<string, number>();
@@ -163,6 +170,13 @@ export default async function VehiclesPage(
     const events30ByVehicle = new Map<string, number>();
     ((recentEventsRes.data ?? []) as RecentEventRow[]).forEach((ev) => {
       events30ByVehicle.set(ev.vehicle_id, (events30ByVehicle.get(ev.vehicle_id) ?? 0) + 1);
+    });
+
+    // Build last event per vehicle (any type)
+    ((lastAnyEventsRes.data ?? []) as AnyEventRow[]).forEach((ev) => {
+      if (!lastEventByVehicle.has(ev.vehicle_id)) {
+        lastEventByVehicle.set(ev.vehicle_id, ev.created_at as string);
+      }
     });
 
     vehicleIds.forEach((id) => {
@@ -227,7 +241,7 @@ export default async function VehiclesPage(
             is_public: (v.privacy as string | null) === "PUBLIC",
             updated_at: v.updated_at ?? null,
             created_at: v.created_at ?? null,
-            last_event_at: null,
+            last_event_at: lastEventByVehicle.get(v.id) ?? null,
             photo_url: v.photo_url ?? null,
             garage_id: v.garage_id,
           }))}
