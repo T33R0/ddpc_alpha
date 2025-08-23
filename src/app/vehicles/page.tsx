@@ -22,7 +22,7 @@ export default async function VehiclesPage(
   // Defaults to keep render resilient if Supabase/env fails
   let supabase: Awaited<ReturnType<typeof getServerSupabase>> | null = null;
   let user: { id: string } | null = null;
-  const reqId = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}`;
+  const reqId = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : String(Date.now());
   try {
     supabase = await getServerSupabase();
     const auth = await supabase.auth.getUser();
@@ -231,6 +231,27 @@ export default async function VehiclesPage(
 
   // Filters already derived above: joined, currentFilter, query, sortBy
 
+  // Build plain objects for client props to avoid complex generics inline in JSX
+  const vehiclesList = (vehicleRows ?? []).map((v) => ({
+    id: v.id,
+    name: v.nickname ?? [v.year ?? '', v.make ?? '', v.model ?? ''].filter(Boolean).join(' '),
+    year: v.year ?? null,
+    make: v.make ?? null,
+    model: v.model ?? null,
+    is_public: (v.privacy as string | null) === "PUBLIC",
+    updated_at: v.updated_at ?? null,
+    created_at: v.created_at ?? null,
+    last_event_at: lastEventByVehicle.get(v.id) ?? null,
+    photo_url: v.photo_url ?? null,
+    garage_id: v.garage_id,
+  }));
+
+  type MetricsShape = { upcoming: number; lastService: string | null; daysSince: number | null; avgBetween: number | null };
+  const metricsObj: Record<string, MetricsShape> = (vehicleRows ?? []).reduce((acc, v) => {
+    acc[v.id] = metrics.get(v.id) ?? { upcoming: 0, lastService: null, daysSince: null, avgBetween: null };
+    return acc;
+  }, {} as Record<string, MetricsShape>);
+
   return (
     <div className="space-y-6">
       <VehiclesJoinedToastClient />
@@ -247,25 +268,7 @@ export default async function VehiclesPage(
       )}
 
       <ErrorBoundary message="Failed to load vehicles.">
-        <VehiclesListClient
-          vehicles={(vehicleRows ?? []).map((v) => ({
-            id: v.id,
-            name: v.nickname ?? [v.year ?? '', v.make ?? '', v.model ?? ''].filter(Boolean).join(' '),
-            year: v.year ?? null,
-            make: v.make ?? null,
-            model: v.model ?? null,
-            is_public: (v.privacy as string | null) === "PUBLIC",
-            updated_at: v.updated_at ?? null,
-            created_at: v.created_at ?? null,
-            last_event_at: lastEventByVehicle.get(v.id) ?? null,
-            photo_url: v.photo_url ?? null,
-            garage_id: v.garage_id,
-          }))}
-          metrics={(vehicleRows ?? []).reduce<Record<string, { upcoming: number; lastService: string | null; daysSince: number | null; avgBetween: number | null }>>((acc, v) => {
-            acc[v.id] = metrics.get(v.id) ?? { upcoming: 0, lastService: null, daysSince: null, avgBetween: null };
-            return acc;
-          }, {})}
-        />
+        <VehiclesListClient vehicles={vehiclesList} metrics={metricsObj} />
       </ErrorBoundary>
     </div>
   );
