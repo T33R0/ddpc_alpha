@@ -1,11 +1,13 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { createVehicle } from "./actions";
 // Switch to server-backed API for options to avoid client Supabase wiring issues
 
 export default function AddVehicleModalClient() {
   const [open, setOpen] = useState(false);
   const dialogRef = useRef<HTMLDivElement | null>(null);
+  const router = useRouter();
 
   // Progressive selectors
   const [years, setYears] = useState<string[]>([]);
@@ -40,6 +42,9 @@ export default function AddVehicleModalClient() {
   }, [open]);
 
   const onClose = () => setOpen(false);
+
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Helper to pick dynamic column names from probe row
   function pickColumn(row: Record<string, unknown> | null, candidates: string[]): string | null {
@@ -129,19 +134,42 @@ export default function AddVehicleModalClient() {
           <div className="relative w-[92%] max-w-2xl rounded-lg border bg-card p-4 shadow-lg">
             <div className="flex items-center justify-between mb-3">
               <h2 id="add-vehicle-title" className="text-lg font-semibold">Add Vehicle</h2>
-              <button type="button" className="text-sm text-muted hover:underline" onClick={onClose}>Close</button>
             </div>
             <form
-              action={async (fd) => {
-                // Required enforced via disabled state + required attrs
-                await createVehicle(fd);
-                setOpen(false);
+              onSubmit={async (e) => {
+                e.preventDefault();
+                setError(null);
+                const form = e.currentTarget as HTMLFormElement;
+                const fd = new FormData(form);
+                const vinVal = (fd.get("vin")?.toString() || "").trim();
+                const y = fd.get("year")?.toString() || "";
+                const mk = fd.get("make")?.toString() || "";
+                const md = fd.get("model")?.toString() || "";
+                if (!vinVal && !(y && mk && md)) {
+                  setError("Enter a VIN or select Year, Make, and Model.");
+                  return;
+                }
+                try {
+                  setSubmitting(true);
+                  const res = await createVehicle(fd);
+                  setOpen(false);
+                  router.push(`/vehicles/${res.id}`);
+                } catch (err) {
+                  setError(err instanceof Error ? err.message : "Failed to add vehicle");
+                } finally {
+                  setSubmitting(false);
+                }
               }}
-              className="grid grid-cols-1 md:grid-cols-2 gap-4"
+              className="flex flex-col gap-4"
             >
-              <div className="md:col-span-2">
-                <label className="mb-1 block text-sm text-muted">VIN</label>
-                <input name="vin" placeholder="Optional VIN" className="w-full border rounded px-2 py-1 bg-bg text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]" />
+              <div>
+                <label className="mb-1 block text-sm text-muted">VIN:</label>
+                <input name="vin" placeholder="Enter VIN (optional)" className="w-full border rounded px-2 py-1 bg-bg text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]" />
+              </div>
+
+              <div className="relative text-center text-xs uppercase text-muted select-none">
+                <span className="px-2 bg-card relative z-10">OR</span>
+                <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-px bg-border" aria-hidden="true" />
               </div>
 
               <div>
@@ -151,7 +179,6 @@ export default function AddVehicleModalClient() {
                   className="w-full border rounded px-2 py-1 bg-bg text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]"
                   value={year}
                   onChange={(e) => setYear(e.target.value)}
-                  required
                 >
                   <option value="" disabled>Select year</option>
                   {years.map((y) => (<option key={`y-${y}`} value={y}>{y}</option>))}
@@ -166,7 +193,6 @@ export default function AddVehicleModalClient() {
                   value={make}
                   onChange={(e) => setMake(e.target.value)}
                   disabled={!year}
-                  required
                 >
                   <option value="" disabled>{year ? "Select make" : "Select year first"}</option>
                   {makes.map((m) => (<option key={`mk-${m}`} value={m}>{m}</option>))}
@@ -181,7 +207,6 @@ export default function AddVehicleModalClient() {
                   value={model}
                   onChange={(e) => setModel(e.target.value)}
                   disabled={!year || !make}
-                  required
                 >
                   <option value="" disabled>{make ? "Select model" : "Select make first"}</option>
                   {models.map((m) => (<option key={`md-${m}`} value={m}>{m}</option>))}
@@ -262,9 +287,13 @@ export default function AddVehicleModalClient() {
                 </select>
               </div>
 
+              {error && <div className="text-sm text-red-600" role="alert">{error}</div>}
+
               <div className="md:col-span-2 flex items-center justify-end gap-2 pt-2">
-                <button type="button" className="border rounded px-3 py-1 bg-bg text-fg" onClick={onClose}>Cancel</button>
-                <button type="submit" className="bg-brand text-white rounded px-3 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]">Add Vehicle</button>
+                <button type="button" className="border rounded px-3 py-1 bg-bg text-fg" onClick={onClose} disabled={submitting}>Cancel</button>
+                <button type="submit" className="bg-brand text-white rounded px-3 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]" disabled={submitting}>
+                  {submitting ? "Adding..." : "Add Vehicle"}
+                </button>
               </div>
             </form>
           </div>

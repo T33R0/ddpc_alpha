@@ -50,7 +50,7 @@ async function ensureGarageId(): Promise<string> {
   return created.id as string;
 }
 
-export async function createVehicle(formData: FormData): Promise<void> {
+export async function createVehicle(formData: FormData): Promise<{ id: string }> {
   const supabase = await getServerSupabase();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error("Not authenticated");
@@ -68,12 +68,15 @@ export async function createVehicle(formData: FormData): Promise<void> {
   const nickname = formData.get("nickname")?.toString() || null;
   const privacy = (formData.get("privacy")?.toString() || "PRIVATE") as "PUBLIC"|"PRIVATE";
 
-  const { error } = await supabase
+  const { data: inserted, error } = await supabase
     .from("vehicle")
-    .insert({ garage_id: garageId, vin, year, make, model, trim, cylinders, displacement_l, transmission, nickname, privacy });
+    .insert({ garage_id: garageId, vin, year, make, model, trim, cylinders, displacement_l, transmission, nickname, privacy })
+    .select("id")
+    .single();
   if (error) throw new Error(error.message);
 
   revalidatePath("/vehicles");
+  return { id: (inserted as { id: string }).id };
 }
 
 export async function updateVehiclePhoto(vehicleId: string, url: string) {
