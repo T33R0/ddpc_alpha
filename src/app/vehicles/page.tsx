@@ -86,7 +86,7 @@ export default async function VehiclesPage(
         .from("vehicle")
         .select("id, vin, year, make, model, trim, nickname, privacy, photo_url, garage_id, created_at");
       if (query) {
-        baseQuery = baseQuery.ilike("nickname", `%${query}%");
+        baseQuery = baseQuery.ilike("nickname", '%' + query + '%');
       }
 
       let data: unknown | null = null;
