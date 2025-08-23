@@ -13,17 +13,12 @@ export default function AddVehicleModalClient() {
   const [years, setYears] = useState<string[]>([]);
   const [makes, setMakes] = useState<string[]>([]);
   const [models, setModels] = useState<string[]>([]);
-  const [trims, setTrims] = useState<string[]>([]);
 
   const [year, setYear] = useState<string>("");
   const [make, setMake] = useState<string>("");
   const [model, setModel] = useState<string>("");
-  const [trim, setTrim] = useState<string>("");
 
-  // Optional specs
-  const [cylinders, setCylinders] = useState<string>("");
-  const [displacement, setDisplacement] = useState<string>("");
-  const [transmission, setTransmission] = useState<string>("");
+  // No optional specs in this modal; collected on next page
 
   // Open if URL has ?new=1
   useEffect(() => {
@@ -83,9 +78,8 @@ export default function AddVehicleModalClient() {
   }, [year]);
 
   // When year changes, reset downstream and load models and trims after make chosen
-  useEffect(() => { setMake(""); setModel(""); setTrim(""); setModels([]); setTrims([]); }, [year]);
-  useEffect(() => { setModel(""); setTrim(""); setModels([]); setTrims([]); }, [make]);
-  useEffect(() => { setTrim(""); setTrims([]); }, [model]);
+  useEffect(() => { setMake(""); setModel(""); setModels([]); }, [year]);
+  useEffect(() => { setModel(""); setModels([]); }, [make]);
 
   // Load models when both year and make selected
   useEffect(() => {
@@ -102,20 +96,7 @@ export default function AddVehicleModalClient() {
     return () => { cancelled = true; };
   }, [year, make]);
 
-  // Load trims when year+make+model selected
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      if (!year || !make || !model) return;
-      try {
-        const res = await fetch(`/api/vehicle-data/options?scope=trims&year=${encodeURIComponent(year)}&make=${encodeURIComponent(make)}&model=${encodeURIComponent(model)}`, { cache: "no-store" });
-        const json = (await res.json()) as { values: string[] };
-        if (cancelled) return;
-        setTrims(json.values || []);
-      } catch {}
-    })();
-    return () => { cancelled = true; };
-  }, [year, make, model]);
+  // No trim loading; collected on next page
 
   return (
     <div className="flex items-center justify-end">
@@ -213,79 +194,7 @@ export default function AddVehicleModalClient() {
                 </select>
               </div>
 
-              <div>
-                <label className="mb-1 block text-sm text-muted">Trim</label>
-                <select
-                  name="trim"
-                  className="w-full border rounded px-2 py-1 bg-bg text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]"
-                  value={trim}
-                  onChange={(e) => setTrim(e.target.value)}
-                  disabled={!year || !make || !model}
-                >
-                  <option value="">{model ? "Optional: trim" : "Select model first"}</option>
-                  {trims.map((t) => (<option key={`tr-${t}`} value={t}>{t}</option>))}
-                </select>
-              </div>
-
-              <div className="md:col-span-2">
-                <label className="mb-1 block text-sm text-muted">Nickname</label>
-                <input name="nickname" placeholder="Optional nickname" className="w-full border rounded px-2 py-1 bg-bg text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]" />
-              </div>
-
-              {/* Optional dependent specs */}
-              <div>
-                <label className="mb-1 block text-sm text-muted">Cylinders</label>
-                <select
-                  name="cylinders"
-                  className="w-full border rounded px-2 py-1 bg-bg text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]"
-                  value={cylinders}
-                  onChange={(e) => setCylinders(e.target.value)}
-                  disabled={!year || !make || !model}
-                >
-                  <option value="">Optional</option>
-                  {["2","3","4","5","6","8","10","12","16"].map((c) => (<option key={`cyl-${c}`} value={c}>{c}</option>))}
-                </select>
-              </div>
-
-              <div>
-                <label className="mb-1 block text-sm text-muted">Engine size (L)</label>
-                <input
-                  name="displacement_l"
-                  placeholder="Optional"
-                  className="w-full border rounded px-2 py-1 bg-bg text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]"
-                  value={displacement}
-                  onChange={(e) => setDisplacement(e.target.value)}
-                  disabled={!year || !make || !model}
-                  inputMode="decimal"
-                />
-              </div>
-
-              <div>
-                <label className="mb-1 block text-sm text-muted">Transmission</label>
-                <input
-                  name="transmission"
-                  placeholder="Optional"
-                  className="w-full border rounded px-2 py-1 bg-bg text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]"
-                  value={transmission}
-                  onChange={(e) => setTransmission(e.target.value)}
-                  disabled={!year || !make || !model}
-                  list="transmission-options"
-                />
-              </div>
-              <datalist id="transmission-options">
-                <option value="Manual" />
-                <option value="Automatic" />
-                <option value="Dual-clutch" />
-                <option value="CVT" />
-              </datalist>
-
-              <div>
-                <label className="mb-1 block text-sm text-muted">Privacy</label>
-                <select name="privacy" className="w-full border rounded px-2 py-1 bg-bg text-fg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]">
-                  <option value="PRIVATE">Private</option>
-                  <option value="PUBLIC">Public</option>
-                </select>
-              </div>
+              {/* Only Y/M/M here; other attributes collected on the details page */}
 
               {error && <div className="text-sm text-red-600" role="alert">{error}</div>}
 
