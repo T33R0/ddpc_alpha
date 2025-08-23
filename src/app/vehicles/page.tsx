@@ -16,7 +16,9 @@ export default async function VehiclesPage(
   props: { searchParams?: Record<string, string | string[] | undefined> | Promise<Record<string, string | string[] | undefined>> }
 ) {
   // Small local promise guard to support Next 14/15 differences
-  const isPromise = <T,>(v: unknown): v is Promise<T> => !!v && (typeof v === "object" || typeof v === "function") && "then" in (v as object);
+  function isPromise<T>(v: unknown): v is Promise<T> {
+    return !!v && (typeof v === "object" || typeof v === "function") && "then" in (v as object);
+  }
 
   try {
   // Defaults to keep render resilient if Supabase/env fails
