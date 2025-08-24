@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createVehicle } from "./actions";
 // Switch to server-backed API for options to avoid client Supabase wiring issues
+import { Car, Plus } from "lucide-react";
 
 export default function AddVehicleModalClient() {
   const [open, setOpen] = useState(false);
@@ -102,11 +103,16 @@ export default function AddVehicleModalClient() {
     <div className="flex items-center justify-end">
       <button
         type="button"
-        className="text-sm px-3 py-1 rounded bg-brand text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]"
+        className="text-sm px-3 py-1 rounded bg-brand text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)] inline-flex items-center justify-center"
         onClick={() => setOpen(true)}
         data-testid="btn-new-vehicle"
+        aria-label="Add vehicle"
+        title="Add vehicle"
       >
-        Add Vehicle
+        <span className="relative inline-flex items-center justify-center">
+          <Car className="w-5 h-5" />
+          <Plus className="w-3 h-3 absolute -right-1 -top-1" />
+        </span>
       </button>
 
       {open && (
