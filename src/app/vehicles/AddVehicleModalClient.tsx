@@ -143,8 +143,12 @@ export default function AddVehicleModalClient({ isAuthenticated = false }: { isA
                 try {
                   setSubmitting(true);
                   const res = await createVehicle(fd);
+                  if (res && 'error' in res) {
+                    setError(res.error || "Failed to add vehicle");
+                    return;
+                  }
                   setOpen(false);
-                  router.push(`/vehicles/${res.id}`);
+                  router.push(`/vehicles/${(res as { id: string }).id}`);
                 } catch (err) {
                   setError(err instanceof Error ? err.message : "Failed to add vehicle");
                 } finally {

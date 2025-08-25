@@ -23,7 +23,7 @@ function getDbClient(): DB | null {
 async function selectDistinct(
   supabase: DB,
   col: string,
-  filters?: Array<{ col: string; val: string }>,
+  filters?: Array<{ col: string; val: string | number }>,
   pageSize = 10000,
   maxPages = 50
 ): Promise<string[]> {
@@ -37,7 +37,7 @@ async function selectDistinct(
         .not(col, "is", null)
         .order(col, { ascending: true });
       if (filters) {
-        for (const f of filters) q = q.eq(f.col, f.val);
+        for (const f of filters) q = q.eq(f.col, f.val as unknown as string);
       }
       if (last !== null) {
         // advance the window strictly beyond the last value we saw
@@ -88,6 +88,15 @@ export async function GET(req: Request) {
       trim: pick(TRIM_CANDIDATES),
     } as const;
 
+    // Build union helpers: some datasets can have multiple candidate columns populated inconsistently
+    const allYears = YEAR_CANDIDATES;
+    const buildYearFilters = (val: string | null | undefined) => {
+      if (!val) return undefined;
+      const filters: Array<{ col: string; val: string }>[] = [];
+      for (const y of allYears) filters.push([{ col: y, val }]);
+      return filters;
+    };
+
     if (scope === "years") {
       // Fetch many rows, then unique and sort descending so recent years appear first
       let values = await selectDistinct(supabase, cols.year, undefined, 20000);
@@ -101,37 +110,45 @@ export async function GET(req: Request) {
     }
 
     if (scope === "makes") {
-      const valuesRaw = await selectDistinct(
-        supabase,
-        cols.make,
-        year ? [{ col: cols.year, val: year }] : undefined,
-        20000
-      );
-      const values = Array.from(new Set(valuesRaw.map(String))).sort((a, b) => a.localeCompare(b));
+      // Try union across all year candidates to avoid truncation when data spans multiple columns
+      const yearFilterSets = buildYearFilters(year);
+      let agg: string[] = [];
+      if (yearFilterSets && yearFilterSets.length > 0) {
+        for (const filterSet of yearFilterSets) {
+          const vals = await selectDistinct(supabase, cols.make, filterSet, 20000);
+          agg = agg.concat(vals);
+          if (agg.length > 50000) break;
+        }
+      } else {
+        agg = await selectDistinct(supabase, cols.make, undefined, 20000);
+      }
+      const values = Array.from(new Set(agg.map(String))).sort((a, b) => a.localeCompare(b));
       return NextResponse.json({ values }, { headers: { "Cache-Control": "no-store" } });
     }
 
     if (scope === "models") {
       if (!year || !make) return NextResponse.json({ values: [] });
-      const valuesRaw = await selectDistinct(
-        supabase,
-        cols.model,
-        [ { col: cols.year, val: year }, { col: cols.make, val: make } ],
-        20000
-      );
-      const values = Array.from(new Set(valuesRaw.map(String))).sort((a, b) => a.localeCompare(b));
+      const yearFilterSets = buildYearFilters(year) ?? [[{ col: cols.year, val: year }]];
+      let agg: string[] = [];
+      for (const yf of yearFilterSets) {
+        const vals = await selectDistinct(supabase, cols.model, [...yf, { col: cols.make, val: make }], 20000);
+        agg = agg.concat(vals);
+        if (agg.length > 50000) break;
+      }
+      const values = Array.from(new Set(agg.map(String))).sort((a, b) => a.localeCompare(b));
       return NextResponse.json({ values }, { headers: { "Cache-Control": "no-store" } });
     }
 
     if (scope === "trims") {
       if (!year || !make || !model) return NextResponse.json({ values: [] });
-      const valuesRaw = await selectDistinct(
-        supabase,
-        cols.trim,
-        [ { col: cols.year, val: year }, { col: cols.make, val: make }, { col: cols.model, val: model } ],
-        20000
-      );
-      const values = Array.from(new Set(valuesRaw.map(String))).sort((a, b) => a.localeCompare(b));
+      const yearFilterSets = buildYearFilters(year) ?? [[{ col: cols.year, val: year }]];
+      let agg: string[] = [];
+      for (const yf of yearFilterSets) {
+        const vals = await selectDistinct(supabase, cols.trim, [...yf, { col: cols.make, val: make }, { col: cols.model, val: model }], 20000);
+        agg = agg.concat(vals);
+        if (agg.length > 50000) break;
+      }
+      const values = Array.from(new Set(agg.map(String))).sort((a, b) => a.localeCompare(b));
       return NextResponse.json({ values }, { headers: { "Cache-Control": "no-store" } });
     }
 
