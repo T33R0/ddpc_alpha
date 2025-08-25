@@ -101,19 +101,37 @@ export async function GET(req: Request) {
     }
 
     if (scope === "makes") {
-      const values = await selectDistinct(supabase, cols.make, year ? [{ col: cols.year, val: year }] : undefined, 20000);
+      const valuesRaw = await selectDistinct(
+        supabase,
+        cols.make,
+        year ? [{ col: cols.year, val: year }] : undefined,
+        20000
+      );
+      const values = Array.from(new Set(valuesRaw.map(String))).sort((a, b) => a.localeCompare(b));
       return NextResponse.json({ values }, { headers: { "Cache-Control": "no-store" } });
     }
 
     if (scope === "models") {
       if (!year || !make) return NextResponse.json({ values: [] });
-      const values = await selectDistinct(supabase, cols.model, [ { col: cols.year, val: year }, { col: cols.make, val: make } ], 20000);
+      const valuesRaw = await selectDistinct(
+        supabase,
+        cols.model,
+        [ { col: cols.year, val: year }, { col: cols.make, val: make } ],
+        20000
+      );
+      const values = Array.from(new Set(valuesRaw.map(String))).sort((a, b) => a.localeCompare(b));
       return NextResponse.json({ values }, { headers: { "Cache-Control": "no-store" } });
     }
 
     if (scope === "trims") {
       if (!year || !make || !model) return NextResponse.json({ values: [] });
-      const values = await selectDistinct(supabase, cols.trim, [ { col: cols.year, val: year }, { col: cols.make, val: make }, { col: cols.model, val: model } ], 20000);
+      const valuesRaw = await selectDistinct(
+        supabase,
+        cols.trim,
+        [ { col: cols.year, val: year }, { col: cols.make, val: make }, { col: cols.model, val: model } ],
+        20000
+      );
+      const values = Array.from(new Set(valuesRaw.map(String))).sort((a, b) => a.localeCompare(b));
       return NextResponse.json({ values }, { headers: { "Cache-Control": "no-store" } });
     }
 

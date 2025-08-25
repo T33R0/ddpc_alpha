@@ -5,7 +5,7 @@ import { createVehicle } from "./actions";
 // Switch to server-backed API for options to avoid client Supabase wiring issues
 import { Car, Plus } from "lucide-react";
 
-export default function AddVehicleModalClient() {
+export default function AddVehicleModalClient({ isAuthenticated = false }: { isAuthenticated?: boolean }) {
   const [open, setOpen] = useState(false);
   const dialogRef = useRef<HTMLDivElement | null>(null);
   const router = useRouter();
@@ -132,6 +132,10 @@ export default function AddVehicleModalClient() {
                 const y = fd.get("year")?.toString() || "";
                 const mk = fd.get("make")?.toString() || "";
                 const md = fd.get("model")?.toString() || "";
+                if (!isAuthenticated) {
+                  setError("Please sign in to add a vehicle.");
+                  return;
+                }
                 if (!vinVal && !(y && mk && md)) {
                   setError("Enter a VIN or select Year, Make, and Model.");
                   return;

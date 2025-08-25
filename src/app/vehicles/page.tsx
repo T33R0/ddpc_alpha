@@ -262,7 +262,7 @@ export default async function VehiclesPage(
       )}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold" data-testid="h1-my-garage">Garage</h1>
-        <AddVehicleModalClient />
+        <AddVehicleModalClient isAuthenticated={!!user} />
       </div>
 
       {!user && (
