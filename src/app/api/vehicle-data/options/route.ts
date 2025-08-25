@@ -20,17 +20,35 @@ function getDbClient(): DB | null {
   return null;
 }
 
-async function selectDistinct(supabase: DB, col: string, filters?: Array<{ col: string; val: string }>, limit = 10000): Promise<string[]> {
+async function selectDistinct(
+  supabase: DB,
+  col: string,
+  filters?: Array<{ col: string; val: string }>,
+  pageSize = 10000,
+  maxPages = 10
+): Promise<string[]> {
   try {
-    let q = supabase.from("vehicle_data").select(col, { head: false, count: "exact" }).not(col, "is", null);
-    if (filters) {
-      for (const f of filters) {
-        q = q.eq(f.col, f.val);
+    const seen = new Set<string>();
+    for (let page = 0; page < maxPages; page++) {
+      const from = page * pageSize;
+      const to = from + pageSize - 1;
+      let q = supabase
+        .from("vehicle_data")
+        .select(col, { head: false, count: "exact" })
+        .not(col, "is", null);
+      if (filters) {
+        for (const f of filters) q = q.eq(f.col, f.val);
       }
+      const { data } = await q.order(col, { ascending: true }).range(from, to);
+      const rows = (data as unknown as Array<Record<string, string | number>> | null) ?? [];
+      for (const v of rows) {
+        const val = String(v[col as keyof typeof v]);
+        if (val) seen.add(val);
+      }
+      if (rows.length < pageSize) break; // fetched last page
+      if (seen.size > 20000) break; // guardrail
     }
-    const { data } = await q.order(col, { ascending: true }).limit(limit);
-    const rows = (data as unknown as Array<Record<string, string | number>> | null) ?? [];
-    return Array.from(new Set(rows.map(v => String(v[col as keyof typeof v])))).filter(Boolean);
+    return Array.from(seen);
   } catch {
     return [];
   }
