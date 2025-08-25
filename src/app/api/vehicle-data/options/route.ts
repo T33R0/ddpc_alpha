@@ -66,6 +66,11 @@ export async function GET(req: Request) {
       // Fetch many rows, then unique and sort descending so recent years appear first
       let values = await selectDistinct(supabase, cols.year, undefined, 20000);
       values = Array.from(new Set(values.map(String))).sort((a, b) => Number(b) - Number(a));
+      // Safety net: if result is suspiciously small (e.g., duplicate-heavy table windowed to one year),
+      // fill UX-required range 1990..2026 inclusive
+      if (values.length <= 1) {
+        values = Array.from({ length: 2026 - 1990 + 1 }, (_, i) => String(2026 - i));
+      }
       return NextResponse.json({ values }, { headers: { "Cache-Control": "no-store" } });
     }
 
