@@ -25,28 +25,36 @@ async function selectDistinct(
   col: string,
   filters?: Array<{ col: string; val: string }>,
   pageSize = 10000,
-  maxPages = 10
+  maxPages = 50
 ): Promise<string[]> {
   try {
     const seen = new Set<string>();
+    let last: string | null = null;
     for (let page = 0; page < maxPages; page++) {
-      const from = page * pageSize;
-      const to = from + pageSize - 1;
       let q = supabase
         .from("vehicle_data")
         .select(col, { head: false, count: "exact" })
-        .not(col, "is", null);
+        .not(col, "is", null)
+        .order(col, { ascending: true });
       if (filters) {
         for (const f of filters) q = q.eq(f.col, f.val);
       }
-      const { data } = await q.order(col, { ascending: true }).range(from, to);
+      if (last !== null) {
+        // advance the window strictly beyond the last value we saw
+        q = q.gt(col, last as unknown as string);
+      }
+      const { data } = await q.limit(pageSize);
       const rows = (data as unknown as Array<Record<string, string | number>> | null) ?? [];
+      if (rows.length === 0) break;
       for (const v of rows) {
         const val = String(v[col as keyof typeof v]);
-        if (val) seen.add(val);
+        if (val) {
+          seen.add(val);
+          last = val; // update cursor to latest value in sorted order
+        }
       }
-      if (rows.length < pageSize) break; // fetched last page
-      if (seen.size > 20000) break; // guardrail
+      if (rows.length < pageSize) break; // reached the end
+      if (seen.size > 50000) break; // guardrail
     }
     return Array.from(seen);
   } catch {

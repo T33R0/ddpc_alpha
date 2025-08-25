@@ -103,7 +103,7 @@ export default function AddVehicleModalClient() {
     <div className="flex items-center justify-end">
       <button
         type="button"
-        className="text-sm px-3 py-1 rounded bg-brand text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)] inline-flex items-center justify-center transition-colors hover:bg-brand/90 active:bg-brand/80"
+        className="text-sm px-3 py-1 rounded bg-brand text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)] inline-flex items-center justify-center transition hover:brightness-95 active:brightness-90"
         onClick={() => setOpen(true)}
         data-testid="btn-new-vehicle"
         aria-label="Add vehicle"
