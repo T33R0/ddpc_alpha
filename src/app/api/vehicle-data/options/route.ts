@@ -90,10 +90,12 @@ export async function GET(req: Request) {
 
     // Build union helpers: some datasets can have multiple candidate columns populated inconsistently
     const allYears = YEAR_CANDIDATES;
-    const buildYearFilters = (val: string | null | undefined) => {
+    const buildYearFilters = (val: string | null | undefined): Array<{ col: string; val: string }> | undefined => {
       if (!val) return undefined;
-      const filters: Array<{ col: string; val: string }>[] = [];
-      for (const y of allYears) filters.push([{ col: y, val }]);
+      const filters: Array<{ col: string; val: string }> = [];
+      for (const y of allYears) {
+        filters.push({ col: y, val });
+      }
       return filters;
     };
 
@@ -111,11 +113,13 @@ export async function GET(req: Request) {
 
     if (scope === "makes") {
       // Try union across all year candidates to avoid truncation when data spans multiple columns
-      const yearFilterSets = buildYearFilters(year);
+      const yearFilters = buildYearFilters(year);
+
       let agg: string[] = [];
-      if (yearFilterSets && yearFilterSets.length > 0) {
-        for (const filterSet of yearFilterSets) {
-          const vals = await selectDistinct(supabase, cols.make, filterSet, 20000);
+      if (yearFilters && yearFilters.length > 0) {
+        // Union: query each year column and combine results
+        for (const yf of yearFilters) {
+          const vals = await selectDistinct(supabase, cols.make, [yf], 20000);
           agg = agg.concat(vals);
           if (agg.length > 50000) break;
         }
@@ -128,10 +132,10 @@ export async function GET(req: Request) {
 
     if (scope === "models") {
       if (!year || !make) return NextResponse.json({ values: [] });
-      const yearFilterSets = buildYearFilters(year) ?? [[{ col: cols.year, val: year }]];
+      const yearFilters = buildYearFilters(year) ?? [{ col: cols.year, val: year }];
       let agg: string[] = [];
-      for (const yf of yearFilterSets) {
-        const vals = await selectDistinct(supabase, cols.model, [...yf, { col: cols.make, val: make }], 20000);
+      for (const yf of yearFilters) {
+        const vals = await selectDistinct(supabase, cols.model, [yf, { col: cols.make, val: make }], 20000);
         agg = agg.concat(vals);
         if (agg.length > 50000) break;
       }
@@ -141,10 +145,10 @@ export async function GET(req: Request) {
 
     if (scope === "trims") {
       if (!year || !make || !model) return NextResponse.json({ values: [] });
-      const yearFilterSets = buildYearFilters(year) ?? [[{ col: cols.year, val: year }]];
+      const yearFilters = buildYearFilters(year) ?? [{ col: cols.year, val: year }];
       let agg: string[] = [];
-      for (const yf of yearFilterSets) {
-        const vals = await selectDistinct(supabase, cols.trim, [...yf, { col: cols.make, val: make }, { col: cols.model, val: model }], 20000);
+      for (const yf of yearFilters) {
+        const vals = await selectDistinct(supabase, cols.trim, [yf, { col: cols.make, val: make }, { col: cols.model, val: model }], 20000);
         agg = agg.concat(vals);
         if (agg.length > 50000) break;
       }

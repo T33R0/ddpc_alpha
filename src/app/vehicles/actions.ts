@@ -62,15 +62,14 @@ export async function createVehicle(formData: FormData): Promise<{ id: string } 
   const make = formData.get("make")?.toString() || "";
   const model = formData.get("model")?.toString() || "";
   const trim = formData.get("trim")?.toString() || null;
-  const cylinders = formData.get("cylinders") ? Number(formData.get("cylinders")) : null;
-  const displacement_l = formData.get("displacement_l") ? Number(formData.get("displacement_l")) : null;
-  const transmission = formData.get("transmission")?.toString() || null;
   const nickname = formData.get("nickname")?.toString() || null;
   const privacy = (formData.get("privacy")?.toString() || "PRIVATE") as "PUBLIC"|"PRIVATE";
 
+  // Note: Extended spec columns (cylinders, displacement_l, transmission) are not in the vehicle table
+  // They would be added later via a separate vehicle_specs table or similar
   const { data: inserted, error } = await supabase
     .from("vehicle")
-    .insert({ garage_id: garageId, vin, year, make, model, trim, cylinders, displacement_l, transmission, nickname, privacy })
+    .insert({ garage_id: garageId, vin, year, make, model, trim, nickname, privacy })
     .select("id")
     .single();
   if (error) return { error: error.message };
