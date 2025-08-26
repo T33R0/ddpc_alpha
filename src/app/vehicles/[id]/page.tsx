@@ -106,11 +106,10 @@ export default async function VehicleOverviewPage({ params }: { params: Promise<
         .from("vehicle_data")
         .select("*")
         .eq(yearCol, vehicle.year as number)
-        .ilike(makeCol, (vehicle.make as string))
-        .ilike(modelCol, (vehicle.model as string))
-        .limit(1)
-        .maybeSingle();
-      const r = (data ?? null) as Record<string, string | number | null> | null;
+        .ilike(makeCol, `%${(vehicle.make as string)}%`)
+        .ilike(modelCol, `%${(vehicle.model as string)}%`)
+        .limit(1);
+      const r = Array.isArray(data) && data[0] ? (data[0] as Record<string, string | number | null>) : null;
       specs = r || null;
     }
   } catch {}

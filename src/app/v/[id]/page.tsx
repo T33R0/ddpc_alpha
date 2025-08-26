@@ -121,15 +121,15 @@ export default async function PublicVehiclePage({ params }: { params: Promise<{ 
     const modelCol = pick(["model","new_model","Model"]);
 
     if (yearCol && makeCol && modelCol && safe.year && safe.make && safe.model) {
-      const { data: specRow } = await supabase
+      const { data: rows } = await supabase
         .from("vehicle_data")
         .select("*")
         .eq(yearCol, safe.year as number)
-        .ilike(makeCol, safe.make as string)
-        .ilike(modelCol, safe.model as string)
-        .limit(1)
-        .maybeSingle();
-      specs = (specRow ?? undefined) as Record<string, string | number | null> | undefined;
+        .ilike(makeCol, `%${(safe.make as string)}%`)
+        .ilike(modelCol, `%${(safe.model as string)}%`)
+        .limit(1);
+      const first = Array.isArray(rows) && rows[0] ? (rows[0] as Record<string, string | number | null>) : undefined;
+      specs = first ?? undefined;
     }
   } catch {}
 
