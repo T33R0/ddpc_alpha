@@ -97,7 +97,7 @@ export async function GET(req: Request) {
     if (scope === "years") {
       // Always provide full UX range 1990..2026 (descending) to ensure a complete experience
       const values = Array.from({ length: 2026 - 1990 + 1 }, (_, i) => String(2026 - i));
-      return NextResponse.json({ values }, { headers: { "Cache-Control": "no-store" } });
+      return NextResponse.json({ values }, { headers: { "Cache-Control": "public, s-maxage=86400, stale-while-revalidate=604800" } });
     }
 
     if (scope === "makes") {
@@ -128,7 +128,7 @@ export async function GET(req: Request) {
         return v;
       };
       const values = Array.from(new Set(agg.map(normalizeMake))).sort((a, b) => a.localeCompare(b));
-      return NextResponse.json({ values }, { headers: { "Cache-Control": "no-store" } });
+      return NextResponse.json({ values }, { headers: { "Cache-Control": "public, s-maxage=86400, stale-while-revalidate=604800" } });
     }
 
     if (scope === "models") {
@@ -145,7 +145,7 @@ export async function GET(req: Request) {
         }
       }
       const values = Array.from(new Set(agg.map(String))).sort((a, b) => a.localeCompare(b));
-      return NextResponse.json({ values }, { headers: { "Cache-Control": "no-store" } });
+      return NextResponse.json({ values }, { headers: { "Cache-Control": "public, s-maxage=86400, stale-while-revalidate=604800" } });
     }
 
     if (scope === "trims") {
@@ -164,12 +164,12 @@ export async function GET(req: Request) {
         }
       }
       const values = Array.from(new Set(agg.map(String))).sort((a, b) => a.localeCompare(b));
-      return NextResponse.json({ values }, { headers: { "Cache-Control": "no-store" } });
+      return NextResponse.json({ values }, { headers: { "Cache-Control": "public, s-maxage=86400, stale-while-revalidate=604800" } });
     }
 
-    return NextResponse.json({ values: [] }, { headers: { "Cache-Control": "no-store" } });
+    return NextResponse.json({ values: [] }, { headers: { "Cache-Control": "public, s-maxage=86400, stale-while-revalidate=604800" } });
   } catch (e) {
-    return NextResponse.json({ error: (e as Error).message, values: [] }, { status: 500, headers: { "Cache-Control": "no-store" } });
+    return NextResponse.json({ error: (e as Error).message, values: [] }, { status: 500, headers: { "Cache-Control": "public, s-maxage=60" } });
   }
 }
 

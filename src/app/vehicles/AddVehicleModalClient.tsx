@@ -49,7 +49,7 @@ export default function AddVehicleModalClient({ isAuthenticated = false }: { isA
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch("/api/vehicle-data/options?scope=years", { cache: "no-store" });
+        const res = await fetch("/api/vehicle-data/options?scope=years", { cache: "force-cache", next: { revalidate: 86400 } });
         const json = (await res.json()) as { values: string[] };
         if (cancelled) return;
         setYears(json.values || []);
@@ -64,7 +64,7 @@ export default function AddVehicleModalClient({ isAuthenticated = false }: { isA
     (async () => {
       if (!year) { setMakes([]); return; }
       try {
-        const res = await fetch(`/api/vehicle-data/options?scope=makes&year=${encodeURIComponent(year)}`, { cache: "no-store" });
+        const res = await fetch(`/api/vehicle-data/options?scope=makes&year=${encodeURIComponent(year)}`, { cache: "force-cache", next: { revalidate: 86400 } });
         const json = (await res.json()) as { values: string[] };
         if (cancelled) return;
         setMakes(json.values || []);
@@ -83,7 +83,7 @@ export default function AddVehicleModalClient({ isAuthenticated = false }: { isA
     (async () => {
       if (!year || !make) return;
       try {
-        const res = await fetch(`/api/vehicle-data/options?scope=models&year=${encodeURIComponent(year)}&make=${encodeURIComponent(make)}`, { cache: "no-store" });
+        const res = await fetch(`/api/vehicle-data/options?scope=models&year=${encodeURIComponent(year)}&make=${encodeURIComponent(make)}`, { cache: "force-cache", next: { revalidate: 86400 } });
         const json = (await res.json()) as { values: string[] };
         if (cancelled) return;
         setModels(json.values || []);
