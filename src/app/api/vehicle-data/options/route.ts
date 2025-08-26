@@ -11,6 +11,23 @@ const TRIM_CANDIDATES = ["trim", "Trim"] as const;
 
 type DB = SupabaseClient;
 
+// Simple per-instance memory cache to avoid repeated Supabase scans between requests
+type CacheEntry = { createdAt: number; values: string[] };
+const cacheTTLms = 6 * 60 * 60 * 1000; // 6h
+const mem = (globalThis as unknown as { __vehOptsCache?: Map<string, CacheEntry> });
+if (!mem.__vehOptsCache) mem.__vehOptsCache = new Map<string, CacheEntry>();
+const cache = mem.__vehOptsCache as Map<string, CacheEntry>;
+
+function cacheGet(key: string): string[] | null {
+  const e = cache.get(key);
+  if (!e) return null;
+  if (Date.now() - e.createdAt > cacheTTLms) { cache.delete(key); return null; }
+  return e.values;
+}
+function cacheSet(key: string, values: string[]) {
+  cache.set(key, { createdAt: Date.now(), values });
+}
+
 function getDbClient(): DB | null {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -72,6 +89,12 @@ export async function GET(req: Request) {
     const make = url.searchParams.get("make") || "";
     const model = url.searchParams.get("model") || "";
 
+    const cacheKey = JSON.stringify({ scope, year, make, model });
+    const cached = cacheGet(cacheKey);
+    if (cached) {
+      return NextResponse.json({ values: cached }, { headers: { "Cache-Control": "public, s-maxage=86400, stale-while-revalidate=604800" } });
+    }
+
     const admin = getDbClient();
     const supabase: DB = admin || await getServerSupabase();
     // Probe a row to infer available columns; fallback to candidate-first if probe empty
@@ -97,6 +120,7 @@ export async function GET(req: Request) {
     if (scope === "years") {
       // Always provide full UX range 1990..2026 (descending) to ensure a complete experience
       const values = Array.from({ length: 2026 - 1990 + 1 }, (_, i) => String(2026 - i));
+      cacheSet(cacheKey, values);
       return NextResponse.json({ values }, { headers: { "Cache-Control": "public, s-maxage=86400, stale-while-revalidate=604800" } });
     }
 
@@ -128,6 +152,7 @@ export async function GET(req: Request) {
         return v;
       };
       const values = Array.from(new Set(agg.map(normalizeMake))).sort((a, b) => a.localeCompare(b));
+      cacheSet(cacheKey, values);
       return NextResponse.json({ values }, { headers: { "Cache-Control": "public, s-maxage=86400, stale-while-revalidate=604800" } });
     }
 
@@ -145,6 +170,7 @@ export async function GET(req: Request) {
         }
       }
       const values = Array.from(new Set(agg.map(String))).sort((a, b) => a.localeCompare(b));
+      cacheSet(cacheKey, values);
       return NextResponse.json({ values }, { headers: { "Cache-Control": "public, s-maxage=86400, stale-while-revalidate=604800" } });
     }
 
@@ -164,9 +190,11 @@ export async function GET(req: Request) {
         }
       }
       const values = Array.from(new Set(agg.map(String))).sort((a, b) => a.localeCompare(b));
+      cacheSet(cacheKey, values);
       return NextResponse.json({ values }, { headers: { "Cache-Control": "public, s-maxage=86400, stale-while-revalidate=604800" } });
     }
 
+    cacheSet(cacheKey, []);
     return NextResponse.json({ values: [] }, { headers: { "Cache-Control": "public, s-maxage=86400, stale-while-revalidate=604800" } });
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message, values: [] }, { status: 500, headers: { "Cache-Control": "public, s-maxage=60" } });
