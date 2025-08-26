@@ -69,8 +69,14 @@ export default function VehicleSpecSheet({ vehicle, specs: db }: Props) {
     weight: (db?.curb_weight_lbs ? `${asNum(db?.curb_weight_lbs)?.toLocaleString()} lb` : null) ?? fallback.weight,
     weightDist: fallback.weightDist,
     tires: (db?.tires_and_wheels as string | null) ?? fallback.tires,
-    brakesFront: (db as any)?.front_brakes ?? fallback.brakesFront,
-    brakesRear: (db as any)?.rear_brakes ?? fallback.brakesRear,
+    brakesFront: (() => {
+      const v = db?.["front_brakes"];
+      return (typeof v === "string" ? v : null) ?? fallback.brakesFront;
+    })(),
+    brakesRear: (() => {
+      const v = db?.["rear_brakes"];
+      return (typeof v === "string" ? v : null) ?? fallback.brakesRear;
+    })(),
     fuel: (db?.fuel_type as string | null) ?? fallback.fuel,
     cityHwy: (db?.epa_city_highway_mpg as string | null) ?? (db?.epa_city_highway_mpge as string | null) ?? fallback.cityHwy,
     length: fmt(db?.length_in, "in", 1) ?? "—",
