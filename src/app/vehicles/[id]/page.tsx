@@ -88,29 +88,30 @@ export default async function VehicleOverviewPage({ params }: { params: Promise<
 
   const coverUrl = await getVehicleCoverUrl(supabase, vehicleId, (vehicle as { photo_url?: string | null } | null)?.photo_url ?? null);
 
-  // Fetch specs from vehicle_data using best-guess columns
+  // Fetch specs from vehicle_data with robust matching
   let specs: Record<string, string | number | null> | null = null;
   try {
-    const probe = await supabase.from("vehicle_data").select("*").limit(1);
-    const row = Array.isArray(probe.data) && probe.data.length > 0 ? (probe.data[0] as Record<string, unknown>) : null;
-    const pick = (cands: string[]): string | null => {
-      if (row) { for (const c of cands) if (c in row) return c; }
-      return cands[0] ?? null;
-    };
-    const yearCol = pick(["year","model_year","new_year","Year"]);
-    const makeCol = pick(["make","brand","new_make","Make"]);
-    const modelCol = pick(["model","new_model","Model"]);
+    if (vehicle?.year && vehicle?.make && vehicle?.model) {
+      const makeVal = String(vehicle.make);
+      const modelVal = String(vehicle.model);
+      const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+      const wantMake = normalize(makeVal);
+      const wantModel = normalize(modelVal);
 
-    if (yearCol && makeCol && modelCol && vehicle?.year && vehicle?.make && vehicle?.model) {
-      const { data } = await supabase
+      const { data: rows } = await supabase
         .from("vehicle_data")
         .select("*")
-        .eq(yearCol, vehicle.year as number)
-        .ilike(makeCol, `%${(vehicle.make as string)}%`)
-        .ilike(modelCol, `%${(vehicle.model as string)}%`)
-        .limit(1);
-      const r = Array.isArray(data) && data[0] ? (data[0] as Record<string, string | number | null>) : null;
-      specs = r || null;
+        .or(`year.eq.${vehicle.year},new_year.eq.${vehicle.year},model_year.eq.${vehicle.year}`)
+        .limit(200);
+
+      const list: Array<Record<string, string | number | null>> = Array.isArray(rows) ? (rows as Array<Record<string, string | number | null>>) : [];
+      const getStr = (o: Record<string, unknown>, k: string): string | null => typeof o[k] === "string" && o[k] ? String(o[k]) : null;
+      const pickRow = list.find((r) => {
+        const candMake = getStr(r as Record<string, unknown>, "make") || getStr(r as Record<string, unknown>, "new_make") || getStr(r as Record<string, unknown>, "Make") || "";
+        const candModel = getStr(r as Record<string, unknown>, "model") || getStr(r as Record<string, unknown>, "new_model") || getStr(r as Record<string, unknown>, "Model") || "";
+        return normalize(candMake).includes(wantMake) && normalize(candModel).includes(wantModel);
+      }) || null;
+      specs = pickRow;
     }
   } catch {}
 
