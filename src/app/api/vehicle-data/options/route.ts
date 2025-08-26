@@ -40,10 +40,10 @@ async function selectDistinct(
     // Try to get all distinct values in one query with a high limit
     const { data, count } = await q.limit(100000);
 
-    if (data) {
+    if (data && Array.isArray(data)) {
       const uniqueValues = Array.from(new Set(
-        (data as Array<Record<string, unknown>>)
-          .map(row => String(row[col]))
+        data
+          .map(row => String((row as Record<string, unknown>)[col]))
           .filter(val => val && val.trim())
       ));
 
@@ -72,10 +72,10 @@ async function selectDistinct(
         }
 
         const { data: batchData } = await batchQuery;
-        if (!batchData || batchData.length === 0) break;
+        if (!batchData || !Array.isArray(batchData) || batchData.length === 0) break;
 
-        for (const row of batchData as Array<Record<string, unknown>>) {
-          const val = String(row[col]);
+        for (const row of batchData) {
+          const val = String((row as Record<string, unknown>)[col]);
           if (val && val.trim()) {
             allValues.add(val);
           }
