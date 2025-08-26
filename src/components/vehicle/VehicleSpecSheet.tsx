@@ -37,8 +37,8 @@ export default function VehicleSpecSheet({ vehicle, specs: db }: Props) {
   } as const;
 
   const specs = {
-    msrp: (db?.base_msrp as string | null) ?? fallback.msrp,
-    layout: (db?.layout as string | null) ?? fallback.layout,
+    msrp: (db?.base_msrp as string | null) ?? (db?.new_price_range as string | null) ?? fallback.msrp,
+    layout: (db?.layout as string | null) ?? (db?.drive_type as string | null) ?? fallback.layout,
     engine: (db?.engine_type as string | null) ?? fallback.engine,
     displacement: (db?.engine_size_l ? `${db?.engine_size_l} L` : null) ?? fallback.displacement,
     power: (db?.horsepower_hp ? `${db?.horsepower_hp} hp` : null) ?? fallback.power,
@@ -53,7 +53,7 @@ export default function VehicleSpecSheet({ vehicle, specs: db }: Props) {
     brakesFront: (db?.front_brakes as string | null) ?? fallback.brakesFront,
     brakesRear: (db?.rear_brakes as string | null) ?? fallback.brakesRear,
     fuel: (db?.fuel_type as string | null) ?? fallback.fuel,
-    cityHwy: (db?.epa_city_highway_mpg as string | null) ?? fallback.cityHwy,
+    cityHwy: (db?.epa_city_highway_mpg as string | null) ?? (db?.epa_city_highway_mpge as string | null) ?? fallback.cityHwy,
   } as const;
 
   const tests = {

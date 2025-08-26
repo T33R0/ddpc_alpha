@@ -104,12 +104,13 @@ export default async function VehicleOverviewPage({ params }: { params: Promise<
     if (yearCol && makeCol && modelCol && vehicle?.year && vehicle?.make && vehicle?.model) {
       const { data } = await supabase
         .from("vehicle_data")
-        .select("layout, engine_type, engine_size_l, cylinders, horsepower_hp, torque_ft_lbs, fuel_type, curb_weight_lbs, front_brakes, rear_brakes, tires_and_wheels, epa_city_highway_mpg, base_msrp, transmission")
-        .eq(yearCol, vehicle.year)
-        .eq(makeCol, vehicle.make)
-        .eq(modelCol, vehicle.model)
-        .limit(1);
-      const r = Array.isArray(data) && data[0] ? (data[0] as Record<string, string | number | null>) : null;
+        .select("*")
+        .eq(yearCol, vehicle.year as number)
+        .ilike(makeCol, (vehicle.make as string))
+        .ilike(modelCol, (vehicle.model as string))
+        .limit(1)
+        .maybeSingle();
+      const r = (data ?? null) as Record<string, string | number | null> | null;
       specs = r || null;
     }
   } catch {}

@@ -107,10 +107,36 @@ export default async function PublicVehiclePage({ params }: { params: Promise<{ 
   const safe = sanitizeVehicleForPublic(vehicle, eventsForSanitize);
   const coverUrl = await getVehicleCoverUrl(supabase, id, vehicle.photo_url ?? null);
 
+  // Fetch specs similar to private view
+  let specs: Record<string, string | number | null> | undefined = undefined;
+  try {
+    const probe = await supabase.from("vehicle_data").select("*").limit(1);
+    const row = Array.isArray(probe.data) && probe.data.length > 0 ? (probe.data[0] as Record<string, unknown>) : null;
+    const pick = (cands: string[]): string | null => {
+      if (row) { for (const c of cands) if (c in row) return c; }
+      return cands[0] ?? null;
+    };
+    const yearCol = pick(["year","model_year","new_year","Year"]);
+    const makeCol = pick(["make","brand","new_make","Make"]);
+    const modelCol = pick(["model","new_model","Model"]);
+
+    if (yearCol && makeCol && modelCol && safe.year && safe.make && safe.model) {
+      const { data: specRow } = await supabase
+        .from("vehicle_data")
+        .select("*")
+        .eq(yearCol, safe.year as number)
+        .ilike(makeCol, safe.make as string)
+        .ilike(modelCol, safe.model as string)
+        .limit(1)
+        .maybeSingle();
+      specs = (specRow ?? undefined) as Record<string, string | number | null> | undefined;
+    }
+  } catch {}
+
   return (
     <div className="space-y-6">
       <VehicleHeader vehicle={{ id: id, nickname: safe.display_name, year: safe.year ?? null, make: safe.make ?? null, model: safe.model ?? null, privacy: "PUBLIC" }} coverUrl={coverUrl} backHref="/vehicles" />
-      <VehicleSpecSheet vehicle={{ id, nickname: safe.display_name, year: safe.year ?? null, make: safe.make ?? null, model: safe.model ?? null }} />
+      <VehicleSpecSheet vehicle={{ id, nickname: safe.display_name, year: safe.year ?? null, make: safe.make ?? null, model: safe.model ?? null }} specs={specs} />
     </div>
   );
 }
