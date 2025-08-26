@@ -23,41 +23,74 @@ function getDbClient(): DB | null {
 async function selectDistinct(
   supabase: DB,
   col: string,
-  filters?: Array<{ col: string; val: string | number }>,
-  pageSize = 10000,
-  maxPages = 50
+  filters?: Array<{ col: string; val: string | number }>
 ): Promise<string[]> {
   try {
-    const seen = new Set<string>();
-    let last: string | null = null;
-    for (let page = 0; page < maxPages; page++) {
-      let q = supabase
-        .from("vehicle_data")
-        .select(col, { head: false, count: "exact" })
-        .not(col, "is", null)
-        .order(col, { ascending: true });
-      if (filters) {
-        for (const f of filters) q = q.eq(f.col, f.val as unknown as string);
-      }
-      if (last !== null) {
-        // advance the window strictly beyond the last value we saw
-        q = q.gt(col, last as unknown as string);
-      }
-      const { data } = await q.limit(pageSize);
-      const rows = (data as unknown as Array<Record<string, string | number>> | null) ?? [];
-      if (rows.length === 0) break;
-      for (const v of rows) {
-        const val = String(v[col as keyof typeof v]);
-        if (val) {
-          seen.add(val);
-          last = val; // update cursor to latest value in sorted order
-        }
-      }
-      if (rows.length < pageSize) break; // reached the end
-      if (seen.size > 50000) break; // guardrail
+    // Use a more efficient approach: get distinct values directly
+    // First try with a reasonable limit, then if we hit the limit, use a sampling approach
+    let q = supabase
+      .from("vehicle_data")
+      .select(col, { count: "exact" })
+      .not(col, "is", null);
+
+    if (filters) {
+      for (const f of filters) q = q.eq(f.col, f.val as unknown as string);
     }
-    return Array.from(seen);
-  } catch {
+
+    // Try to get all distinct values in one query with a high limit
+    const { data, count } = await q.limit(100000);
+
+    if (data) {
+      const uniqueValues = Array.from(new Set(
+        (data as Array<Record<string, unknown>>)
+          .map(row => String(row[col]))
+          .filter(val => val && val.trim())
+      ));
+
+      // If we got all values (count <= our limit), return them
+      if (count && count <= 100000) {
+        return uniqueValues.sort((a, b) => a.localeCompare(b));
+      }
+
+      // If we hit the limit, use a more targeted approach
+      console.log(`Hit limit for ${col}, got ${uniqueValues.length} unique values out of ${count} total rows`);
+
+      // For large datasets, get distinct values using a windowing approach with smaller batches
+      const allValues = new Set(uniqueValues);
+      let offset = 0;
+      const batchSize = 50000;
+
+      while (offset < (count || 0)) {
+        let batchQuery = supabase
+          .from("vehicle_data")
+          .select(col)
+          .not(col, "is", null)
+          .range(offset, offset + batchSize - 1);
+
+        if (filters) {
+          for (const f of filters) batchQuery = batchQuery.eq(f.col, f.val as unknown as string);
+        }
+
+        const { data: batchData } = await batchQuery;
+        if (!batchData || batchData.length === 0) break;
+
+        for (const row of batchData as Array<Record<string, unknown>>) {
+          const val = String(row[col]);
+          if (val && val.trim()) {
+            allValues.add(val);
+          }
+        }
+
+        offset += batchSize;
+        if (allValues.size > 50000) break; // safety limit
+      }
+
+      return Array.from(allValues).sort((a, b) => a.localeCompare(b));
+    }
+
+    return [];
+  } catch (error) {
+    console.error('Error in selectDistinct:', error);
     return [];
   }
 }
@@ -101,7 +134,7 @@ export async function GET(req: Request) {
 
     if (scope === "years") {
       // Fetch many rows, then unique and sort descending so recent years appear first
-      let values = await selectDistinct(supabase, cols.year, undefined, 20000);
+      let values = await selectDistinct(supabase, cols.year, undefined);
       values = Array.from(new Set(values.map(String))).sort((a, b) => Number(b) - Number(a));
       // Safety net: if result is suspiciously small (e.g., duplicate-heavy table windowed to one year),
       // fill UX-required range 1990..2026 inclusive
@@ -119,12 +152,12 @@ export async function GET(req: Request) {
       if (yearFilters && yearFilters.length > 0) {
         // Union: query each year column and combine results
         for (const yf of yearFilters) {
-          const vals = await selectDistinct(supabase, cols.make, [yf], 20000);
+          const vals = await selectDistinct(supabase, cols.make, [yf]);
           agg = agg.concat(vals);
           if (agg.length > 50000) break;
         }
       } else {
-        agg = await selectDistinct(supabase, cols.make, undefined, 20000);
+        agg = await selectDistinct(supabase, cols.make, undefined);
       }
       const values = Array.from(new Set(agg.map(String))).sort((a, b) => a.localeCompare(b));
       return NextResponse.json({ values }, { headers: { "Cache-Control": "no-store" } });
@@ -135,7 +168,7 @@ export async function GET(req: Request) {
       const yearFilters = buildYearFilters(year) ?? [{ col: cols.year, val: year }];
       let agg: string[] = [];
       for (const yf of yearFilters) {
-        const vals = await selectDistinct(supabase, cols.model, [yf, { col: cols.make, val: make }], 20000);
+        const vals = await selectDistinct(supabase, cols.model, [yf, { col: cols.make, val: make }]);
         agg = agg.concat(vals);
         if (agg.length > 50000) break;
       }
@@ -148,7 +181,7 @@ export async function GET(req: Request) {
       const yearFilters = buildYearFilters(year) ?? [{ col: cols.year, val: year }];
       let agg: string[] = [];
       for (const yf of yearFilters) {
-        const vals = await selectDistinct(supabase, cols.trim, [yf, { col: cols.make, val: make }, { col: cols.model, val: model }], 20000);
+        const vals = await selectDistinct(supabase, cols.trim, [yf, { col: cols.make, val: make }, { col: cols.model, val: model }]);
         agg = agg.concat(vals);
         if (agg.length > 50000) break;
       }

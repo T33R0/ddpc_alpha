@@ -212,11 +212,21 @@ export default function AddVehicleModalClient({ isAuthenticated = false }: { isA
 
               {error && <div className="text-sm text-red-600" role="alert">{error}</div>}
 
-              <div className="md:col-span-2 flex items-center justify-end gap-2 pt-2">
-                <button type="button" className="border rounded px-3 py-1 bg-bg text-fg" onClick={onClose} disabled={submitting}>Cancel</button>
-                <button type="submit" className="bg-brand text-white rounded px-3 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]" disabled={submitting}>
-                  {submitting ? "Adding..." : "Add Vehicle"}
-                </button>
+              <div className="flex items-center justify-between pt-2">
+                <a
+                  href="/ymm-support"
+                  className="text-sm text-muted-foreground hover:text-foreground underline"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Don't see your YMM?
+                </a>
+                <div className="flex items-center gap-2">
+                  <button type="button" className="border rounded px-3 py-1 bg-bg text-fg" onClick={onClose} disabled={submitting}>Cancel</button>
+                  <button type="submit" className="bg-brand text-white rounded px-3 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)]" disabled={submitting}>
+                    {submitting ? "Adding..." : "Add Vehicle"}
+                  </button>
+                </div>
               </div>
             </form>
           </div>
