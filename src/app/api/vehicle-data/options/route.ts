@@ -95,18 +95,8 @@ export async function GET(req: Request) {
     };
 
     if (scope === "years") {
-      // Union across all present year columns
-      let agg: string[] = [];
-      for (const yc of yearCols) {
-        const vals = await selectDistinct(supabase, yc, undefined);
-        agg = agg.concat(vals);
-      }
-      let values = Array.from(new Set(agg.map(String))).sort((a, b) => Number(b) - Number(a));
-      // Safety net: if result is suspiciously small (e.g., duplicate-heavy table windowed to one year),
-      // fill UX-required range 1990..2026 inclusive
-      if (values.length <= 1) {
-        values = Array.from({ length: 2026 - 1990 + 1 }, (_, i) => String(2026 - i));
-      }
+      // Always provide full UX range 1990..2026 (descending) to ensure a complete experience
+      const values = Array.from({ length: 2026 - 1990 + 1 }, (_, i) => String(2026 - i));
       return NextResponse.json({ values }, { headers: { "Cache-Control": "no-store" } });
     }
 
@@ -129,7 +119,15 @@ export async function GET(req: Request) {
           agg = agg.concat(vals);
         }
       }
-      const values = Array.from(new Set(agg.map(String))).sort((a, b) => a.localeCompare(b));
+      // Normalize and dedupe makes (strip tildes and trailing country annotations)
+      const normalizeMake = (s: string) => {
+        let v = String(s || "").trim();
+        if (v.startsWith("~") && v.endsWith("~")) v = v.slice(1, -1);
+        // Drop parenthetical country/region suffixes
+        v = v.replace(/\s*\([^)]*\)\s*$/u, "").trim();
+        return v;
+      };
+      const values = Array.from(new Set(agg.map(normalizeMake))).sort((a, b) => a.localeCompare(b));
       return NextResponse.json({ values }, { headers: { "Cache-Control": "no-store" } });
     }
 
