@@ -114,19 +114,44 @@ export default async function PublicVehiclePage({ params }: { params: Promise<{ 
       const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
       const wantMake = normalize(String(safe.make));
       const wantModel = normalize(String(safe.model));
-      const { data: rows } = await supabase
-        .from("vehicle_data")
-        .select("*")
-        .or(`year.eq.${safe.year},new_year.eq.${safe.year},model_year.eq.${safe.year}`)
-        .limit(200);
-      const list: Array<Record<string, string | number | null>> = Array.isArray(rows) ? (rows as Array<Record<string, string | number | null>>) : [];
-      const getStr = (o: Record<string, unknown>, k: string): string | null => typeof o[k] === "string" && o[k] ? String(o[k]) : null;
-      const pickRow = list.find((r) => {
-        const candMake = getStr(r as Record<string, unknown>, "make") || getStr(r as Record<string, unknown>, "new_make") || getStr(r as Record<string, unknown>, "Make") || "";
-        const candModel = getStr(r as Record<string, unknown>, "model") || getStr(r as Record<string, unknown>, "new_model") || getStr(r as Record<string, unknown>, "Model") || "";
-        return normalize(candMake).includes(wantMake) && normalize(candModel).includes(wantModel);
-      });
-      specs = pickRow ?? undefined;
+      const makeVal = String(safe.make);
+      const modelVal = String(safe.model);
+
+      // Try direct combinations first
+      const tryCombos: Array<{ y: string; m: string; d: string }> = [
+        { y: "year", m: "make", d: "model" },
+        { y: "new_year", m: "make", d: "model" },
+        { y: "year", m: "new_make", d: "new_model" },
+        { y: "new_year", m: "new_make", d: "new_model" },
+      ];
+      for (const c of tryCombos) {
+        const { data } = await supabase
+          .from("vehicle_data")
+          .select("*")
+          .eq(c.y, safe.year as number)
+          .ilike(c.m, `%${makeVal}%`)
+          .ilike(c.d, `%${modelVal}%`)
+          .limit(1);
+        const r = Array.isArray(data) && data[0] ? (data[0] as Record<string, string | number | null>) : null;
+        if (r) { specs = r; break; }
+      }
+
+      if (!specs) {
+        // Fallback: year scan + normalize
+        const { data: rows } = await supabase
+          .from("vehicle_data")
+          .select("*")
+          .or(`year.eq.${safe.year},new_year.eq.${safe.year},model_year.eq.${safe.year}`)
+          .limit(500);
+        const list: Array<Record<string, string | number | null>> = Array.isArray(rows) ? (rows as Array<Record<string, string | number | null>>) : [];
+        const getStr = (o: Record<string, unknown>, k: string): string | null => typeof o[k] === "string" && o[k] ? String(o[k]) : null;
+        const pickRow = list.find((r) => {
+          const candMake = getStr(r as Record<string, unknown>, "make") || getStr(r as Record<string, unknown>, "new_make") || getStr(r as Record<string, unknown>, "Make") || "";
+          const candModel = getStr(r as Record<string, unknown>, "model") || getStr(r as Record<string, unknown>, "new_model") || getStr(r as Record<string, unknown>, "Model") || "";
+          return normalize(candMake).includes(wantMake) && normalize(candModel).includes(wantModel);
+        });
+        specs = pickRow ?? undefined;
+      }
     }
   } catch {}
 

@@ -98,20 +98,42 @@ export default async function VehicleOverviewPage({ params }: { params: Promise<
       const wantMake = normalize(makeVal);
       const wantModel = normalize(modelVal);
 
-      const { data: rows } = await supabase
-        .from("vehicle_data")
-        .select("*")
-        .or(`year.eq.${vehicle.year},new_year.eq.${vehicle.year},model_year.eq.${vehicle.year}`)
-        .limit(200);
+      // Try a few select patterns in order of likelihood
+      const tryCombos: Array<{ y: string; m: string; d: string }> = [
+        { y: "year", m: "make", d: "model" },
+        { y: "new_year", m: "make", d: "model" },
+        { y: "year", m: "new_make", d: "new_model" },
+        { y: "new_year", m: "new_make", d: "new_model" },
+      ];
 
-      const list: Array<Record<string, string | number | null>> = Array.isArray(rows) ? (rows as Array<Record<string, string | number | null>>) : [];
-      const getStr = (o: Record<string, unknown>, k: string): string | null => typeof o[k] === "string" && o[k] ? String(o[k]) : null;
-      const pickRow = list.find((r) => {
-        const candMake = getStr(r as Record<string, unknown>, "make") || getStr(r as Record<string, unknown>, "new_make") || getStr(r as Record<string, unknown>, "Make") || "";
-        const candModel = getStr(r as Record<string, unknown>, "model") || getStr(r as Record<string, unknown>, "new_model") || getStr(r as Record<string, unknown>, "Model") || "";
-        return normalize(candMake).includes(wantMake) && normalize(candModel).includes(wantModel);
-      }) || null;
-      specs = pickRow;
+      for (const c of tryCombos) {
+        const { data } = await supabase
+          .from("vehicle_data")
+          .select("*")
+          .eq(c.y, vehicle.year as number)
+          .ilike(c.m, `%${makeVal}%`)
+          .ilike(c.d, `%${modelVal}%`)
+          .limit(1);
+        const r = Array.isArray(data) && data[0] ? (data[0] as Record<string, string | number | null>) : null;
+        if (r) { specs = r; break; }
+      }
+
+      if (!specs) {
+        // Fallback: broad by year then normalize make/model in JS
+        const { data: rows } = await supabase
+          .from("vehicle_data")
+          .select("*")
+          .or(`year.eq.${vehicle.year},new_year.eq.${vehicle.year},model_year.eq.${vehicle.year}`)
+          .limit(500);
+        const list: Array<Record<string, string | number | null>> = Array.isArray(rows) ? (rows as Array<Record<string, string | number | null>>) : [];
+        const getStr = (o: Record<string, unknown>, k: string): string | null => typeof o[k] === "string" && o[k] ? String(o[k]) : null;
+        const pickRow = list.find((r) => {
+          const candMake = getStr(r as Record<string, unknown>, "make") || getStr(r as Record<string, unknown>, "new_make") || getStr(r as Record<string, unknown>, "Make") || "";
+          const candModel = getStr(r as Record<string, unknown>, "model") || getStr(r as Record<string, unknown>, "new_model") || getStr(r as Record<string, unknown>, "Model") || "";
+          return normalize(candMake).includes(wantMake) && normalize(candModel).includes(wantModel);
+        }) || null;
+        specs = pickRow;
+      }
     }
   } catch {}
 
