@@ -41,9 +41,17 @@ async function selectDistinct(
     const { data, count } = await q.limit(100000);
 
     if (data && Array.isArray(data)) {
+      // Filter out any error objects and ensure we only process valid data rows
+      const validRows = data.filter((row): row is Record<string, unknown> =>
+        typeof row === 'object' && row !== null && !('error' in row)
+      );
+
       const uniqueValues = Array.from(new Set(
-        data
-          .map(row => String((row as Record<string, unknown>)[col]))
+        validRows
+          .map(row => {
+            const value = row[col];
+            return value ? String(value) : '';
+          })
           .filter(val => val && val.trim())
       ));
 
@@ -74,8 +82,14 @@ async function selectDistinct(
         const { data: batchData } = await batchQuery;
         if (!batchData || !Array.isArray(batchData) || batchData.length === 0) break;
 
-        for (const row of batchData) {
-          const val = String((row as Record<string, unknown>)[col]);
+        // Filter out error objects from batch data
+        const validBatchRows = batchData.filter((row): row is Record<string, unknown> =>
+          typeof row === 'object' && row !== null && !('error' in row)
+        );
+
+        for (const row of validBatchRows) {
+          const value = row[col];
+          const val = value ? String(value) : '';
           if (val && val.trim()) {
             allValues.add(val);
           }
