@@ -4,9 +4,9 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 export const dynamic = "force-dynamic";
 
-const YEAR_CANDIDATES = ["year", "model_year", "Year"] as const;
-const MAKE_CANDIDATES = ["make", "brand", "Make"] as const;
-const MODEL_CANDIDATES = ["model", "Model"] as const;
+const YEAR_CANDIDATES = ["year", "model_year", "new_year", "Year"] as const;
+const MAKE_CANDIDATES = ["make", "brand", "new_make", "Make"] as const;
+const MODEL_CANDIDATES = ["model", "new_model", "Model"] as const;
 const TRIM_CANDIDATES = ["trim", "Trim"] as const;
 
 type DB = SupabaseClient;
