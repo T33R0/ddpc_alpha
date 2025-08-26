@@ -77,18 +77,11 @@ export async function GET(req: Request) {
     // Probe a row to infer available columns; fallback to candidate-first if probe empty
     const probe = await supabase.from("vehicle_data").select("*").limit(1);
     const row = Array.isArray(probe.data) && probe.data.length > 0 ? (probe.data[0] as Record<string, unknown>) : null;
-    const pick = (cands: readonly string[]) => {
-      if (row) {
-        for (const c of cands) if (c in row) return c;
-      }
-      return cands[0];
-    };
-    const cols = {
-      year: pick(YEAR_CANDIDATES),
-      make: pick(MAKE_CANDIDATES),
-      model: pick(MODEL_CANDIDATES),
-      trim: pick(TRIM_CANDIDATES),
-    } as const;
+    const present = (cands: readonly string[]) => (row ? cands.filter((c) => c in row) : [...cands]);
+    const yearCols = present(YEAR_CANDIDATES);
+    const makeCols = present(MAKE_CANDIDATES);
+    const modelCols = present(MODEL_CANDIDATES);
+    const trimCols = present(TRIM_CANDIDATES);
 
     // Build union helpers: some datasets can have multiple candidate columns populated inconsistently
     const allYears = YEAR_CANDIDATES;
@@ -102,9 +95,13 @@ export async function GET(req: Request) {
     };
 
     if (scope === "years") {
-      // Fetch many rows, then unique and sort descending so recent years appear first
-      let values = await selectDistinct(supabase, cols.year, undefined);
-      values = Array.from(new Set(values.map(String))).sort((a, b) => Number(b) - Number(a));
+      // Union across all present year columns
+      let agg: string[] = [];
+      for (const yc of yearCols) {
+        const vals = await selectDistinct(supabase, yc, undefined);
+        agg = agg.concat(vals);
+      }
+      let values = Array.from(new Set(agg.map(String))).sort((a, b) => Number(b) - Number(a));
       // Safety net: if result is suspiciously small (e.g., duplicate-heavy table windowed to one year),
       // fill UX-required range 1990..2026 inclusive
       if (values.length <= 1) {
@@ -115,18 +112,22 @@ export async function GET(req: Request) {
 
     if (scope === "makes") {
       // Try union across all year candidates to avoid truncation when data spans multiple columns
-      const yearFilters = buildYearFilters(year);
+      const yearFilters = (year ? yearCols.map((c) => ({ col: c, val: year })) : undefined);
 
       let agg: string[] = [];
       if (yearFilters && yearFilters.length > 0) {
-        // Union: query each year column and combine results
         for (const yf of yearFilters) {
-          const vals = await selectDistinct(supabase, cols.make, [yf]);
-          agg = agg.concat(vals);
-          if (agg.length > 50000) break;
+          for (const mk of makeCols) {
+            const vals = await selectDistinct(supabase, mk, [yf]);
+            agg = agg.concat(vals);
+            if (agg.length > 100000) break;
+          }
         }
       } else {
-        agg = await selectDistinct(supabase, cols.make, undefined);
+        for (const mk of makeCols) {
+          const vals = await selectDistinct(supabase, mk, undefined);
+          agg = agg.concat(vals);
+        }
       }
       const values = Array.from(new Set(agg.map(String))).sort((a, b) => a.localeCompare(b));
       return NextResponse.json({ values }, { headers: { "Cache-Control": "no-store" } });
@@ -134,12 +135,16 @@ export async function GET(req: Request) {
 
     if (scope === "models") {
       if (!year || !make) return NextResponse.json({ values: [] });
-      const yearFilters = buildYearFilters(year) ?? [{ col: cols.year, val: year }];
+      const yearFilters = yearCols.map((c) => ({ col: c, val: year }));
       let agg: string[] = [];
       for (const yf of yearFilters) {
-        const vals = await selectDistinct(supabase, cols.model, [yf, { col: cols.make, val: make }]);
-        agg = agg.concat(vals);
-        if (agg.length > 50000) break;
+        for (const mk of makeCols) {
+          for (const md of modelCols) {
+            const vals = await selectDistinct(supabase, md, [yf, { col: mk, val: make }]);
+            agg = agg.concat(vals);
+            if (agg.length > 100000) break;
+          }
+        }
       }
       const values = Array.from(new Set(agg.map(String))).sort((a, b) => a.localeCompare(b));
       return NextResponse.json({ values }, { headers: { "Cache-Control": "no-store" } });
@@ -147,12 +152,18 @@ export async function GET(req: Request) {
 
     if (scope === "trims") {
       if (!year || !make || !model) return NextResponse.json({ values: [] });
-      const yearFilters = buildYearFilters(year) ?? [{ col: cols.year, val: year }];
+      const yearFilters = yearCols.map((c) => ({ col: c, val: year }));
       let agg: string[] = [];
       for (const yf of yearFilters) {
-        const vals = await selectDistinct(supabase, cols.trim, [yf, { col: cols.make, val: make }, { col: cols.model, val: model }]);
-        agg = agg.concat(vals);
-        if (agg.length > 50000) break;
+        for (const mk of makeCols) {
+          for (const md of modelCols) {
+            for (const tr of trimCols) {
+              const vals = await selectDistinct(supabase, tr, [yf, { col: mk, val: make }, { col: md, val: model }]);
+              agg = agg.concat(vals);
+              if (agg.length > 100000) break;
+            }
+          }
+        }
       }
       const values = Array.from(new Set(agg.map(String))).sort((a, b) => a.localeCompare(b));
       return NextResponse.json({ values }, { headers: { "Cache-Control": "no-store" } });
