@@ -88,6 +88,32 @@ export default async function VehicleOverviewPage({ params }: { params: Promise<
 
   const coverUrl = await getVehicleCoverUrl(supabase, vehicleId, (vehicle as { photo_url?: string | null } | null)?.photo_url ?? null);
 
+  // Fetch specs from vehicle_data using best-guess columns
+  let specs: Record<string, string | number | null> | null = null;
+  try {
+    const probe = await supabase.from("vehicle_data").select("*").limit(1);
+    const row = Array.isArray(probe.data) && probe.data.length > 0 ? (probe.data[0] as Record<string, unknown>) : null;
+    const pick = (cands: string[]): string | null => {
+      if (row) { for (const c of cands) if (c in row) return c; }
+      return cands[0] ?? null;
+    };
+    const yearCol = pick(["year","model_year","new_year","Year"]);
+    const makeCol = pick(["make","brand","new_make","Make"]);
+    const modelCol = pick(["model","new_model","Model"]);
+
+    if (yearCol && makeCol && modelCol && vehicle?.year && vehicle?.make && vehicle?.model) {
+      const { data } = await supabase
+        .from("vehicle_data")
+        .select("layout, engine_type, engine_size_l, cylinders, horsepower_hp, torque_ft_lbs, fuel_type, curb_weight_lbs, front_brakes, rear_brakes, tires_and_wheels, epa_city_highway_mpg, base_msrp, transmission")
+        .eq(yearCol, vehicle.year)
+        .eq(makeCol, vehicle.make)
+        .eq(modelCol, vehicle.model)
+        .limit(1);
+      const r = Array.isArray(data) && data[0] ? (data[0] as Record<string, string | number | null>) : null;
+      specs = r || null;
+    }
+  } catch {}
+
   // Full Timeline data (for in-page timeline tab)
   const enriched = await fetchVehicleEventsForCards(supabase, vehicleId);
   type EventType = "SERVICE" | "INSTALL" | "INSPECT" | "TUNE";
@@ -216,6 +242,7 @@ export default async function VehicleOverviewPage({ params }: { params: Promise<
           quickStats={{ lastActivityISO, openTaskCount: openCount, doneTaskCount: doneCount, eventCount }}
           tasks={tasksPeek}
           events={eventsPeek}
+          specs={specs || undefined}
         />
       </div>
 

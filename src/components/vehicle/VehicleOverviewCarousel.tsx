@@ -36,11 +36,12 @@ type Props = {
   quickStats: { lastActivityISO: string | null; openTaskCount: number; doneTaskCount: number; eventCount: number };
   tasks: Task[];
   events: Event[];
+  specs?: Record<string, string | number | null>;
 };
 
 type SlideKey = "OVERVIEW" | "SPEC" | "TIMELINE" | "TASKS" | "BUILD" | "PARTS";
 
-export default function VehicleOverviewCarousel({ vehicle, quickStats, tasks, events }: Props) {
+export default function VehicleOverviewCarousel({ vehicle, quickStats, tasks, events, specs }: Props) {
   const [slide, setSlide] = useState<SlideKey>("OVERVIEW");
 
   // Expose a global setter so the top navigation can control which
@@ -85,7 +86,7 @@ export default function VehicleOverviewCarousel({ vehicle, quickStats, tasks, ev
             />
           </div>
         )}
-        {slide === "SPEC" && <VehicleSpecSheet vehicle={vehicle} />}
+        {slide === "SPEC" && <VehicleSpecSheet vehicle={vehicle} specs={specs} />}
         {slide === "TIMELINE" && (
           <div className="grid md:grid-cols-3 gap-4">
             <div className="md:col-span-2">

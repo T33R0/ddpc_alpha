@@ -8,31 +8,52 @@ type VehicleIdentity = {
 
 type Props = {
   vehicle: VehicleIdentity;
+  specs?: Record<string, string | number | null>;
 };
 
 // A visually rich spec-sheet inspired block. Data is intentionally fabricated
 // and lightly randomized to avoid looking copied from any publication.
-export default function VehicleSpecSheet({ vehicle }: Props) {
+export default function VehicleSpecSheet({ vehicle, specs: db }: Props) {
   const title = vehicle.nickname ?? [vehicle.year, vehicle.make, vehicle.model].filter(Boolean).join(" ");
 
+  const fallback = {
+    msrp: "$—",
+    layout: "—",
+    engine: "—",
+    displacement: "—",
+    power: "—",
+    torque: "—",
+    redline: "—",
+    transmission: "—",
+    finalDrive: "—",
+    weight: "—",
+    weightDist: "—",
+    tiresFront: "—",
+    tiresRear: "—",
+    brakesFront: "—",
+    brakesRear: "—",
+    fuel: "—",
+    cityHwy: "—",
+  } as const;
+
   const specs = {
-    msrp: "$198,450",
-    layout: "mid, longitudinal",
-    engine: "twin‑turbo V8 hybrid",
-    displacement: "3996 cc",
-    power: "724 hp @ 7,800 rpm",
-    torque: "612 lb‑ft @ 3,100 rpm",
-    redline: "8,200 rpm",
-    transmission: "8‑speed dual‑clutch, RWD",
-    finalDrive: "3.36:1, e‑diff",
-    weight: "3,420 lb",
-    weightDist: "41/59",
-    tiresFront: "265/35ZR20",
-    tiresRear: "325/30ZR21",
-    brakesFront: "16.1 in carbon‑ceramic",
-    brakesRear: "15.0 in carbon‑ceramic",
-    fuel: "93 octane premium",
-    cityHwy: "14/21 mpg (est)",
+    msrp: (db?.base_msrp as string | null) ?? fallback.msrp,
+    layout: (db?.layout as string | null) ?? fallback.layout,
+    engine: (db?.engine_type as string | null) ?? fallback.engine,
+    displacement: (db?.engine_size_l ? `${db?.engine_size_l} L` : null) ?? fallback.displacement,
+    power: (db?.horsepower_hp ? `${db?.horsepower_hp} hp` : null) ?? fallback.power,
+    torque: (db?.torque_ft_lbs ? `${db?.torque_ft_lbs} lb‑ft` : null) ?? fallback.torque,
+    redline: fallback.redline,
+    transmission: (db?.transmission as string | null) ?? fallback.transmission,
+    finalDrive: fallback.finalDrive,
+    weight: (db?.curb_weight_lbs ? `${db?.curb_weight_lbs} lb` : null) ?? fallback.weight,
+    weightDist: fallback.weightDist,
+    tiresFront: (db?.tires_and_wheels as string | null) ?? fallback.tiresFront,
+    tiresRear: fallback.tiresRear,
+    brakesFront: (db?.front_brakes as string | null) ?? fallback.brakesFront,
+    brakesRear: (db?.rear_brakes as string | null) ?? fallback.brakesRear,
+    fuel: (db?.fuel_type as string | null) ?? fallback.fuel,
+    cityHwy: (db?.epa_city_highway_mpg as string | null) ?? fallback.cityHwy,
   } as const;
 
   const tests = {
