@@ -119,6 +119,19 @@ export default async function VehicleOverviewPage({ params }: { params: Promise<
       }
 
       if (!specs) {
+        // Final fallback: ignore year, pick closest by make/model, newest first
+        const { data } = await supabase
+          .from("vehicle_data")
+          .select("*")
+          .ilike("make", `%${makeVal}%`)
+          .ilike("model", `%${modelVal}%`)
+          .order("year", { ascending: false })
+          .limit(1);
+        const r2 = Array.isArray(data) && data[0] ? (data[0] as Record<string, string | number | null>) : null;
+        if (r2) specs = r2;
+      }
+
+      if (!specs) {
         // Fallback: broad by year then normalize make/model in JS
         const { data: rows } = await supabase
           .from("vehicle_data")

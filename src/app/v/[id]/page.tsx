@@ -137,6 +137,19 @@ export default async function PublicVehiclePage({ params }: { params: Promise<{ 
       }
 
       if (!specs) {
+        // Final fallback: ignore year, prefer newest
+        const { data } = await supabase
+          .from("vehicle_data")
+          .select("*")
+          .ilike("make", `%${makeVal}%`)
+          .ilike("model", `%${modelVal}%`)
+          .order("year", { ascending: false })
+          .limit(1);
+        const r2 = Array.isArray(data) && data[0] ? (data[0] as Record<string, string | number | null>) : null;
+        if (r2) specs = r2;
+      }
+
+      if (!specs) {
         // Fallback: year scan + normalize
         const { data: rows } = await supabase
           .from("vehicle_data")
