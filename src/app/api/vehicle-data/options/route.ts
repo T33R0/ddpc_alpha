@@ -41,18 +41,16 @@ async function selectDistinct(
     const { data, count } = await q.limit(100000);
 
     if (data && Array.isArray(data)) {
-      // Filter out any error objects and ensure we only process valid data rows
-      const validRows = data.filter((row): row is Record<string, unknown> =>
-        typeof row === 'object' && row !== null && !('error' in row)
-      );
-
+      // Process rows defensively without TS type predicates
+      const rows = (data as unknown[]) || [];
       const uniqueValues = Array.from(new Set(
-        validRows
-          .map(row => {
-            const value = row[col];
-            return value ? String(value) : '';
+        rows
+          .map((row) => {
+            const obj = row as Record<string, unknown>;
+            const value = obj ? obj[col] : undefined;
+            return value != null ? String(value) : '';
           })
-          .filter(val => val && val.trim())
+          .filter((val) => val && val.trim())
       ));
 
       // If we got all values (count <= our limit), return them
@@ -82,14 +80,11 @@ async function selectDistinct(
         const { data: batchData } = await batchQuery;
         if (!batchData || !Array.isArray(batchData) || batchData.length === 0) break;
 
-        // Filter out error objects from batch data
-        const validBatchRows = batchData.filter((row): row is Record<string, unknown> =>
-          typeof row === 'object' && row !== null && !('error' in row)
-        );
-
-        for (const row of validBatchRows) {
-          const value = row[col];
-          const val = value ? String(value) : '';
+        const rows = (batchData as unknown[]) || [];
+        for (const row of rows) {
+          const obj = row as Record<string, unknown>;
+          const value = obj ? obj[col] : undefined;
+          const val = value != null ? String(value) : '';
           if (val && val.trim()) {
             allValues.add(val);
           }
