@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-export async function POST(_req: NextRequest, _ctx: { params: Promise<{ id: string }> }) {
+export async function POST() {
   try {
     // TODO: Integrate with Supabase Storage signed upload if desired
     const url = "https://example.com/upload";

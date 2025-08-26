@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createVehicle } from "./actions";
 // Switch to server-backed API for options to avoid client Supabase wiring issues
@@ -42,12 +42,7 @@ export default function AddVehicleModalClient({ isAuthenticated = false }: { isA
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Helper to pick dynamic column names from probe row
-  function pickColumn(row: Record<string, unknown> | null, candidates: string[]): string | null {
-    if (!row) return candidates[0] ?? null;
-    for (const c of candidates) { if (c in row) return c; }
-    return null;
-  }
+
 
   // Load years from server API
   useEffect(() => {
@@ -219,7 +214,7 @@ export default function AddVehicleModalClient({ isAuthenticated = false }: { isA
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  Don't see your YMM?
+                  Don&apos;t see your YMM?
                 </a>
                 <div className="flex items-center gap-2">
                   <button type="button" className="border rounded px-3 py-1 bg-bg text-fg" onClick={onClose} disabled={submitting}>Cancel</button>

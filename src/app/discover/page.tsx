@@ -62,16 +62,7 @@ export default async function DiscoverPage({ searchParams = {} }: { searchParams
 	const probeRow = Array.isArray(probe.data) && probe.data.length > 0 ? (probe.data[0] as Record<string, unknown>) : null;
 
 
-	async function pickColDynamic(candidates: string[]): Promise<string> {
-		for (const c of candidates) {
-			try {
-				const { data } = await supabase.from("vehicle_data").select(c, { head: false, count: "exact" }).not(c, "is", null).limit(1);
-				if (Array.isArray(data) && data.length > 0) return c;
-			} catch {}
-		}
-		// None of the candidates exist in this dataset
-		return "";
-	}
+
 
 	// Resolve columns using a single probe row for resilience across schemas (avoid many round-trips)
 	const columns = {
