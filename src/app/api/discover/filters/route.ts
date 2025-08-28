@@ -64,7 +64,7 @@ async function selectDistinctCursor(
       if (filters) for (const f of filters) q = q.eq(f.col, f.val);
       if (last !== null) q = q.gt(column, last);
       const { data } = await q.limit(pageSize);
-      const rows = Array.isArray(data) ? (data as Array<Record<string, unknown>>) : [];
+      const rows = Array.isArray(data) ? (data as unknown as Array<Record<string, unknown>>) : [];
       if (rows.length === 0) break;
       for (const row of rows) {
         const valRaw = row[column as keyof typeof row];
