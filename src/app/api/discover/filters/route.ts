@@ -2,6 +2,20 @@ import { NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
+const YEAR_CANDIDATES = ["year", "model_year", "Year"] as const;
+const MAKE_CANDIDATES = ["make", "brand", "Make"] as const;
+const MODEL_CANDIDATES = ["model", "Model"] as const;
+const TRIM_CANDIDATES = ["trim", "Trim"] as const;
+const BODY_CANDIDATES = ["body_type", "body_style", "Body type", "Body style"] as const;
+const CLASS_CANDIDATES = ["car_classification", "class", "segment", "Car classification", "Classification"] as const;
+const DRIVE_CANDIDATES = ["drive_type", "drivetrain", "drive", "Drive type", "Drivetrain"] as const;
+const TRANS_CANDIDATES = ["transmission", "transmission_type", "Transmission", "Transmission type"] as const;
+const ENGINE_CANDIDATES = ["engine_type", "engine_configuration", "engine", "engine_config", "Engine configuration", "Engine"] as const;
+const DOORS_CANDIDATES = ["doors", "Doors"] as const;
+const SEATING_CANDIDATES = ["total_seating", "seating", "seats", "Total seating", "Seating", "Seats"] as const;
+const FUEL_CANDIDATES = ["fuel_type", "fuel", "Fuel type"] as const;
+const COUNTRY_CANDIDATES = ["country_of_origin", "origin", "country", "Country of origin", "Origin", "Country"] as const;
+
 type Columns = {
   year: string;
   make: string;
@@ -24,6 +38,64 @@ function pickColumn(row: Record<string, unknown> | null, candidates: string[]): 
     if (c in row) return c;
   }
   return candidates[0] ?? "";
+}
+
+function present(row: Record<string, unknown> | null, candidates: readonly string[]): string[] {
+  if (!row) return [...candidates];
+  return candidates.filter((c) => c in row);
+}
+
+async function selectDistinctCursor(
+  supabase: SupabaseClient,
+  column: string,
+  filters?: Array<{ col: string; val: string }>,
+  pageSize = 10000,
+  maxPages = 200
+): Promise<string[]> {
+  try {
+    const seen = new Set<string>();
+    let last: string | null = null;
+    for (let page = 0; page < maxPages; page++) {
+      let q = supabase
+        .from("vehicle_data")
+        .select(column)
+        .not(column, "is", null)
+        .order(column, { ascending: true });
+      if (filters) for (const f of filters) q = q.eq(f.col, f.val);
+      if (last !== null) q = q.gt(column, last);
+      const { data } = await q.limit(pageSize);
+      const rows = Array.isArray(data) ? (data as Array<Record<string, unknown>>) : [];
+      if (rows.length === 0) break;
+      for (const row of rows) {
+        const valRaw = row[column as keyof typeof row];
+        const val = valRaw == null ? "" : String(valRaw);
+        if (val) {
+          seen.add(val);
+          last = val;
+        }
+      }
+      if (rows.length < pageSize) break;
+      if (seen.size > 100000) break;
+    }
+    return Array.from(seen);
+  } catch {
+    return [];
+  }
+}
+
+async function selectDistinctMany(
+  supabase: SupabaseClient,
+  columns: string[],
+  filters?: Array<{ col: string; val: string }>,
+  pageSize?: number
+): Promise<string[]> {
+  let agg: string[] = [];
+  for (const col of columns) {
+    const vals = await selectDistinctCursor(supabase, col, filters, pageSize ?? 10000);
+    agg = agg.concat(vals);
+    if (agg.length > 100000) break;
+  }
+  return Array.from(new Set(agg.map(String)));
 }
 
 async function selectDistinct(
@@ -57,20 +129,34 @@ export async function GET(req: Request): Promise<Response> {
     const row = Array.isArray(probe.data) && probe.data.length > 0 ? (probe.data[0] as Record<string, unknown>) : null;
 
     const columns: Columns = {
-      year: pickColumn(row, ["year", "model_year", "Year"]) || "",
-      make: pickColumn(row, ["make", "brand", "Make"]) || "",
-      model: pickColumn(row, ["model", "Model"]) || "",
-      trim: pickColumn(row, ["trim", "Trim"]) || "",
-      body: pickColumn(row, ["body_type", "body_style", "Body type", "Body style"]) || "",
-      classification: pickColumn(row, ["car_classification", "class", "segment", "Car classification", "Classification"]) || "",
-      drive: pickColumn(row, ["drive_type", "drivetrain", "drive", "Drive type", "Drivetrain"]) || "",
-      transmission: pickColumn(row, ["transmission", "transmission_type", "Transmission", "Transmission type"]) || "",
-      engine: pickColumn(row, ["engine_type", "engine_configuration", "engine", "engine_config", "Engine configuration", "Engine"]) || "",
-      doors: pickColumn(row, ["doors", "Doors"]) || "",
-      seating: pickColumn(row, ["total_seating", "seating", "seats", "Total seating", "Seating", "Seats"]) || "",
-      fuel: pickColumn(row, ["fuel_type", "fuel", "Fuel type"]) || "",
-      country: pickColumn(row, ["country_of_origin", "origin", "country", "Country of origin", "Origin", "Country"]) || "",
+      year: pickColumn(row, [...YEAR_CANDIDATES]) || "",
+      make: pickColumn(row, [...MAKE_CANDIDATES]) || "",
+      model: pickColumn(row, [...MODEL_CANDIDATES]) || "",
+      trim: pickColumn(row, [...TRIM_CANDIDATES]) || "",
+      body: pickColumn(row, [...BODY_CANDIDATES]) || "",
+      classification: pickColumn(row, [...CLASS_CANDIDATES]) || "",
+      drive: pickColumn(row, [...DRIVE_CANDIDATES]) || "",
+      transmission: pickColumn(row, [...TRANS_CANDIDATES]) || "",
+      engine: pickColumn(row, [...ENGINE_CANDIDATES]) || "",
+      doors: pickColumn(row, [...DOORS_CANDIDATES]) || "",
+      seating: pickColumn(row, [...SEATING_CANDIDATES]) || "",
+      fuel: pickColumn(row, [...FUEL_CANDIDATES]) || "",
+      country: pickColumn(row, [...COUNTRY_CANDIDATES]) || "",
     };
+
+    const yearCols = present(row, YEAR_CANDIDATES as unknown as string[]);
+    const makeCols = present(row, MAKE_CANDIDATES as unknown as string[]);
+    const modelCols = present(row, MODEL_CANDIDATES as unknown as string[]);
+    const trimCols = present(row, TRIM_CANDIDATES as unknown as string[]);
+    const bodyCols = present(row, BODY_CANDIDATES as unknown as string[]);
+    const classCols = present(row, CLASS_CANDIDATES as unknown as string[]);
+    const driveCols = present(row, DRIVE_CANDIDATES as unknown as string[]);
+    const transCols = present(row, TRANS_CANDIDATES as unknown as string[]);
+    const engineCols = present(row, ENGINE_CANDIDATES as unknown as string[]);
+    const doorsCols = present(row, DOORS_CANDIDATES as unknown as string[]);
+    const seatingCols = present(row, SEATING_CANDIDATES as unknown as string[]);
+    const fuelCols = present(row, FUEL_CANDIDATES as unknown as string[]);
+    const countryCols = present(row, COUNTRY_CANDIDATES as unknown as string[]);
 
     // Parse current selections from query string to constrain option lists
     const url = new URL(req.url);
@@ -86,42 +172,72 @@ export async function GET(req: Request): Promise<Response> {
     if (selModel && columns.model) baseFilters.push({ col: columns.model, val: selModel });
     if (selTrim && columns.trim) baseFilters.push({ col: columns.trim, val: selTrim });
 
-    // Years: prefer table distinct, else fill 1990..2026
-    let years: string[] = [];
-    if (columns.year) {
-      years = await selectDistinct(supabase, columns.year, undefined, 2000);
-      years = Array.from(new Set(years.map(String))).sort((a, b) => Number(b) - Number(a));
-    }
-    if (years.length === 0) {
-      years = Array.from({ length: 2026 - 1990 + 1 }, (_, i) => String(2026 - i));
-    }
+    // Years: Always return full UX range 1990..2026 (descending)
+    const years: string[] = Array.from({ length: 2026 - 1990 + 1 }, (_, i) => String(2026 - i));
 
     // Dependent lists: make depends on year; model depends on year+make; trim depends on year+make+model
-    const makeFilters = selYear && columns.year ? [{ col: columns.year, val: selYear }] : undefined;
-    const modelFilters = [
-      ...(selYear && columns.year ? [{ col: columns.year, val: selYear }] : []),
-      ...(selMake && columns.make ? [{ col: columns.make, val: selMake }] : []),
-    ];
-    const trimFilters = [
-      ...(selYear && columns.year ? [{ col: columns.year, val: selYear }] : []),
-      ...(selMake && columns.make ? [{ col: columns.make, val: selMake }] : []),
-      ...(selModel && columns.model ? [{ col: columns.model, val: selModel }] : []),
-    ];
+    // Build filters against all possible columns to avoid truncation when data is split across multiple columns
+    const makeFiltersSets = selYear ? yearCols.map((c) => [{ col: c, val: selYear }]) : [undefined];
+    const modelFiltersSets = (selYear || selMake)
+      ? [
+          ...(
+            selYear ? yearCols.map((c) => [{ col: c, val: selYear }]) : [ [] as Array<{ col: string; val: string }> ]
+          ).map((arr) => (selMake ? [...arr, ...makeCols.map((m) => ({ col: m, val: selMake }))] : arr))
+        ]
+      : [undefined];
+    const trimFiltersSets = (selYear || selMake || selModel)
+      ? [
+          ...(
+            selYear ? yearCols.map((c) => [{ col: c, val: selYear }]) : [ [] as Array<{ col: string; val: string }> ]
+          ).map((arr) => {
+            let cur = arr;
+            if (selMake) cur = [...cur, ...makeCols.map((m) => ({ col: m, val: selMake }))];
+            if (selModel) cur = [...cur, ...modelCols.map((m) => ({ col: m, val: selModel }))];
+            return cur;
+          })
+        ]
+      : [undefined];
 
-    const [make, model, trim, body, classification, drive, transmission, engine, doors, seating, fuel, country] = await Promise.all([
-      selectDistinct(supabase, columns.make, makeFilters, 5000),
-      selectDistinct(supabase, columns.model, modelFilters.length ? modelFilters : undefined, 5000),
-      selectDistinct(supabase, columns.trim, trimFilters.length ? trimFilters : undefined, 5000),
-      selectDistinct(supabase, columns.body, undefined, 5000),
-      selectDistinct(supabase, columns.classification, undefined, 5000),
-      selectDistinct(supabase, columns.drive, undefined),
-      selectDistinct(supabase, columns.transmission, undefined),
-      selectDistinct(supabase, columns.engine, undefined),
-      selectDistinct(supabase, columns.doors, undefined),
-      selectDistinct(supabase, columns.seating, undefined),
-      selectDistinct(supabase, columns.fuel, undefined),
-      selectDistinct(supabase, columns.country, undefined),
-    ]);
+    // Compute options by unioning across present columns with cursor-based scanning
+    const make = await (async () => {
+      let agg: string[] = [];
+      for (const f of makeFiltersSets) {
+        const vals = await selectDistinctMany(supabase, makeCols.length ? makeCols : [columns.make], f);
+        agg = agg.concat(vals);
+        if (agg.length > 100000) break;
+      }
+      return Array.from(new Set(agg.map(String))).sort((a, b) => a.localeCompare(b));
+    })();
+
+    const model = await (async () => {
+      let agg: string[] = [];
+      for (const f of modelFiltersSets) {
+        const vals = await selectDistinctMany(supabase, modelCols.length ? modelCols : [columns.model], f);
+        agg = agg.concat(vals);
+        if (agg.length > 100000) break;
+      }
+      return Array.from(new Set(agg.map(String))).sort((a, b) => a.localeCompare(b));
+    })();
+
+    const trim = await (async () => {
+      let agg: string[] = [];
+      for (const f of trimFiltersSets) {
+        const vals = await selectDistinctMany(supabase, trimCols.length ? trimCols : [columns.trim], f);
+        agg = agg.concat(vals);
+        if (agg.length > 100000) break;
+      }
+      return Array.from(new Set(agg.map(String))).sort((a, b) => a.localeCompare(b));
+    })();
+
+    const body = (await selectDistinctMany(supabase, bodyCols.length ? bodyCols : [columns.body])).sort((a, b) => a.localeCompare(b));
+    const classification = (await selectDistinctMany(supabase, classCols.length ? classCols : [columns.classification])).sort((a, b) => a.localeCompare(b));
+    const drive = (await selectDistinctMany(supabase, driveCols.length ? driveCols : [columns.drive])).sort((a, b) => a.localeCompare(b));
+    const transmission = (await selectDistinctMany(supabase, transCols.length ? transCols : [columns.transmission])).sort((a, b) => a.localeCompare(b));
+    const engine = (await selectDistinctMany(supabase, engineCols.length ? engineCols : [columns.engine])).sort((a, b) => a.localeCompare(b));
+    const doors = (await selectDistinctMany(supabase, doorsCols.length ? doorsCols : [columns.doors])).sort((a, b) => a.localeCompare(b));
+    const seating = (await selectDistinctMany(supabase, seatingCols.length ? seatingCols : [columns.seating])).sort((a, b) => a.localeCompare(b));
+    const fuel = (await selectDistinctMany(supabase, fuelCols.length ? fuelCols : [columns.fuel])).sort((a, b) => a.localeCompare(b));
+    const country = (await selectDistinctMany(supabase, countryCols.length ? countryCols : [columns.country])).sort((a, b) => a.localeCompare(b));
 
     const payload = {
       columns,
