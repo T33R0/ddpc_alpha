@@ -29,6 +29,7 @@ export interface Vehicle {
   make: string | null;
   model: string | null;
   trim: string | null;
+  nickname: string | null;
   privacy: "PUBLIC" | "PRIVATE";
   photo_url: string | null;
   created_at: string;

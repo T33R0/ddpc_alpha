@@ -1,70 +1,121 @@
-import { NextRequest, NextResponse } from "next/server";
-import { getServerSupabase } from "@/lib/supabase";
-import { validateUpdateWorkItemPlanPayload } from "@/lib/validators/workItems";
+import { NextRequest } from "next/server";
+import { auth, AuthenticatedRequest, HandlerContext } from "@/lib/api/auth-middleware";
+import { errors, createSimpleSuccess } from "@/lib/api/errors";
+import { validateUpdateWorkItemPlanPayload, type UpdateWorkItemPlanPayload } from "@/lib/validators/workItems";
 import { serverLog } from "@/lib/serverLog";
+import { logActivity } from "@/lib/activity/log";
 
-export async function PATCH(req: NextRequest, context: unknown) {
+async function updateWorkItemPlanHandler(
+  req: NextRequest,
+  context: HandlerContext,
+  authContext: AuthenticatedRequest
+) {
   const requestId = Math.random().toString(36).slice(2, 10);
-  const id = (context as { params?: { id?: string } })?.params?.id;
-  if (!id) return NextResponse.json({ error: "Missing id", code: 400 }, { status: 400 });
+
   try {
-    const supabase = await getServerSupabase();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return NextResponse.json({ error: "Unauthorized", code: 401 }, { status: 401 });
+    const workItemIdRaw = context.params?.id;
+    if (!workItemIdRaw) {
+      return errors.badRequest("Missing work item ID");
+    }
 
+    const workItemId = Array.isArray(workItemIdRaw) ? workItemIdRaw[0] : workItemIdRaw;
+
+    // Parse and validate request body
     const body = await req.json().catch(() => ({}));
-    const v = validateUpdateWorkItemPlanPayload(body);
-    if (!v.ok) return NextResponse.json({ error: v.error, code: 400 }, { status: 400 });
+    const validation = validateUpdateWorkItemPlanPayload(body);
 
-    // Load work item and owning vehicle
-    const { data: task } = await supabase
+    if (!validation.ok) {
+      return errors.validation(validation.error);
+    }
+
+    const { plan_id } = validation.data;
+
+    // Load work item and its vehicle
+    const { data: workItem } = await authContext.supabase
       .from("work_item")
-      .select("id, vehicle_id")
-      .eq("id", id)
+      .select("id, vehicle_id, plan_id, title")
+      .eq("id", workItemId)
       .maybeSingle();
-    if (!task) return NextResponse.json({ error: "Not found", code: 404 }, { status: 404 });
 
-    const { data: taskVeh } = await supabase
+    if (!workItem) {
+      return errors.notFound("Work item not found");
+    }
+
+    // Get vehicle information
+    const { data: vehicle } = await authContext.supabase
       .from("vehicle")
-      .select("id, owner_id, garage_id")
-      .eq("id", task.vehicle_id)
+      .select("id, garage_id")
+      .eq("id", workItem.vehicle_id)
       .maybeSingle();
-    if (!taskVeh) return NextResponse.json({ error: "Not found", code: 404 }, { status: 404 });
 
-    // AuthZ: owner or manager of the garage
-    let authorized = taskVeh.owner_id === user.id;
-    if (!authorized && taskVeh.garage_id) {
-      const { data: mem } = await supabase
-        .from("garage_member")
-        .select("user_id, role")
-        .eq("garage_id", taskVeh.garage_id)
-        .eq("user_id", user.id)
-        .maybeSingle();
-      if (mem && (mem.role === "OWNER" || mem.role === "MANAGER")) authorized = true;
+    if (!vehicle) {
+      return errors.notFound("Vehicle not found");
     }
-    if (!authorized) return NextResponse.json({ error: "Forbidden", code: 403 }, { status: 403 });
 
-    // Validate plan belongs to same vehicle
-    const { data: plan } = await supabase
+    // Verify user has access to the vehicle's garage
+    const hasAccess = await authContext.db.ensureGarageAccess(
+      authContext.user.id,
+      vehicle.garage_id,
+      "CONTRIBUTOR" // Contributors can update work items
+    );
+
+    if (!hasAccess) {
+      return errors.forbidden("Access denied. You must be a contributor to the garage.");
+    }
+
+    // Validate plan belongs to same vehicle and exists
+    const { data: plan } = await authContext.supabase
       .from("build_plan")
-      .select("id, vehicle_id")
-      .eq("id", v.data.plan_id)
+      .select("id, vehicle_id, name")
+      .eq("id", plan_id)
       .maybeSingle();
-    if (!plan) return NextResponse.json({ error: "Invalid plan_id", code: 400 }, { status: 400 });
-    if (plan.vehicle_id !== task.vehicle_id) {
-      return NextResponse.json({ error: "Plan does not belong to the same vehicle", code: 400 }, { status: 400 });
+
+    if (!plan) {
+      return errors.validation("Invalid plan_id: plan does not exist");
     }
 
-    const { error: updErr } = await supabase
-      .from("work_item")
-      .update({ plan_id: v.data.plan_id })
-      .eq("id", id);
-    if (updErr) return NextResponse.json({ error: "Update failed", code: 400 }, { status: 400 });
+    if (plan.vehicle_id !== workItem.vehicle_id) {
+      return errors.validation("Plan does not belong to the same vehicle as the work item");
+    }
 
-    serverLog("task_plan_updated", { userId: user.id, taskId: id, planId: v.data.plan_id, requestId });
-    return NextResponse.json({ ok: true });
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    return NextResponse.json({ error: message, code: 500 }, { status: 500 });
+    // Update the work item
+    const { error: updateError } = await authContext.supabase
+      .from("work_item")
+      .update({ plan_id })
+      .eq("id", workItemId);
+
+    if (updateError) {
+      console.error("Work item plan update error:", updateError);
+      return errors.internal("Failed to update work item plan: " + updateError.message);
+    }
+
+    // Log the activity
+    await logActivity({
+      actorId: authContext.user.id,
+      entityType: "work_item",
+      entityId: workItemId,
+      action: "update",
+      diff: {
+        before: { plan_id: workItem.plan_id },
+        after: { plan_id },
+      },
+    });
+
+    // Log the server event
+    serverLog("task_plan_updated", {
+      userId: authContext.user.id,
+      taskId: workItemId,
+      planId: plan_id,
+      requestId
+    });
+
+    return createSimpleSuccess(200);
+
+  } catch (error) {
+    console.error("Work item plan update handler error:", error);
+    return errors.internal("Unexpected error during plan update");
   }
 }
+
+// Export the wrapped handler
+export const PATCH = auth.authenticated(updateWorkItemPlanHandler);

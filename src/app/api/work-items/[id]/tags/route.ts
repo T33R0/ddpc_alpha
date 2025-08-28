@@ -1,27 +1,80 @@
-import { NextRequest, NextResponse } from "next/server";
-import { getServerSupabase } from "@/lib/supabase";
+import { NextRequest } from "next/server";
+import { auth, AuthenticatedRequest, HandlerContext } from "@/lib/api/auth-middleware";
+import { errors, createSimpleSuccess } from "@/lib/api/errors";
+import { logActivity } from "@/lib/activity/log";
 
-type RouteContext = { params: Promise<{ id: string }> };
-export async function PATCH(req: NextRequest, context: RouteContext) {
+interface UpdateTagsRequest {
+  tags?: string[] | null;
+}
+
+async function updateTagsHandler(
+  req: NextRequest,
+  context: HandlerContext,
+  authContext: AuthenticatedRequest
+) {
   try {
-    const { id } = await context.params;
-    const { tags } = await req.json();
-    if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 });
-    if (tags !== null && !Array.isArray(tags)) {
-      return NextResponse.json({ error: "tags must be an array of strings or null" }, { status: 400 });
+    const workItemIdRaw = context.params?.id;
+    if (!workItemIdRaw) {
+      return errors.badRequest("Missing work item ID");
     }
 
-    const normalized = Array.isArray(tags)
-      ? tags.map((t) => (typeof t === "string" ? t.trim() : "")).filter(Boolean)
-      : null;
+    const workItemId = Array.isArray(workItemIdRaw) ? workItemIdRaw[0] : workItemIdRaw;
 
-    const supabase = await getServerSupabase();
-    const { error } = await supabase.from("work_item").update({ tags: normalized }).eq("id", id);
-    if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+    // Parse request body
+    const body: UpdateTagsRequest = await req.json().catch(() => ({}));
 
-    return NextResponse.json({ ok: true });
-  } catch (e) {
-    const message = e instanceof Error ? e.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    // Validate tags
+    if (body.tags !== undefined && body.tags !== null && !Array.isArray(body.tags)) {
+      return errors.validation("Tags must be an array of strings or null");
+    }
+
+    // Normalize tags
+    let normalizedTags: string[] | null = null;
+    if (Array.isArray(body.tags)) {
+      normalizedTags = body.tags
+        .map((tag) => (typeof tag === "string" ? tag.trim() : ""))
+        .filter((tag) => tag.length > 0);
+    }
+
+    // Get current work item for activity logging
+    const { data: currentItem } = await authContext.supabase
+      .from("work_item")
+      .select("id, tags, title")
+      .eq("id", workItemId)
+      .maybeSingle();
+
+    // Update the work item
+    const { error } = await authContext.supabase
+      .from("work_item")
+      .update({ tags: normalizedTags })
+      .eq("id", workItemId);
+
+    if (error) {
+      console.error("Work item tags update error:", error);
+      return errors.internal("Failed to update tags: " + error.message);
+    }
+
+    // Log the activity
+    if (currentItem) {
+      await logActivity({
+        actorId: authContext.user.id,
+        entityType: "work_item",
+        entityId: workItemId,
+        action: "update",
+        diff: {
+          before: { tags: currentItem.tags },
+          after: { tags: normalizedTags },
+        },
+      });
+    }
+
+    return createSimpleSuccess(200);
+
+  } catch (error) {
+    console.error("Work item tags update handler error:", error);
+    return errors.internal("Unexpected error during tags update");
   }
 }
+
+// Export the wrapped handler
+export const PATCH = auth.authenticated(updateTagsHandler);

@@ -1,27 +1,39 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSupabase } from "@/lib/supabase";
+import { auth, AuthenticatedRequest, HandlerContext } from "@/lib/api/auth-middleware";
+import { errors, createSuccessResponse } from "@/lib/api/errors";
 import { serverLog } from "@/lib/serverLog";
-import { validateCreateEventPayload } from "@/lib/validators/events";
+import { validateCreateEventPayload, type CreateEventPayload } from "@/lib/validators/events";
+import { logActivity } from "@/lib/activity/log";
 
-export async function GET(): Promise<Response> {
-  return NextResponse.json({ ok: true, route: "/api/events" }, { status: 200 });
+interface CreateEventRequest extends CreateEventPayload {
+  type_key?: string;
+  occurred_on?: string;
+  date_confidence?: string;
 }
 
-export async function POST(req: NextRequest) {
+async function createEventHandler(
+  req: NextRequest,
+  context: HandlerContext,
+  authContext: AuthenticatedRequest
+) {
   const requestId = Math.random().toString(36).slice(2, 10);
-  try {
-    const supabase = await getServerSupabase();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return NextResponse.json({ error: "Unauthorized", code: 401 }, { status: 401 });
 
-    const body = await req.json().catch(() => ({}));
-    const v = validateCreateEventPayload(body);
-    if (!v.ok) return NextResponse.json({ error: v.error, code: 400 }, { status: 400 });
-    const { vehicle_id, occurred_at, title, notes, type } = v.data;
-    const raw = await req.json().catch(() => ({}));
-    const manualTypeKey = typeof (raw as Record<string, unknown>).type_key === 'string' ? String((raw as Record<string, unknown>).type_key) : undefined;
-    const occurred_on = typeof (raw as Record<string, unknown>).occurred_on === 'string' ? String((raw as Record<string, unknown>).occurred_on) : null;
-    const date_confidence = typeof (raw as Record<string, unknown>).date_confidence === 'string' ? String((raw as Record<string, unknown>).date_confidence) : undefined;
+  try {
+    // Parse and validate request body
+    const body: CreateEventRequest = await req.json().catch(() => ({}));
+    const validation = validateCreateEventPayload(body);
+
+    if (!validation.ok) {
+      return errors.validation(validation.error);
+    }
+
+    const { vehicle_id, occurred_at, title, notes, type } = validation.data;
+
+    // Extract additional fields from raw body
+    const manualTypeKey = typeof body.type_key === 'string' ? body.type_key : undefined;
+    const occurred_on = typeof body.occurred_on === 'string' ? body.occurred_on : null;
+    const date_confidence = typeof body.date_confidence === 'string' ? body.date_confidence : undefined;
+
     // Map app types -> DB types
     const typeToDb: Record<string, string> = {
       SERVICE: "SERVICE",
@@ -31,47 +43,18 @@ export async function POST(req: NextRequest) {
     };
     const dbType = typeToDb[type] ?? "INSPECT";
 
-    // AuthZ: user must own the garage or be a member (role model can vary across envs)
-    const { data: veh, error: vehErr } = await supabase
-      .from("vehicle")
-      .select("id, garage_id")
-      .eq("id", vehicle_id)
-      .maybeSingle();
-    if (vehErr) return NextResponse.json({ error: "vehicle_lookup_failed", detail: vehErr.message, code: 400 }, { status: 400 });
-    if (!veh) return NextResponse.json({ error: "vehicle_not_found_or_rls", vehicleId: vehicle_id, userId: user.id, code: 404 }, { status: 404 });
+    // Verify vehicle access (middleware should have already checked this)
+    const vehicle = await authContext.db.getVehicleWithAccess(
+      authContext.user.id,
+      vehicle_id
+    );
 
-    let authorized = false;
-    // check garage owner
-    const { data: garage } = await supabase
-      .from("garage")
-      .select("owner_id")
-      .eq("id", veh.garage_id as string)
-      .maybeSingle();
-    if (garage?.owner_id === user.id) authorized = true;
-    if (!authorized) {
-      // check any membership (role values differ across schemas)
-      const { data: mem } = await supabase
-        .from("garage_member")
-        .select("user_id, role")
-        .eq("garage_id", veh.garage_id as string)
-        .eq("user_id", user.id)
-        .maybeSingle();
-      if (mem) authorized = true;
+    if (!vehicle) {
+      return errors.notFound("Vehicle not found or access denied");
     }
-    if (!authorized) return NextResponse.json({ error: "Forbidden", code: 403 }, { status: 403 });
 
-    // Prepare insert; map title -> notes for storage if schema lacks title; let DB set created_at = now()
-    const insertPayload: {
-      vehicle_id: string;
-      type: string;
-      title?: string | null;
-      notes?: string | null;
-      occurred_at?: string | null;
-      occurred_on?: string | null;
-      date_confidence?: string | null;
-      manual_type_key?: string | null;
-      created_by?: string;
-    } = {
+    // Prepare insert payload
+    const insertPayload = {
       vehicle_id,
       type: dbType,
       title: title || null,
@@ -80,36 +63,88 @@ export async function POST(req: NextRequest) {
       occurred_on: occurred_on || null,
       date_confidence: date_confidence || (occurred_at ? 'exact' : 'unknown'),
       manual_type_key: manualTypeKey || null,
+      created_by: authContext.user.id,
     };
-    // include created_by when available to align with schemas that record authorship
-    try { insertPayload.created_by = user.id; } catch { /* noop */ }
 
-    const { data: created, error: insErr } = await supabase
+    // Insert the event
+    const { data: created, error: insertError } = await authContext.supabase
       .from("event")
       .insert(insertPayload)
       .select("id, type, created_at, vehicle_id, title, notes, occurred_at, occurred_on, date_confidence, manual_type_key")
       .single();
-    if (insErr) return NextResponse.json({ error: insErr.message, code: 400 }, { status: 400 });
+
+    if (insertError) {
+      console.error("Event creation error:", insertError);
+      return errors.internal("Failed to create event: " + insertError.message);
+    }
 
     // Update vehicle.last_event_at
-    await supabase.from("vehicle").update({ last_event_at: created.created_at }).eq("id", vehicle_id);
+    try {
+      await authContext.supabase
+        .from("vehicle")
+        .update({ last_event_at: created.created_at })
+        .eq("id", vehicle_id);
+    } catch (updateError) {
+      console.error("Failed to update vehicle last_event_at:", updateError);
+      // Don't fail the request for this
+    }
 
-    serverLog("event_create", { userId: user.id, vehicleId: vehicle_id, type: dbType, requestId });
+    // Log the event creation
+    serverLog("event_create", {
+      userId: authContext.user.id,
+      vehicleId: vehicle_id,
+      type: dbType,
+      requestId
+    });
+
     // Map DB type -> app type in response
-    const dbToApp: Record<string, string> = { SERVICE: "SERVICE", INSTALL: "MOD", INSPECT: "NOTE", TUNE: "DYNO" };
+    const dbToApp: Record<string, string> = {
+      SERVICE: "SERVICE",
+      INSTALL: "MOD",
+      INSPECT: "NOTE",
+      TUNE: "DYNO"
+    };
     const appType = dbToApp[created.type] ?? "NOTE";
+
     // Try to enrich display metadata from event_types when manualTypeKey provided
     let display: { label?: string | null; icon?: string | null; color?: string | null } = {};
     if (created.manual_type_key) {
       try {
-        const { data: et } = await supabase
+        const { data: eventType } = await authContext.supabase
           .from('event_types')
           .select('label, icon, color')
-          .eq('key', created.manual_type_key as string)
+          .eq('key', created.manual_type_key)
           .maybeSingle();
-        if (et) display = { label: et.label as string, icon: et.icon as string, color: et.color as string };
-      } catch {}
+
+        if (eventType) {
+          display = {
+            label: eventType.label,
+            icon: eventType.icon,
+            color: eventType.color
+          };
+        }
+      } catch (metadataError) {
+        console.error("Failed to fetch event type metadata:", metadataError);
+        // Don't fail the request for this
+      }
     }
+
+    // Log activity
+    await logActivity({
+      actorId: authContext.user.id,
+      entityType: "event",
+      entityId: created.id,
+      action: "create",
+      diff: {
+        after: {
+          vehicle_id: created.vehicle_id,
+          type: appType,
+          title: created.title,
+          notes: created.notes,
+          occurred_at: created.occurred_at,
+        }
+      },
+    });
 
     const event = {
       id: created.id,
@@ -118,14 +153,25 @@ export async function POST(req: NextRequest) {
       title: created.title ?? title,
       notes: created.notes ?? null,
       occurred_at: created.occurred_at ?? created.created_at,
-      occurred_on: created.occurred_on ?? (created.created_at ? created.created_at.slice(0,10) : null),
-      date_confidence: (created.date_confidence as string | null) ?? (occurred_at ? 'exact' : 'unknown'),
+      occurred_on: created.occurred_on ?? (created.created_at ? created.created_at.slice(0, 10) : null),
+      date_confidence: created.date_confidence ?? (occurred_at ? 'exact' : 'unknown'),
       manualTypeKey: created.manual_type_key ?? manualTypeKey,
       ...display,
-    } as const;
-    return NextResponse.json({ event }, { status: 201 });
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    return NextResponse.json({ error: message, code: 500 }, { status: 500 });
+    };
+
+    return createSuccessResponse({ event }, 201);
+
+  } catch (error) {
+    console.error("Event creation handler error:", error);
+    return errors.internal("Unexpected error during event creation");
   }
 }
+
+// Keep the GET handler simple
+export async function GET(): Promise<Response> {
+  return NextResponse.json({ ok: true, route: "/api/events" }, { status: 200 });
+}
+
+// Export the wrapped POST handler
+export const POST = auth.authenticated(createEventHandler);
+
