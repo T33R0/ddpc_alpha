@@ -26,7 +26,7 @@ export async function fetchVehicleEventsForCards(supabase: SupabaseClient, vehic
   const effectiveLimit = Math.min(Math.max(1, limit ?? DEFAULT_TIMELINE_LIMIT), MAX_TIMELINE_LIMIT);
 
   // Try enriched select first
-  let q = supabase
+  const q = supabase
     .from("event")
     .select("id, vehicle_id, type, title, notes, occurred_at, occurred_on, date_confidence, manual_type_key, created_at, updated_at")
     .eq("vehicle_id", vehicleId)
