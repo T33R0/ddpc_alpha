@@ -18,15 +18,21 @@ export type EnrichedTimelineEvent = {
   updated_at: string | null;
 };
 
+const DEFAULT_TIMELINE_LIMIT = 50;
+const MAX_TIMELINE_LIMIT = 100;
+
 export async function fetchVehicleEventsForCards(supabase: SupabaseClient, vehicleId: string, limit?: number): Promise<EnrichedTimelineEvent[]> {
+  // Determine a safe, bounded limit regardless of caller
+  const effectiveLimit = Math.min(Math.max(1, limit ?? DEFAULT_TIMELINE_LIMIT), MAX_TIMELINE_LIMIT);
+
   // Try enriched select first
   let q = supabase
     .from("event")
     .select("id, vehicle_id, type, title, notes, occurred_at, occurred_on, date_confidence, manual_type_key, created_at, updated_at")
     .eq("vehicle_id", vehicleId)
     .order("occurred_at", { ascending: false, nullsFirst: false })
-    .order("created_at", { ascending: false });
-  if (typeof limit === 'number') q = q.limit(Math.max(1, limit));
+    .order("created_at", { ascending: false })
+    .limit(effectiveLimit);
   const initial = await (q as unknown as Promise<{ data: unknown[] | null; error: unknown | null }>);
   let events = initial.data;
   const error = initial.error;
@@ -40,7 +46,7 @@ export async function fetchVehicleEventsForCards(supabase: SupabaseClient, vehic
       .select("id, vehicle_id, type, notes, created_at, updated_at")
       .eq("vehicle_id", vehicleId)
       .order("created_at", { ascending: false })
-      .limit(typeof limit === 'number' ? Math.max(1, limit) : 1000) as unknown as { data: unknown[] | null };
+      .limit(effectiveLimit) as unknown as { data: unknown[] | null };
     events = Array.isArray(res.data) ? res.data : [];
   }
 

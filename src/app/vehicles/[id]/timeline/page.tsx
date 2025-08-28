@@ -37,7 +37,7 @@ export default async function TimelinePage({ params }: { params: Promise<{ id: s
       .maybeSingle();
     canExport = !!membership;
   }
-  const enriched = await fetchVehicleEventsForCards(supabase, vehicleId);
+  const enriched = await fetchVehicleEventsForCards(supabase, vehicleId, 50);
 
   // Adapt legacy Event rows to TimelineEvent shape expected by TimelineClient
   const mapType = (t: EventType): TimelineEvent["type"] => {
