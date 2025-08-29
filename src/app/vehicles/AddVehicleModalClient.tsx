@@ -62,13 +62,22 @@ export default function AddVehicleModalClient({ isAuthenticated = false }: { isA
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      if (!year) { setMakes([]); return; }
+      if (!year) {
+        console.log("No year selected, clearing makes");
+        setMakes([]);
+        return;
+      }
       try {
+        console.log("Loading makes for year:", year);
         const res = await fetch(`/api/vehicle-data/options?scope=makes&year=${encodeURIComponent(year)}`, { cache: "force-cache", next: { revalidate: 86400 } });
         const json = (await res.json()) as { values: string[] };
+        console.log("Makes API response:", json);
         if (cancelled) return;
         setMakes(json.values || []);
-      } catch {}
+        console.log("Makes set to:", json.values?.length || 0, "items");
+      } catch (error) {
+        console.error("Error loading makes:", error);
+      }
     })();
     return () => { cancelled = true; };
   }, [year]);
