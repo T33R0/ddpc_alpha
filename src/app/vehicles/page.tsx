@@ -1,5 +1,8 @@
 // import Link from "next/link";
 import { getServerSupabase } from "@/lib/supabase";
+import { DatabaseService } from "@/lib/api/database";
+import { AnalyticsService } from "@/lib/api/analytics";
+import { CachedAnalyticsService, globalCache } from "@/lib/api/cache";
 // VehicleCard is rendered client-side via VehiclesListClient
 import VehiclesListClient from "@/components/vehicles/VehiclesListClient";
 import ErrorBoundary from "@/components/ErrorBoundary";
@@ -134,100 +137,42 @@ export default async function VehiclesPage(
     });
   }
 
-  // Analytics v0 aggregates (batched; no N+1)
+  // Optimized Analytics v2 (single query, no N+1)
   const metrics = new Map<string, { upcoming: number; lastService: string | null; events30: number; daysSince: number | null; avgBetween: number | null }>();
   const lastEventByVehicle = new Map<string, string | null>();
+
   if (vehicleRows && vehicleRows.length > 0 && supabase) {
     const vehicleIds = vehicleRows.map((v) => v.id);
-    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
 
-    type WorkItemRow = { id: string; vehicle_id: string; status: "BACKLOG" | "PLANNED" | "IN_PROGRESS" | "DONE" | string };
-    type ServiceEventRow = { vehicle_id: string; created_at: string; type: string };
-    type RecentEventRow = { id: string; vehicle_id: string; created_at: string };
-    type AnyEventRow = { vehicle_id: string; created_at: string };
+    // Use cached analytics service for optimal performance
+    const db = new DatabaseService(supabase);
+    const analyticsService = new AnalyticsService(db);
+    const cachedAnalytics = new CachedAnalyticsService(analyticsService, globalCache);
+    const analyticsMap = await cachedAnalytics.getVehicleAnalytics(vehicleIds);
 
-    const [workItemsRes, lastServicesRes, recentEventsRes, lastAnyEventsRes] = await Promise.all([
-      supabase
-        .from("work_item")
-        .select("id, vehicle_id, status")
-        .in("vehicle_id", vehicleIds)
-        .in("status", ["PLANNED", "IN_PROGRESS"]),
-      supabase
-        .from("event")
-        .select("vehicle_id, created_at, type")
-        .eq("type", "SERVICE")
-        .in("vehicle_id", vehicleIds)
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("event")
-        .select("id, vehicle_id, created_at")
-        .in("vehicle_id", vehicleIds)
-        .gte("created_at", thirtyDaysAgo),
-      supabase
-        .from("event")
-        .select("vehicle_id, created_at")
-        .in("vehicle_id", vehicleIds)
-        .order("created_at", { ascending: false }),
-    ]);
-
-    const upcomingByVehicle = new Map<string, number>();
-    ((workItemsRes.data ?? []) as WorkItemRow[]).forEach((wi) => {
-      upcomingByVehicle.set(wi.vehicle_id, (upcomingByVehicle.get(wi.vehicle_id) ?? 0) + 1);
-    });
-
-    const lastServiceByVehicle = new Map<string, string | null>();
-    // Iterate in order (desc) and set first occurrence
-    const serviceByVehicle: Record<string, string[]> = {};
-    ((lastServicesRes.data ?? []) as ServiceEventRow[]).forEach((ev) => {
-      if (!lastServiceByVehicle.has(ev.vehicle_id)) {
-        lastServiceByVehicle.set(ev.vehicle_id, ev.created_at as string);
+    // Convert to the expected format for compatibility
+    vehicleIds.forEach((vehicleId) => {
+      const analytics = analyticsMap.get(vehicleId);
+      if (analytics) {
+        metrics.set(vehicleId, {
+          upcoming: analytics.upcoming_tasks,
+          lastService: analytics.last_service_date,
+          events30: analytics.events_30_days,
+          daysSince: analytics.days_since_last_service,
+          avgBetween: analytics.avg_days_between_services,
+        });
+        lastEventByVehicle.set(vehicleId, analytics.last_event_date);
+      } else {
+        // Fallback for vehicles with no analytics data
+        metrics.set(vehicleId, {
+          upcoming: 0,
+          lastService: null,
+          events30: 0,
+          daysSince: null,
+          avgBetween: null,
+        });
+        lastEventByVehicle.set(vehicleId, null);
       }
-      (serviceByVehicle[ev.vehicle_id] ??= []).push(ev.created_at);
-    });
-
-    const events30ByVehicle = new Map<string, number>();
-    ((recentEventsRes.data ?? []) as RecentEventRow[]).forEach((ev) => {
-      events30ByVehicle.set(ev.vehicle_id, (events30ByVehicle.get(ev.vehicle_id) ?? 0) + 1);
-    });
-
-    // Build last event per vehicle (any type)
-    ((lastAnyEventsRes.data ?? []) as AnyEventRow[]).forEach((ev) => {
-      if (!lastEventByVehicle.has(ev.vehicle_id)) {
-        lastEventByVehicle.set(ev.vehicle_id, ev.created_at as string);
-      }
-    });
-
-    vehicleIds.forEach((id) => {
-      // days since last
-      const last = lastServiceByVehicle.get(id) ?? null;
-      let daysSince: number | null = null;
-      if (last) {
-        const diffMs = Date.now() - new Date(last).getTime();
-        daysSince = Math.max(0, Math.round(diffMs / (24 * 60 * 60 * 1000)));
-      }
-      // avg days between service over last 12 months
-      let avgBetween: number | null = null;
-      const svcDates = (serviceByVehicle[id] ?? []).slice(0, 365).map(d => new Date(d).getTime());
-      if (svcDates.length >= 2) {
-        // ensure desc order already; compute intervals between consecutive
-        let total = 0;
-        let count = 0;
-        for (let i = 0; i < svcDates.length - 1; i++) {
-          const a = svcDates[i];
-          const b = svcDates[i + 1];
-          const gapDays = Math.abs(Math.round((a - b) / (24 * 60 * 60 * 1000)));
-          total += gapDays;
-          count++;
-        }
-        if (count > 0) avgBetween = Math.round(total / count);
-      }
-      metrics.set(id, {
-        upcoming: upcomingByVehicle.get(id) ?? 0,
-        lastService: lastServiceByVehicle.get(id) ?? null,
-        events30: events30ByVehicle.get(id) ?? 0,
-        daysSince,
-        avgBetween,
-      });
     });
   }
 

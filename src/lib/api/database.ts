@@ -1,5 +1,6 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 import { getServerSupabase } from "@/lib/supabase";
+import { globalCache, CacheKeys } from "./cache";
 
 export type Role = "OWNER" | "MANAGER" | "CONTRIBUTOR" | "VIEWER";
 
@@ -46,6 +47,13 @@ export class DatabaseService {
   }
 
   /**
+   * Get the underlying Supabase client (for advanced operations)
+   */
+  getSupabaseClient(): SupabaseClient {
+    return this.supabase;
+  }
+
+  /**
    * Create a new DatabaseService instance with default Supabase client
    */
   static async create(): Promise<DatabaseService> {
@@ -54,9 +62,29 @@ export class DatabaseService {
   }
 
   /**
-   * Get all garages a user has access to
+   * Get all garages a user has access to (with caching)
    */
   async getUserGarages(userId: string): Promise<Garage[]> {
+    // Try cache first
+    const cacheKey = CacheKeys.userGarageMemberships(userId);
+    const cachedMemberships = globalCache.get(cacheKey);
+
+    if (cachedMemberships && typeof cachedMemberships === 'object' && cachedMemberships instanceof Map) {
+      // Convert cached memberships to garages
+      const garageIds = Array.from(cachedMemberships.keys());
+      if (garageIds.length > 0) {
+        const { data, error } = await this.supabase
+          .from("garage")
+          .select("*")
+          .in("id", garageIds);
+
+        if (!error && data) {
+          return data;
+        }
+      }
+    }
+
+    // Fallback to original query
     const { data, error } = await this.supabase
       .from("garage")
       .select("*")
@@ -84,9 +112,20 @@ export class DatabaseService {
   }
 
   /**
-   * Get user's role in a specific garage
+   * Get user's role in a specific garage (with caching)
    */
   async getUserGarageRole(userId: string, garageId: string): Promise<Role | null> {
+    // Try cache first
+    const cacheKey = CacheKeys.userGarageMemberships(userId);
+    const cachedMemberships = globalCache.get(cacheKey);
+
+    if (cachedMemberships && typeof cachedMemberships === 'object' && cachedMemberships instanceof Map) {
+      const membership = cachedMemberships.get(garageId);
+      if (membership) {
+        return membership.role as Role;
+      }
+    }
+
     // First check if user is owner
     const { data: garage } = await this.supabase
       .from("garage")
