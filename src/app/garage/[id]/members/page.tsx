@@ -1,4 +1,6 @@
 import { getServerSupabase } from "@/lib/supabase";
+import { DatabaseService } from "@/lib/api/database";
+import { GarageService } from "@/lib/api/garage";
 import { serverLog } from "@/lib/serverLog";
 import AddMemberForm from "@/components/garage/AddMemberForm";
 
@@ -6,40 +8,16 @@ type Member = { id: string; user_id: string; role: "OWNER" | "MANAGER" | "CONTRI
 
 async function getRoleForUser(garageId: string, userId: string) {
   const supabase = await getServerSupabase();
-  const { data: m } = await supabase
-    .from("garage_member")
-    .select("role")
-    .eq("garage_id", garageId)
-    .eq("user_id", userId)
-    .maybeSingle();
-  return (m?.role as Member["role"]) || null;
+  const db = new DatabaseService(supabase);
+  const garageService = new GarageService(db);
+  return garageService.getUserGarageRole(userId, garageId);
 }
 
 async function getMembers(garageId: string) {
   const supabase = await getServerSupabase();
-  const { data: members } = await supabase
-    .from("garage_member")
-    .select("id, user_id, role")
-    .eq("garage_id", garageId)
-    .order("created_at", { ascending: true });
-
-  // Best-effort email lookup via auth.users. If denied by RLS, fall back to user_id.
-  const results: Array<Member & { email: string }> = [];
-  for (const m of (members ?? []) as Member[]) {
-    let email = m.user_id;
-    try {
-      const { data: u } = await supabase
-        .from("auth.users" as unknown as string)
-        .select("id, email")
-        .eq("id", m.user_id)
-        .maybeSingle();
-      if (u?.email) email = u.email as string;
-    } catch {
-      // ignore
-    }
-    results.push({ ...m, email });
-  }
-  return results;
+  const db = new DatabaseService(supabase);
+  const garageService = new GarageService(db);
+  return garageService.getGarageMembers(garageId);
 }
 
 export default async function MembersPage({ params }: { params: Promise<{ id: string }> }) {
