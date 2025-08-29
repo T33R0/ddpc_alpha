@@ -1,6 +1,18 @@
 import { NextResponse } from "next/server";
 import { getServerSupabase } from "@/lib/supabase";
 
+interface VehicleMake {
+  make: string | null;
+}
+
+interface VehicleModel {
+  model: string | null;
+}
+
+interface VehicleTrim {
+  trim: string | null;
+}
+
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
@@ -44,7 +56,7 @@ export async function GET(req: Request) {
         } else {
           // Extract unique makes and normalize
           const makesSet = new Set<string>();
-          makesData?.forEach((item: any) => {
+          (makesData as VehicleMake[])?.forEach((item: VehicleMake) => {
             if (item.make) {
               let make = String(item.make).trim();
               // Apply normalization like the original code
@@ -85,7 +97,7 @@ export async function GET(req: Request) {
             values = [];
           } else {
             const modelsSet = new Set<string>();
-            modelsData?.forEach((item: any) => {
+            (modelsData as VehicleModel[])?.forEach((item: VehicleModel) => {
               if (item.model) {
                 const model = String(item.model).trim();
                 if (model) modelsSet.add(model);
@@ -135,7 +147,7 @@ export async function GET(req: Request) {
             values = [];
           } else {
             const trimsSet = new Set<string>();
-            trimsData?.forEach((item: any) => {
+            (trimsData as VehicleTrim[])?.forEach((item: VehicleTrim) => {
               if (item.trim) {
                 const trim = String(item.trim).trim();
                 if (trim) trimsSet.add(trim);
