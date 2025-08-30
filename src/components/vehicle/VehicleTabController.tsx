@@ -32,6 +32,9 @@ export default function VehicleTabController() {
 			jobs: document.getElementById("veh-content-jobs"),
 			receipts: document.getElementById("veh-content-receipts"),
 			timeline: document.getElementById("veh-content-timeline"),
+			mods: document.getElementById("veh-content-mods"),
+			service: document.getElementById("veh-content-service"),
+			dyno: document.getElementById("veh-content-dyno"),
 		};
 
 		const setActive = (targetName: string) => {
@@ -54,6 +57,9 @@ export default function VehicleTabController() {
 			if (section === 'jobs') { setActive('jobs'); return; }
 			if (section === 'receipts') { setActive('receipts'); return; }
 			if (section === 'timeline') { setActive('timeline'); return; }
+			if (section === 'mods') { setActive('mods'); return; }
+			if (section === 'service') { setActive('service'); return; }
+			if (section === 'dyno') { setActive('dyno'); return; }
 			// Default to overview; try to reflect current slide if available
 			try {
 				const getter = (window as unknown as { __vehGetSlide?: () => SlideKey }).__vehGetSlide;
@@ -70,6 +76,9 @@ export default function VehicleTabController() {
 			else if (h === 'jobs') show('jobs');
 			else if (h === 'receipts') show('receipts');
 			else if (h === 'timeline') show('timeline');
+			else if (h === 'mods') show('mods');
+			else if (h === 'service') show('service');
+			else if (h === 'dyno') show('dyno');
 			else show('overview');
 		};
 
@@ -88,7 +97,7 @@ export default function VehicleTabController() {
 				else show('media');
 				return;
 			}
-			if (t === 'wishlist' || t === 'jobs' || t === 'receipts' || t === 'timeline') {
+			if (t === 'wishlist' || t === 'jobs' || t === 'receipts' || t === 'timeline' || t === 'mods' || t === 'service' || t === 'dyno') {
 				location.hash = '#' + t;
 				return;
 			}
