@@ -16,6 +16,8 @@ import { fetchVehicleEventsForCards } from "@/lib/timeline/enrichedEvents";
 import VehicleReceiptsBody from "@/components/vehicle/VehicleReceiptsBody";
 import BuyerSnapshot from "@/components/vehicle/BuyerSnapshot";
 import UsageQuickLog from "@/components/usage/UsageQuickLog";
+import ModsList from "@/components/mods/ModsList";
+import ServiceAndRepairs from "@/components/service/ServiceAndRepairs";
 // Editing UI is no longer shown on the details landing; users can access it from a dedicated page later
 
 export const dynamic = "force-dynamic";
@@ -306,6 +308,22 @@ export default async function VehicleOverviewPage({ params }: { params: Promise<
 
       <div id="veh-content-receipts" data-section="receipts" style={{ display: 'none' }}>
         <VehicleReceiptsBody vehicleId={vehicleId} />
+      </div>
+
+      <div id="veh-content-mods" data-section="mods" style={{ display: 'none' }}>
+        <div className="space-y-4">
+          <ModsList vehicleId={vehicleId} />
+        </div>
+      </div>
+
+      <div id="veh-content-service" data-section="service" style={{ display: 'none' }}>
+        <div className="space-y-4">
+          <ServiceAndRepairs vehicleId={vehicleId} />
+        </div>
+      </div>
+
+      <div id="veh-content-dyno" data-section="dyno" style={{ display: 'none' }}>
+        <div className="opacity-70">Log dyno runs from the vehicle sidebar (coming soon).</div>
       </div>
 
       {/* Client-side content router for sub-navigation */}

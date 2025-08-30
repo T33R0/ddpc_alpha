@@ -9,9 +9,9 @@ export default function VehicleTabs({ vehicleId }: { vehicleId: string }) {
 		{ href: `#gallery`, label: "Gallery", internal: true },
 		{ href: `#receipts`, label: "Receipts", internal: true },
 		{ href: `#specs`, label: "Specs", internal: true, target: "display-page" },
-		{ href: `/vehicles/${vehicleId}/mods`, label: "Mods" },
-		{ href: `/vehicles/${vehicleId}/service`, label: "Service" },
-		{ href: `/vehicles/${vehicleId}/dyno`, label: "Dyno" },
+		{ href: `#mods`, label: "Mods", internal: true },
+		{ href: `#service`, label: "Service", internal: true },
+		{ href: `#dyno`, label: "Dyno", internal: true },
 	];
 
 	return (
