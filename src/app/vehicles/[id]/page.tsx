@@ -14,6 +14,8 @@ import TimelineClient, { type TimelineEvent } from "@/app/vehicles/[id]/timeline
 import { getEventTypes } from "@/lib/eventTypes";
 import { fetchVehicleEventsForCards } from "@/lib/timeline/enrichedEvents";
 import VehicleReceiptsBody from "@/components/vehicle/VehicleReceiptsBody";
+import BuyerSnapshot from "@/components/vehicle/BuyerSnapshot";
+import UsageQuickLog from "@/components/usage/UsageQuickLog";
 // Editing UI is no longer shown on the details landing; users can access it from a dedicated page later
 
 export const dynamic = "force-dynamic";
@@ -239,6 +241,10 @@ export default async function VehicleOverviewPage({ params }: { params: Promise<
     <div className="space-y-6">
       <VehicleHeader vehicle={{ id: vehicle.id as string, nickname: vehicle.nickname, year: vehicle.year, make: vehicle.make, model: vehicle.model, privacy: vehicle.privacy }} coverUrl={coverUrl} />
       <VehicleTabs vehicleId={vehicleId} />
+
+      {/* Buyer at-a-glance */}
+      <BuyerSnapshot vehicleId={vehicle.id as string} />
+      <UsageQuickLog vehicleId={vehicle.id as string} />
 
       {/* Inject prev/next links into arrows */}
       <script
