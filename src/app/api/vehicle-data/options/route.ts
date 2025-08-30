@@ -37,18 +37,24 @@ export async function GET(req: Request) {
       case "makes":
         // Get distinct makes from existing vehicles
         let query = supabase
-          .from("vehicle")
+          .from("vehicle_data")
           .select("make")
           .not("make", "is", null);
 
         // If year is specified, filter by year
         if (year) {
-          query = query.eq("year", parseInt(year));
+          query = query.eq("year", parseInt(year, 10));
         }
 
         const { data: makesData, error: makesError } = await query.order("make");
 
-        console.log("Makes API called with year:", year, "data:", makesData?.length || 0, "items");
+        console.log(
+          "Makes API called with year:",
+          year,
+          "data:",
+          makesData?.length || 0,
+          "items"
+        );
 
         if (makesError) {
           console.error("Makes query error:", makesError);
@@ -69,12 +75,6 @@ export async function GET(req: Request) {
           });
           values = Array.from(makesSet).sort((a, b) => a.localeCompare(b));
           console.log("Makes processed:", values.length, "unique makes:", values);
-
-          // If no makes found and no year filter, provide some fallback popular makes
-          if (values.length === 0 && !year) {
-            console.log("No makes found, providing fallback makes");
-            values = ["Toyota", "Honda", "Ford", "Chevrolet", "BMW", "Mercedes-Benz", "Audi", "Nissan", "Hyundai", "Kia"];
-          }
         }
         break;
 
@@ -82,15 +82,28 @@ export async function GET(req: Request) {
         if (!make) {
           values = [];
         } else {
-          // Get distinct models for the selected make
-          const { data: modelsData, error: modelsError } = await supabase
-            .from("vehicle")
+          // Get distinct models for the selected make and optional year
+          let query = supabase
+            .from("vehicle_data")
             .select("model")
             .eq("make", make)
-            .not("model", "is", null)
-            .order("model");
+            .not("model", "is", null);
 
-          console.log("Models API called for make:", make, "data:", modelsData?.length || 0, "items");
+          if (year) {
+            query = query.eq("year", parseInt(year, 10));
+          }
+
+          const { data: modelsData, error: modelsError } = await query.order("model");
+
+          console.log(
+            "Models API called for make:",
+            make,
+            "year:",
+            year,
+            "data:",
+            modelsData?.length || 0,
+            "items"
+          );
 
           if (modelsError) {
             console.error("Models query error:", modelsError);
@@ -105,24 +118,6 @@ export async function GET(req: Request) {
             });
             values = Array.from(modelsSet).sort((a, b) => a.localeCompare(b));
             console.log("Models processed:", values.length, "unique models:", values);
-
-            // If no models found, provide some common models for popular makes
-            if (values.length === 0) {
-              const commonModels: Record<string, string[]> = {
-                "Toyota": ["Camry", "Corolla", "RAV4", "Highlander", "Tacoma"],
-                "Honda": ["Civic", "Accord", "CR-V", "Pilot", "Fit"],
-                "Ford": ["F-150", "Explorer", "Escape", "Mustang", "Focus"],
-                "Chevrolet": ["Silverado", "Equinox", "Malibu", "Traverse", "Tahoe"],
-                "BMW": ["3 Series", "5 Series", "X3", "X5", "7 Series"],
-                "Mercedes-Benz": ["C-Class", "E-Class", "GLC", "GLE", "S-Class"],
-                "Audi": ["A3", "A4", "Q5", "Q7", "A6"],
-                "Nissan": ["Altima", "Sentra", "Rogue", "Pathfinder", "Titan"],
-                "Hyundai": ["Sonata", "Elantra", "Tucson", "Santa Fe", "Kona"],
-                "Kia": ["Sorento", "Sportage", "Telluride", "Soul", "Optima"]
-              };
-              values = commonModels[make] || [`${make} Model`];
-              console.log("No models found, providing fallback models:", values);
-            }
           }
         }
         break;
@@ -131,16 +126,31 @@ export async function GET(req: Request) {
         if (!make || !model) {
           values = [];
         } else {
-          // Get distinct trims for the selected make and model
-          const { data: trimsData, error: trimsError } = await supabase
-            .from("vehicle")
+          // Get distinct trims for the selected make, model, and optional year
+          let query = supabase
+            .from("vehicle_data")
             .select("trim")
             .eq("make", make)
             .eq("model", model)
-            .not("trim", "is", null)
-            .order("trim");
+            .not("trim", "is", null);
 
-          console.log("Trims API called for make:", make, "model:", model, "data:", trimsData?.length || 0, "items");
+          if (year) {
+            query = query.eq("year", parseInt(year, 10));
+          }
+
+          const { data: trimsData, error: trimsError } = await query.order("trim");
+
+          console.log(
+            "Trims API called for make:",
+            make,
+            "model:",
+            model,
+            "year:",
+            year,
+            "data:",
+            trimsData?.length || 0,
+            "items"
+          );
 
           if (trimsError) {
             console.error("Trims query error:", trimsError);
@@ -155,12 +165,6 @@ export async function GET(req: Request) {
             });
             values = Array.from(trimsSet).sort((a, b) => a.localeCompare(b));
             console.log("Trims processed:", values.length, "unique trims:", values);
-
-            // If no trims found, provide some common trims
-            if (values.length === 0) {
-              values = ["Base", "LX", "EX", "EX-L", "Premium", "Limited", "Platinum"];
-              console.log("No trims found, providing fallback trims:", values);
-            }
           }
         }
         break;
