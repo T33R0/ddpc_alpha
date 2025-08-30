@@ -26,29 +26,32 @@ export default function DiscoverFiltersClient({ options }: { options: Options })
 	const [loaded, setLoaded] = useState(false);
 	const [opts, setOpts] = useState<Options>(options);
 
-	useEffect(() => {
-		let canceled = false;
-		(async () => {
-			try {
-				const url = new URL("/api/discover/filters", window.location.origin);
-				const y = sp.get("year");
-				const mk = sp.get("make");
-				const mdl = sp.get("model");
-				const tr = sp.get("trim");
-				if (y) url.searchParams.set("year", y);
-				if (mk) url.searchParams.set("make", mk);
-				if (mdl) url.searchParams.set("model", mdl);
-				if (tr) url.searchParams.set("trim", tr);
-				const res = await fetch(url.toString(), { cache: "no-store" });
-				const data = await res.json();
-				if (!canceled && data?.options) {
-					setOpts(data.options as Options);
-					setLoaded(true);
-				}
-			} catch {}
-		})();
-		return () => { canceled = true; };
-	}, [sp]);
+        // Fetch filter options from API based on current selections
+        const loadOptions = async () => {
+                const url = new URL("/api/discover/filters", window.location.origin);
+                const y = sp.get("year");
+                const mk = sp.get("make");
+                const mdl = sp.get("model");
+                const tr = sp.get("trim");
+                if (y) url.searchParams.set("year", y);
+                if (mk) url.searchParams.set("make", mk);
+                if (mdl) url.searchParams.set("model", mdl);
+                if (tr) url.searchParams.set("trim", tr);
+                const res = await fetch(url.toString());
+                const data = await res.json();
+                if (data?.options) {
+                        setOpts(data.options as Options);
+                        setLoaded(true);
+                }
+        };
+
+        useEffect(() => {
+                let canceled = false;
+                (async () => {
+                        if (!canceled) await loadOptions();
+                })();
+                return () => { canceled = true; };
+        }, [sp]);
 
 	const replace = (next: URLSearchParams) => {
 		next.set("page", "1");
