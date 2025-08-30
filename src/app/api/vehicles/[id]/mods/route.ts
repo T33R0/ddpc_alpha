@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSupabase } from '@/lib/supabase';
-import type { ModEntry } from '@/types/buyer';
 
 export async function GET(_: NextRequest, { params }: { params: { id: string } }) {
   const supabase = await getServerSupabase();

@@ -3,8 +3,8 @@ import { z } from 'zod';
 import { getServerSupabase } from '@/lib/supabase';
 
 const Body = z.object({
-  decoded: z.record<Record<string, unknown>>().optional(),
-  options: z.record<Record<string, unknown>>().optional(),
+  decoded: z.record(z.unknown()).optional(),
+  options: z.record(z.unknown()).optional(),
 });
 
 export async function GET(_: NextRequest, { params }: { params: { id: string } }) {
