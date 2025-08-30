@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { createClient } from '@/lib/supabase';
+import { getServerSupabase } from '@/lib/supabase';
 
 const Body = z.object({
-  decoded: z.record(z.any()).optional(),
-  options: z.record(z.any()).optional(),
+  decoded: z.record<Record<string, unknown>>().optional(),
+  options: z.record<Record<string, unknown>>().optional(),
 });
 
 export async function GET(_: NextRequest, { params }: { params: { id: string } }) {
-  const supabase = createClient();
+  const supabase = await getServerSupabase();
   const { data, error } = await supabase
     .from('vehicle_factory_config')
     .select('*')
@@ -19,7 +19,7 @@ export async function GET(_: NextRequest, { params }: { params: { id: string } }
 }
 
 export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
-  const supabase = createClient();
+  const supabase = await getServerSupabase();
   const parsed = Body.safeParse(await req.json());
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
 

@@ -37,6 +37,6 @@ export type ModEntry = {
   part_state_id: string; vehicle_id: string; slot_code: string | null;
   slot_label: string | null; installed_on: string | null; removed_on: string | null;
   notes: string | null; brand: string | null; part_name: string | null;
-  part_number: string | null; specs: Record<string, any> | null;
+  part_number: string | null; specs: Record<string, unknown> | null;
   created_by: string | null; created_at: string;
 };

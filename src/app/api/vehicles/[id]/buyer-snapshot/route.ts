@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase';
+import { getServerSupabase } from '@/lib/supabase';
 import type { BuyerSnapshot } from '@/types/buyer';
 
 export async function GET(_: NextRequest, { params }: { params: { id: string } }) {
-  const supabase = createClient();
+  const supabase = await getServerSupabase();
   const { data, error } = await supabase
     .from('v_vehicle_buyer_snapshot')
     .select('*')

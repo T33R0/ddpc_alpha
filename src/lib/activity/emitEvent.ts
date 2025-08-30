@@ -1,22 +1,22 @@
-import { createClient } from '@/lib/supabase';
+import { getServerSupabase } from '@/lib/supabase';
 
 type EmitArgs = {
   vehicle_id: string;
   title: string;
   occurred_on?: string | null;
-  payload?: Record<string, any>;
+  payload?: Record<string, unknown>;
   typeKey?: 'SERVICE'|'INSTALL'|'INSPECT'|'TUNE'|'REPAIR'|'USAGE';
 };
 
 export async function emitVehicleEvent({ vehicle_id, title, occurred_on, payload, typeKey }: EmitArgs) {
-  const supabase = createClient();
+  const supabase = await getServerSupabase();
   const { data: userRes } = await supabase.auth.getUser();
   const created_by = userRes?.user?.id ?? null;
 
   // Try modern table first
   const tryEvents = await supabase
     .from('events')
-    .insert([{ vehicle_id, type: typeKey as any, title, occurred_on: occurred_on ?? null, payload: payload ?? {}, created_by }])
+    .insert([{ vehicle_id, type: typeKey, title, occurred_on: occurred_on ?? null, payload: payload ?? {}, created_by }])
     .select('id')
     .single();
 
