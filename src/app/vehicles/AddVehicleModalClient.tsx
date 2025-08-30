@@ -42,18 +42,22 @@ export default function AddVehicleModalClient({ isAuthenticated = false }: { isA
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-
+  // Helper to load options from unified API
+  const fetchOptions = async (scope: string, params: Record<string, string> = {}) => {
+    const url = new URL("/api/vehicle-data/options", window.location.origin);
+    url.searchParams.set("scope", scope);
+    Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
+    const res = await fetch(url.toString());
+    const json = (await res.json()) as { values: string[] };
+    return json.values || [];
+  };
 
   // Load years from server API
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      try {
-        const res = await fetch("/api/vehicle-data/options?scope=years", { cache: "force-cache", next: { revalidate: 86400 } });
-        const json = (await res.json()) as { values: string[] };
-        if (cancelled) return;
-        setYears(json.values || []);
-      } catch {}
+      const vals = await fetchOptions("years");
+      if (!cancelled) setYears(vals);
     })();
     return () => { cancelled = true; };
   }, []);
@@ -62,22 +66,9 @@ export default function AddVehicleModalClient({ isAuthenticated = false }: { isA
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      if (!year) {
-        console.log("No year selected, clearing makes");
-        setMakes([]);
-        return;
-      }
-      try {
-        console.log("Loading makes for year:", year);
-        const res = await fetch(`/api/vehicle-data/options?scope=makes&year=${encodeURIComponent(year)}`, { cache: "force-cache", next: { revalidate: 86400 } });
-        const json = (await res.json()) as { values: string[] };
-        console.log("Makes API response:", json);
-        if (cancelled) return;
-        setMakes(json.values || []);
-        console.log("Makes set to:", json.values?.length || 0, "items");
-      } catch (error) {
-        console.error("Error loading makes:", error);
-      }
+      if (!year) { setMakes([]); return; }
+      const vals = await fetchOptions("makes", { year });
+      if (!cancelled) setMakes(vals);
     })();
     return () => { cancelled = true; };
   }, [year]);
@@ -91,12 +82,8 @@ export default function AddVehicleModalClient({ isAuthenticated = false }: { isA
     let cancelled = false;
     (async () => {
       if (!year || !make) return;
-      try {
-        const res = await fetch(`/api/vehicle-data/options?scope=models&year=${encodeURIComponent(year)}&make=${encodeURIComponent(make)}`, { cache: "force-cache", next: { revalidate: 86400 } });
-        const json = (await res.json()) as { values: string[] };
-        if (cancelled) return;
-        setModels(json.values || []);
-      } catch {}
+      const vals = await fetchOptions("models", { year, make });
+      if (!cancelled) setModels(vals);
     })();
     return () => { cancelled = true; };
   }, [year, make]);
