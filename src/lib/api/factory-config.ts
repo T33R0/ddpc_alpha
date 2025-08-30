@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 export async function fetchFactoryConfig(vehicleId: string): Promise<{ decoded?: Record<string, any>; options?: Record<string, any> } | null> {
   const res = await fetch(`/api/vehicles/${vehicleId}/factory-config`, { cache: 'no-store' });
   if (!res.ok) return null;
@@ -18,3 +19,4 @@ export async function updateFactoryConfig(vehicleId: string, data: {
   const { item } = await res.json();
   return item ?? null;
 }
+/* eslint-enable @typescript-eslint/no-explicit-any */
